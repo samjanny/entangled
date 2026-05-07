@@ -190,7 +190,7 @@ The canonical form, byte by byte, is:
 20 77 6F 72 6C 64 22 7D
 ```
 
-The byte sequence length is 74 bytes.
+The byte sequence length is 72 bytes.
 
 Implementations are expected to reproduce this byte sequence exactly when canonicalizing the input above. Disagreement with this byte sequence indicates a non-conforming JCS implementation or a misapplication of these rules.
 
