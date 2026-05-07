@@ -126,11 +126,13 @@ The manifest declares the carrier endpoint at which the site is reachable. The c
 For Tor v3, the binding is structural:
 
 1. The client fetches the manifest from a `.onion` address.
-2. The client decodes the Tor v3 address and obtains the service public key encoded in that address, following the Tor v3 address format.
+2. The client decodes the Tor v3 onion service address and obtains the service public key encoded in that address, following the address format defined in the Tor Project's `rend-spec-v3.txt` (Tor Rendezvous Specification, Version 3), in the section that specifies "Encoding onion addresses". This procedure is the external normative reference for v1.0 implementations: the address is base32-encoded, contains the 32-byte Ed25519 service public key, a 2-byte checksum, and a 1-byte version field, with the lowercase `.onion` suffix appended.
 3. The client verifies that the decoded service public key equals `manifest.origin.origin_pubkey`.
-4. The client verifies that the fetched address equals `manifest.origin.address` after applying the canonical address form required by the Tor profile.
+4. The client verifies that the fetched address equals `manifest.origin.address` after applying the canonical address form required by the Tor profile (lowercase base32, full 56 characters before the `.onion` suffix, no scheme, port, path, query, or fragment).
 
 Failure of any of these checks rejects the manifest with the origin-mismatch error defined in §11.
+
+The address-to-key decoding procedure itself is governed by `rend-spec-v3.txt`. Entangled does not redefine it. Implementations MUST follow that document's encoding/decoding rules byte-for-byte. If `rend-spec-v3.txt` is updated in a way that changes the v3 onion address format, that change applies to Entangled v1.0 only insofar as it is a clarification compatible with the existing v3 address specification; an incompatible change would require a new Entangled protocol version.
 
 For other carrier profiles, the binding rule is profile-specific. Entangled v1 fully specifies only the Tor v3 binding. I2P and Yggdrasil remain draft carrier profiles until their address-to-key binding rules are specified byte-for-byte; they are outside Entangled v1.0 conformance.
 

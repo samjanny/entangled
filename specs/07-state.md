@@ -318,13 +318,31 @@ When the client receives a transaction document containing one or more set opera
 * the publisher identity, shown as the PIP or a condensed form of it;
 * the `namespace` and `key`;
 * the `mode`, either client-only or request;
-* a representation of the value the publisher proposes to store;
+* a safe representation of the value the publisher proposes to store, as defined below;
 * the proposed TTL;
 * the `purpose` string from the manifest's `state_policy`;
 * whether the value will be sent automatically with future submit requests;
 * a control to accept or reject this specific set operation.
 
 Consent presentation occurs in client-controlled UI, in the chrome region defined by Pillar C and §10. It MUST NOT be controllable, replaceable, hidden, or styled by publisher-controlled content.
+
+### Safe display of opaque state values
+
+State values are opaque byte strings; the client does not parse or interpret their contents (see "value" above). State values MAY contain control characters in the range U+0000 through U+001F or U+007F, line feeds, escape sequences, or any other byte sequence permitted by the wire schema.
+
+When presenting a value to the user during consent or in the chrome's state inspection surfaces, the client MUST NOT render the value as trusted text, markup, terminal control sequences, script, or executable content. The client MUST NOT pass the value to any rendering path that interprets in-band markup or interprets ANSI/VT or other terminal control sequences.
+
+The client MUST display state values in a bounded, escaped, or otherwise neutralized form. Acceptable representations include:
+
+* truncated plain text with non-printable bytes replaced by an escape glyph or a `\xHH`-style escape;
+* fully escaped text with control characters and non-printables shown as visible escape sequences;
+* hexadecimal encoding of the byte sequence;
+* base64 or base64url encoding of the byte sequence;
+* any other representation that preserves the property that no byte of the value is rendered as untrusted UI control.
+
+The choice among these representations is implementation-defined. The presentation MUST be visually distinguishable from publisher-supplied document content and MUST NOT be confused with chrome warnings, trust-state indicators, or canary status.
+
+This rule does not change the wire format. The value remains an opaque UTF-8 byte string of up to the smaller of the declared `max_size` and 4096 bytes. Control characters in the value remain permitted on the wire.
 
 The visual treatment MUST clearly distinguish `client_only` and `request` mode. A user MUST be able to identify, before granting consent, whether the item will be transmitted in future submits.
 
