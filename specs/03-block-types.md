@@ -906,7 +906,7 @@ The total UTF-8 bytes of all `value` strings in `content` MUST NOT exceed 4 KiB.
 
 A `submit_form` block is not permitted in transaction documents. Transaction documents are responses to submits, not solicitations of further submits.
 
-Including a `submit_form` block in a transaction document causes the document to be rejected with the appropriate schema diagnostic defined in §11.
+Including a `submit_form` block in a transaction document causes the document to be rejected with `E_SCHEMA_BLOCK_NOT_PERMITTED`, defined in §11.
 
 All other blocks are permitted in both document kinds, with semantic differences as noted.
 

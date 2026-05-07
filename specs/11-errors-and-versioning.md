@@ -136,17 +136,18 @@ When a `3xx` status code is received, `E_TRANSPORT_REDIRECT` takes precedence ov
 
 ## Schema diagnostics (Stage 5)
 
-| Code                         | Severity | Document kind | Meaning                                                                                                           |
-| ---------------------------- | -------- | ------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `E_SCHEMA_REQUIRED_FIELD`    | error    | any           | A required field is absent                                                                                        |
-| `E_SCHEMA_UNKNOWN_FIELD`     | error    | any           | A field not permitted by the schema is present                                                                    |
-| `E_SCHEMA_FIELD_TYPE`        | error    | any           | A field has the wrong type                                                                                        |
-| `E_SCHEMA_FIELD_RANGE`       | error    | any           | A numeric field is outside its permitted range                                                                    |
-| `E_SCHEMA_FIELD_SYNTAX`      | error    | any           | A string field violates its declared syntax: slug rules, base64url format, RFC 3339 form, path syntax, or similar |
-| `E_SCHEMA_FIELD_LENGTH`      | error    | any           | A field exceeds its specific length limit                                                                         |
-| `E_SCHEMA_NULL_VALUE`        | error    | any           | A `null` literal appears in the document; null values are not permitted                                           |
-| `E_SCHEMA_NON_INTEGER`       | error    | any           | A numeric value is not a non-negative integer permitted by the schema                                             |
-| `E_SCHEMA_MALFORMED_UNICODE` | error    | any           | A string contains malformed Unicode escape sequences or isolated surrogates                                       |
+| Code                           | Severity | Document kind | Meaning                                                                                                                                                   |
+| ------------------------------ | -------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `E_SCHEMA_REQUIRED_FIELD`      | error    | any           | A required field is absent                                                                                                                                |
+| `E_SCHEMA_UNKNOWN_FIELD`       | error    | any           | A field not permitted by the schema is present                                                                                                            |
+| `E_SCHEMA_BLOCK_NOT_PERMITTED` | error    | any           | A block of an enumerated kind appears in a document kind that does not permit that block. For example, a `submit_form` block in a `transaction` document. |
+| `E_SCHEMA_FIELD_TYPE`          | error    | any           | A field has the wrong type                                                                                                                                |
+| `E_SCHEMA_FIELD_RANGE`         | error    | any           | A numeric field is outside its permitted range                                                                                                            |
+| `E_SCHEMA_FIELD_SYNTAX`        | error    | any           | A string field violates its declared syntax: slug rules, base64url format, RFC 3339 form, path syntax, or similar                                         |
+| `E_SCHEMA_FIELD_LENGTH`        | error    | any           | A field exceeds its specific length limit                                                                                                                 |
+| `E_SCHEMA_NULL_VALUE`          | error    | any           | A `null` literal appears in the document; null values are not permitted                                                                                   |
+| `E_SCHEMA_NON_INTEGER`         | error    | any           | A numeric value is not a non-negative integer permitted by the schema                                                                                     |
+| `E_SCHEMA_MALFORMED_UNICODE`   | error    | any           | A string contains malformed Unicode escape sequences or isolated surrogates                                                                               |
 
 ## Signature diagnostics (Stage 6)
 
