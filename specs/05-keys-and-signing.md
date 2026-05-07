@@ -111,7 +111,7 @@ The exact manifest schema is defined in §06. From the perspective of this secti
   "doc": { },
   "sig": "..."
 }
-````
+```
 
 The `doc` object contains, at minimum:
 
@@ -144,16 +144,18 @@ For other carrier profiles, the binding rule is profile-specific. Entangled v1 f
 
 Every independently signed object in Entangled has a precise signature input.
 
+All signed Entangled v1 objects share the same envelope structure: `{ "doc": { ... }, "sig": "..." }`. The signed payload is always `envelope.doc`. The `sig` field is outside the signed payload because a value cannot sign itself. The context string and the signing key vary by object kind; the envelope shape and the signed payload extraction do not.
+
 The signature input consists of:
 
 1. an object-kind context string for domain separation;
 2. a single null byte (`0x00`) separator;
-3. the JCS canonicalization, RFC 8785, of the signed payload for that object.
+3. the JCS canonicalization, RFC 8785, of `envelope.doc`.
 
 The general form is:
 
 ```text
-signature_input = context_string || 0x00 || JCS(signed_payload)
+signature_input = context_string || 0x00 || JCS(envelope.doc)
 signature       = Ed25519.sign(signing_key_priv, signature_input)
 ```
 
@@ -163,19 +165,17 @@ Verification reconstructs the same input and verifies it with the corresponding 
 verified = Ed25519.verify(signing_key_pub, signature_input, signature)
 ```
 
-For manifests, the signed payload is the envelope's `doc` field. For content and transaction documents, the signed payload is the document object with its `sig` field removed.
-
 Context strings are exact ASCII byte sequences.
 
 The `0x00` separator prevents ambiguity between context and payload. JCS canonical JSON is UTF-8 JSON text and does not emit literal null bytes as structural separators.
 
 ### Signed object contexts
 
-| Signed object        | Context string             | Signing key   | Signed payload       | Signature field | Failure class              |
-| -------------------- | -------------------------- | ------------- | -------------------- | --------------- | -------------------------- |
-| Manifest             | `ENTANGLED-v1 manifest`    | `K_publisher` | `manifest.doc`       | `manifest.sig`  | Manifest signature failure |
-| Content document     | `ENTANGLED-v1 content`     | `K_runtime`   | document minus `sig` | `sig`           | Document signature failure |
-| Transaction document | `ENTANGLED-v1 transaction` | `K_runtime`   | document minus `sig` | `sig`           | Document signature failure |
+| Signed object        | Context string             | Signing key   | Signed payload | Signature field | Failure class              |
+| -------------------- | -------------------------- | ------------- | -------------- | --------------- | -------------------------- |
+| Manifest             | `ENTANGLED-v1 manifest`    | `K_publisher` | `envelope.doc` | `envelope.sig`  | Manifest signature failure |
+| Content document     | `ENTANGLED-v1 content`     | `K_runtime`   | `envelope.doc` | `envelope.sig`  | Document signature failure |
+| Transaction document | `ENTANGLED-v1 transaction` | `K_runtime`   | `envelope.doc` | `envelope.sig`  | Document signature failure |
 
 The canary is not signed as an independent object in Entangled v1. It is part of the manifest, and the manifest signature covers it. Future versions may define an independently signed canary context, but v1 does not.
 
@@ -216,9 +216,18 @@ In all cases, the verifier MUST confirm that `manifest.doc.publisher_pubkey == e
 
 ### Content document signature input
 
+A content document is an envelope with two top-level fields:
+
+```json
+{
+  "doc": { },
+  "sig": "..."
+}
+```
+
 ```text
 context = "ENTANGLED-v1 content"
-payload = content document object with `sig` field removed
+payload = content_envelope.doc
 input   = context || 0x00 || JCS(payload)
 sig     = Ed25519.sign(K_runtime_priv, input)
 ```
@@ -226,8 +235,8 @@ sig     = Ed25519.sign(K_runtime_priv, input)
 Verification for current content:
 
 ```text
-input    = "ENTANGLED-v1 content" || 0x00 || JCS(content_without_sig)
-verified = Ed25519.verify(current_manifest.doc.canary.runtime_pubkey, input, content.sig)
+input    = "ENTANGLED-v1 content" || 0x00 || JCS(content_envelope.doc)
+verified = Ed25519.verify(current_manifest.doc.canary.runtime_pubkey, input, content_envelope.sig)
 ```
 
 The verifier MUST have a valid manifest for the relevant site before verifying a content document.
@@ -238,13 +247,13 @@ For historical content, the runtime key used for verification is the `runtime_pu
 
 ### Transaction document signature input
 
-Transaction documents use the same structure as content documents, with context string `ENTANGLED-v1 transaction`.
+Transaction documents use the same envelope structure as content documents, with context string `ENTANGLED-v1 transaction`.
 
 They are signed by `K_runtime` and verified against the runtime key authorized for the relevant publication cycle.
 
 ```text
 context = "ENTANGLED-v1 transaction"
-payload = transaction document object with `sig` field removed
+payload = transaction_envelope.doc
 input   = context || 0x00 || JCS(payload)
 sig     = Ed25519.sign(K_runtime_priv, input)
 ```
@@ -252,8 +261,8 @@ sig     = Ed25519.sign(K_runtime_priv, input)
 Verification uses:
 
 ```text
-input    = "ENTANGLED-v1 transaction" || 0x00 || JCS(transaction_without_sig)
-verified = Ed25519.verify(authorized_runtime_pubkey, input, transaction.sig)
+input    = "ENTANGLED-v1 transaction" || 0x00 || JCS(transaction_envelope.doc)
+verified = Ed25519.verify(authorized_runtime_pubkey, input, transaction_envelope.sig)
 ```
 
 ## Domain separation rationale
@@ -282,9 +291,9 @@ The full client-side verification pipeline is specified in §10. From the perspe
 
 5. Confirm that the carrier-specific origin binding is valid, such as Tor v3 address decoding matching `manifest.doc.origin.origin_pubkey`.
 
-6. For a current content or transaction document, verify `document.sig` using `current_manifest.doc.canary.runtime_pubkey`.
+6. For a current content or transaction document, verify `envelope.sig` using `current_manifest.doc.canary.runtime_pubkey`.
 
-7. For historical content, verify `document.sig` using the runtime key authorized for the publication cycle under which the document is being treated as historical.
+7. For historical content, verify `envelope.sig` using the runtime key authorized for the publication cycle under which the document is being treated as historical.
 
 Failure at any check rejects the relevant object or triggers the warning/degraded behavior defined in §10. Error codes and pipeline ordering are defined in §10 and §11.
 
