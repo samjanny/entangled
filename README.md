@@ -129,7 +129,7 @@ For state `Changed / mismatch`:
 
 A client MAY support publisher profiles that allow a user-confirmed `K_publisher.pub` to be recognized across multiple authorized origins. In that case, migration to a new origin signed by the same externally verified publisher key MUST NOT be treated as a mismatch solely because the address changed.
 
-## Pillar C — Client architecture
+## Pillar C - Client architecture
 
 A conforming Entangled client has two architecturally distinct UI surfaces.
 
