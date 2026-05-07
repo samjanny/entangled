@@ -128,3 +128,63 @@ For state `Changed / mismatch`:
 - Resolution MUST require explicit user action, such as confirming that the new `K_publisher.pub` is legitimate and replacing the pin, or abandoning the site.
 
 A client MAY support publisher profiles that allow a user-confirmed `K_publisher.pub` to be recognized across multiple authorized origins. In that case, migration to a new origin signed by the same externally verified publisher key MUST NOT be treated as a mismatch solely because the address changed.
+
+## Pillar C — Client architecture
+
+A conforming Entangled client has two architecturally distinct UI surfaces.
+
+### Content area and chrome
+
+The **content area** is where publisher-signed documents are rendered. Its content is determined by the document being displayed, within the constraints of the Entangled document grammar: block types, field kinds, text, images, and other protocol-defined document elements. The publisher controls what appears in the content area, subject to those structural rules.
+
+The **chrome** is the client-controlled UI surrounding or accompanying the content area. The publisher does not control the chrome. It includes publisher identity state, the PIP display or identity control, canary status, carrier address, navigation indicators, and warnings or errors raised by the verification pipeline.
+
+The chrome MUST be separated from the content area. Publisher-controlled content MUST NOT be able to control, replace, hide, obscure, overlap, or modify the chrome.
+
+The client MUST present chrome status in a persistent client-controlled region that remains distinguishable from document content during navigation within the same site.
+
+A document cannot be prevented from containing misleading prose. However, misleading prose remains publisher-controlled content: it MUST NOT affect the actual client-controlled identity state, canary state, address display, or verification warnings.
+
+Document block types MUST NOT include browser-chrome, address-bar, trust-badge, canary-status, identity-status, or similar reserved UI components whose semantics are defined as client-controlled.
+
+This separation is the structural foundation of the client's security guarantees. Without it, a compromised server could render fake "verified" badges or fake canary status inside the document and make them difficult for the user to distinguish from the actual client state.
+
+### Client as required component
+
+A bare bytes-to-display path is not a conforming Entangled client.
+
+A conforming client MUST verify the document, determine the publisher identity state, determine the canary state, and present the required chrome before or while rendering the content area according to the protocol's rendering rules.
+
+An implementation that streams Entangled JSON directly to a generic JSON renderer is not a conforming client. An implementation that delegates the entire user interface to publisher-controlled content is not a conforming client.
+
+This distinguishes Entangled clients from generic web browsers. A web browser provides chrome around HTML pages, but accepts publisher-supplied scripts, fonts, layouts, styles, embedded resources, and other programmable or semi-programmable inputs within the page. An Entangled client provides chrome around documents whose grammar is strictly constrained. The publisher cannot supply executable code, arbitrary styling, or client-status UI.
+
+### Required chrome information
+
+A conforming client MUST display, persistently and in client-controlled UI:
+
+- the publisher identity state: externally verified, TOFU pinned, first contact, or changed/mismatch;
+- the PIP, either always visible in compact form or available through a persistent identity control;
+- the current carrier address from which the document was fetched;
+- the canary state: fresh, near-expiration, expired, invalid, or unavailable;
+- any verification warnings produced by the verification pipeline.
+
+The visual treatment of these elements is implementation-defined. Their presence, persistence, and client-controlled nature are normative.
+
+### Chrome restrictions
+
+The chrome MUST NOT include publisher-controlled content.
+
+The chrome MUST NOT display third-party content, advertising, analytics, remote badges, remote images, or externally fetched status indicators unless the user has explicitly enabled such behavior outside the document context.
+
+Chrome semantics MUST NOT depend on unauthenticated document fields. If a protocol-defined document field is displayed in chrome, the client MUST display it only after the field has passed the required verification pipeline, and MUST visually distinguish publisher-provided labels from client-generated status.
+
+### Out of scope at this layer
+
+The choice of widget toolkit, rendering engine, font, color scheme, layout, and overall visual style is implementation-defined.
+
+A conforming Entangled client is expected to be a standalone software component. Desktop applications, mobile applications, TUIs, and dedicated embedded viewers are in scope.
+
+Generic web pages are not conforming Entangled clients. Browser-extension implementations are out of scope for v1 because the protocol requires enforceable separation between client-controlled chrome and publisher-controlled content. A future conformance profile may define requirements for extension-based clients if that separation can be enforced.
+
+The protocol defines the architectural separation and the semantic content of the chrome. It does not define a mandatory visual design.
