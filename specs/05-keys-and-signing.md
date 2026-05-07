@@ -104,17 +104,26 @@ The manifest is the signed object by which `K_publisher` declares the current si
 
 The manifest is signed directly by `K_publisher`. Entangled v1 does not define an intermediate manifest-signing key and does not use a separate `static_cert` in the core trust chain.
 
-The exact manifest schema is defined in §06. From the perspective of this section, the manifest contains at minimum:
+The exact manifest schema is defined in §06. From the perspective of this section, the manifest is an envelope with two top-level fields:
 
-- `publisher_pubkey`, equal to `K_publisher.pub`;
-- a carrier endpoint declaration, including carrier type, address, and `origin_pubkey`;
-- a canary structure containing the current `runtime_pubkey`;
-- validity and freshness metadata defined by the manifest and canary sections;
-- additional site-level fields defined elsewhere in the specification.
+```json
+{
+  "doc": { },
+  "sig": "..."
+}
+````
 
-The manifest signature covers the canonicalized manifest payload with the manifest signature field excluded. The exact signature input is defined below.
+The `doc` object contains, at minimum:
 
-A manifest's `publisher_pubkey` is not by itself a trust anchor. It must match the publisher identity established by the user's confirmed PIP, a previous TOFU pin, or the candidate first-contact identity being presented to the user. Trust-state behavior is defined in §10.
+* `publisher_pubkey`, equal to `K_publisher.pub`;
+* an `origin` declaration, including carrier type, address, and `origin_pubkey`;
+* a `canary` structure containing the current `runtime_pubkey`;
+* validity and freshness metadata defined by the manifest and canary sections;
+* additional site-level fields defined elsewhere in the specification.
+
+The manifest signature covers `JCS(manifest.doc)`. The `sig` field is outside the signed payload. The exact signature input is defined below.
+
+A manifest's `doc.publisher_pubkey` is not by itself a trust anchor. It must match the publisher identity established by the user's confirmed PIP, a previous TOFU pin, or the candidate first-contact identity being presented to the user. Trust-state behavior is defined in §10.
 
 ## Carrier origin binding
 
@@ -124,8 +133,8 @@ For Tor v3, the binding is structural:
 
 1. The client fetches the manifest from a `.onion` address.
 2. The client decodes the Tor v3 address and obtains the service public key encoded in that address, following the Tor v3 address format.
-3. The client verifies that the decoded service public key equals `manifest.origin_pubkey`.
-4. The client verifies that the fetched address equals `manifest.address` after applying the canonical address form required by the Tor profile.
+3. The client verifies that the decoded service public key equals `manifest.doc.origin.origin_pubkey`.
+4. The client verifies that the fetched address equals `manifest.doc.origin.address` after applying the canonical address form required by the Tor profile.
 
 Failure of any of these checks rejects the manifest with the origin-mismatch error defined in §11.
 
@@ -133,20 +142,20 @@ For other carrier profiles, the binding rule is profile-specific. Entangled v1 f
 
 ## Signature inputs
 
-Every signed object in Entangled has a precise signature input.
+Every independently signed object in Entangled has a precise signature input.
 
 The signature input consists of:
 
 1. an object-kind context string for domain separation;
 2. a single null byte (`0x00`) separator;
-3. the JCS canonicalization, RFC 8785, of the payload object with the object's signature field excluded.
+3. the JCS canonicalization, RFC 8785, of the signed payload for that object.
 
 The general form is:
 
 ```text
-signature_input = context_string || 0x00 || JCS(payload_without_signature_field)
+signature_input = context_string || 0x00 || JCS(signed_payload)
 signature       = Ed25519.sign(signing_key_priv, signature_input)
-````
+```
 
 Verification reconstructs the same input and verifies it with the corresponding public key:
 
@@ -154,25 +163,38 @@ Verification reconstructs the same input and verifies it with the corresponding 
 verified = Ed25519.verify(signing_key_pub, signature_input, signature)
 ```
 
+For manifests, the signed payload is the envelope's `doc` field. For content and transaction documents, the signed payload is the document object with its `sig` field removed.
+
 Context strings are exact ASCII byte sequences.
 
 The `0x00` separator prevents ambiguity between context and payload. JCS canonical JSON is UTF-8 JSON text and does not emit literal null bytes as structural separators.
 
 ### Signed object contexts
 
-| Signed object        | Context string             | Signing key   | Signature field | Failure class              |
-| -------------------- | -------------------------- | ------------- | --------------- | -------------------------- |
-| Manifest             | `ENTANGLED-v1 manifest`    | `K_publisher` | `sig`           | Manifest signature failure |
-| Content document     | `ENTANGLED-v1 content`     | `K_runtime`   | `sig`           | Document signature failure |
-| Transaction document | `ENTANGLED-v1 transaction` | `K_runtime`   | `sig`           | Document signature failure |
+| Signed object        | Context string             | Signing key   | Signed payload       | Signature field | Failure class              |
+| -------------------- | -------------------------- | ------------- | -------------------- | --------------- | -------------------------- |
+| Manifest             | `ENTANGLED-v1 manifest`    | `K_publisher` | `manifest.doc`       | `manifest.sig`  | Manifest signature failure |
+| Content document     | `ENTANGLED-v1 content`     | `K_runtime`   | document minus `sig` | `sig`           | Document signature failure |
+| Transaction document | `ENTANGLED-v1 transaction` | `K_runtime`   | document minus `sig` | `sig`           | Document signature failure |
 
 The canary is not signed as an independent object in Entangled v1. It is part of the manifest, and the manifest signature covers it. Future versions may define an independently signed canary context, but v1 does not.
 
 ### Manifest signature input
 
+A manifest is an envelope with two top-level fields:
+
+```json
+{
+  "doc": { },
+  "sig": "..."
+}
+```
+
+The signed payload is the `doc` object only. The `sig` field is outside the signed payload.
+
 ```text
 context = "ENTANGLED-v1 manifest"
-payload = manifest object with `sig` field removed
+payload = manifest.doc
 input   = context || 0x00 || JCS(payload)
 sig     = Ed25519.sign(K_publisher_priv, input)
 ```
@@ -180,7 +202,7 @@ sig     = Ed25519.sign(K_publisher_priv, input)
 Verification:
 
 ```text
-input    = "ENTANGLED-v1 manifest" || 0x00 || JCS(manifest_without_sig)
+input    = "ENTANGLED-v1 manifest" || 0x00 || JCS(manifest.doc)
 verified = Ed25519.verify(expected_K_publisher_pub, input, manifest.sig)
 ```
 
@@ -188,9 +210,9 @@ verified = Ed25519.verify(expected_K_publisher_pub, input, manifest.sig)
 
 * from a user-confirmed PIP in externally verified state;
 * from a previous pin in TOFU-pinned state;
-* from the manifest's `publisher_pubkey` as a first-contact candidate in first-contact state.
+* from `manifest.doc.publisher_pubkey` as a first-contact candidate in first-contact state.
 
-In all cases, the verifier MUST confirm that `manifest.publisher_pubkey == expected_K_publisher_pub` before accepting the manifest.
+In all cases, the verifier MUST confirm that `manifest.doc.publisher_pubkey == expected_K_publisher_pub` before accepting the manifest.
 
 ### Content document signature input
 
@@ -205,12 +227,12 @@ Verification for current content:
 
 ```text
 input    = "ENTANGLED-v1 content" || 0x00 || JCS(content_without_sig)
-verified = Ed25519.verify(current_manifest.canary.runtime_pubkey, input, content.sig)
+verified = Ed25519.verify(current_manifest.doc.canary.runtime_pubkey, input, content.sig)
 ```
 
 The verifier MUST have a valid manifest for the relevant site before verifying a content document.
 
-For current publication, the runtime key used for verification is the `runtime_pubkey` declared by the current manifest.
+For current publication, the runtime key used for verification is `current_manifest.doc.canary.runtime_pubkey`.
 
 For historical content, the runtime key used for verification is the `runtime_pubkey` declared by the manifest or publication cycle under which that content was signed. Historical-content retrieval and rendering behavior is defined in §10.
 
@@ -250,12 +272,18 @@ The full client-side verification pipeline is specified in §10. From the perspe
 
    * by user-confirmed PIP;
    * by previous TOFU pin;
-   * or, in first-contact state, by treating the manifest's `publisher_pubkey` as an unauthenticated candidate identity.
+   * or, in first-contact state, by treating `manifest.doc.publisher_pubkey` as an unauthenticated candidate identity.
+
 2. Verify the manifest signature using `expected_K_publisher_pub`.
-3. Confirm `manifest.publisher_pubkey == expected_K_publisher_pub`.
+
+3. Confirm `manifest.doc.publisher_pubkey == expected_K_publisher_pub`.
+
 4. Confirm that the fetched carrier origin matches the carrier endpoint authorized by the manifest.
-5. Confirm that the carrier-specific origin binding is valid, such as Tor v3 address decoding matching `manifest.origin_pubkey`.
-6. For a current content or transaction document, verify `document.sig` using the `runtime_pubkey` authorized by the current manifest.
+
+5. Confirm that the carrier-specific origin binding is valid, such as Tor v3 address decoding matching `manifest.doc.origin.origin_pubkey`.
+
+6. For a current content or transaction document, verify `document.sig` using `current_manifest.doc.canary.runtime_pubkey`.
+
 7. For historical content, verify `document.sig` using the runtime key authorized for the publication cycle under which the document is being treated as historical.
 
 Failure at any check rejects the relevant object or triggers the warning/degraded behavior defined in §10. Error codes and pipeline ordering are defined in §10 and §11.
