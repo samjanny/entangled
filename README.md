@@ -104,3 +104,27 @@ This layer does not define how `K_publisher` is physically or operationally prot
 Hardware tokens, secret sharing, encrypted-at-rest storage, geographic separation, and similar measures are operational concerns for the publisher and are documented separately in the operator playbook.
 
 The protocol defines the cryptographic relationships among the keys. Physical custody of the keys remains the publisher's responsibility.
+
+## Trust state visualization
+
+Publisher identity has four mutually exclusive states. The client MUST distinguish among them in client-controlled UI; collapsing them into a binary "OK / not OK" state is non-conformant.
+
+| State | Meaning | Trust level |
+|---|---|---|
+| Externally verified | The user has confirmed this `K_publisher.pub` by comparing its PIP with an out-of-band reference | Highest |
+| TOFU pinned | The client has previously pinned this `K_publisher.pub` for the current site entry or origin, and the PIP is unchanged | Intermediate |
+| First contact | The client has no existing pin or external verification for this `K_publisher.pub` in the current context | Low |
+| Changed / mismatch | The current site entry or origin was previously associated with a different `K_publisher.pub` | Asserted breach |
+
+The client MUST display the current state persistently in client-controlled UI, not as publisher-controlled document content.
+
+The client MUST display the PIP alongside the state, or make it available through a persistent identity control, so the user can compare it against any out-of-band reference they hold.
+
+For state `Changed / mismatch`:
+
+- The client MUST display a prominent warning that is not easily dismissible.
+- The client MUST NOT automatically replace the existing pin.
+- The client MAY refuse to render content until the user explicitly resolves the mismatch.
+- Resolution MUST require explicit user action, such as confirming that the new `K_publisher.pub` is legitimate and replacing the pin, or abandoning the site.
+
+A client MAY support publisher profiles that allow a user-confirmed `K_publisher.pub` to be recognized across multiple authorized origins. In that case, migration to a new origin signed by the same externally verified publisher key MUST NOT be treated as a mismatch solely because the address changed.
