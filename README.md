@@ -9,7 +9,7 @@ It is built around two separate security goals:
 
 Entangled does this by separating document rendering, publisher identity, carrier reachability, and routine publication signing.
 
-## Pillar A — Threat model
+## Pillar A - Threat model
 
 Entangled addresses two explicitly separated classes of threat.
 
@@ -38,3 +38,69 @@ Server compromise may therefore compromise the current origin address and curren
 Users verify publisher identity through the Publisher Identity Phrase (PIP), a public human-readable encoding of the publisher identity key. The PIP is independent of the site's current address, so the same publisher can be recognized across origin rotation, server replacement, or carrier migration.
 
 Entangled does not address all threats. In particular, it does not provide network-layer anonymity; that is the responsibility of the selected carrier network. It does not provide payload confidentiality beyond whatever transport encryption the carrier provides. It does not provide cryptographic deniability of the publisher identity: the PIP is a persistent public fingerprint by design. Deniability, where required, is an operational matter involving how `K_publisher` is generated, stored, published, and attributed. Entangled also does not protect users whose own devices are compromised.
+
+## Pillar B - Trust architecture
+
+Entangled places trust in the publisher identity, not in the address.
+
+A site's address is a reachability endpoint. The publisher identity is a cryptographic key that can survive address rotation, server replacement, and carrier migration.
+
+The trust architecture has three keys, each with a distinct role and exposure profile.
+
+### Three keys, three roles
+
+`K_publisher` is the publisher identity key. It is an Ed25519 keypair whose public key is the long-term identity of the publisher. It is generated offline, stored offline, and used only during ceremonies. It does not sign content documents directly. Its role is to authorize the carrier endpoint key (`K_origin`) and the operational publication key (`K_runtime`), and to preserve publisher identity continuity across address changes.
+
+`K_origin` is the carrier endpoint key. It is an Ed25519 keypair whose public key is bound to the address at which the site is reachable. For Tor v3, `K_origin` is the onion-service key, and the `.onion` address is derived from `K_origin.pub`. For other carrier profiles, `K_origin` plays the analogous role within that carrier's identity scheme.
+
+`K_origin` must be available to the carrier infrastructure. In typical Tor v3 deployments, this means it is online or near-online as part of the onion-service infrastructure. Its role is to prove control of the carrier endpoint from which the site is served.
+
+`K_runtime` is the operational signing key. It is an Ed25519 keypair used to sign content and transaction documents within a publication cycle. It is rotated periodically, typically every 30 days, via a fresh canary. `K_runtime` is typically available to the publishing infrastructure. Its role is to sign current content with bounded forgery exposure.
+
+### Authorization without identity transfer
+
+`K_publisher` authorizes `K_origin` and `K_runtime` for specific roles. This authorization does not transfer publisher identity to those keys.
+
+`K_origin` proves control of a carrier endpoint. `K_runtime` signs current content within an authorized publication cycle. Neither key is accepted as a substitute for `K_publisher`, and neither key can establish publisher identity on its own.
+
+The manifest carries this authorization. It is signed by `K_publisher` and declares:
+
+- the carrier endpoint, including carrier type, address, and `K_origin.pub`;
+- the current `K_runtime.pub`, within the canary structure;
+- additional site-level parameters defined by the protocol.
+
+A document is externally verified when the client can verify a chain from the user-supplied or user-confirmed publisher identity to the manifest and from the manifest to the document's signing key.
+
+A document may be locally trusted under first-contact trust (TOFU) if the client has pinned the same `K_publisher.pub` from a previous visit. TOFU does not provide external publisher authentication.
+
+### Publisher Identity Phrase (PIP)
+
+The Publisher Identity Phrase (PIP) is the user-facing form of the publisher identity.
+
+It is a 24-word public identity phrase derived from the raw 32-byte Ed25519 public key `K_publisher.pub` using the BIP-39 English wordlist and checksum procedure.
+
+The PIP is public information. It is not a wallet seed, not a password, not private entropy, and not a recovery secret. It is a human-friendly fingerprint of the publisher public key.
+
+Users verify publisher identity by comparing the PIP displayed by their client against the PIP published by the publisher through out-of-band channels, such as printed material, social media posts, conference announcements, mailing lists, or other established communication channels.
+
+The PIP MUST be displayed by the client in client-controlled UI, not as publisher-controlled document content.
+
+### Identity continuity
+
+Because the trust chain terminates at `K_publisher` and not at the address, a publisher can:
+
+- rotate `K_origin`, and therefore the address, without losing publisher identity;
+- rotate `K_runtime` periodically, with the rotation authorized by the manifest and announced through the canary;
+- migrate across carrier networks by issuing a new manifest authorizing a new `K_origin` for the new carrier.
+
+Users with the publisher's PIP can recognize the same publisher across these changes.
+
+Users without an out-of-band PIP can only use first-contact trust. The client may remember the first `K_publisher.pub` it sees for a site, but the first contact is not externally authenticated.
+
+### Out of scope at this layer
+
+This layer does not define how `K_publisher` is physically or operationally protected.
+
+Hardware tokens, secret sharing, encrypted-at-rest storage, geographic separation, and similar measures are operational concerns for the publisher and are documented separately in the operator playbook.
+
+The protocol defines the cryptographic relationships among the keys. Physical custody of the keys remains the publisher's responsibility.
