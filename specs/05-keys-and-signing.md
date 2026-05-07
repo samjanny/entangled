@@ -159,8 +159,9 @@ signature       = Ed25519.sign(signing_key_priv, signature_input)
 Verification reconstructs the same input and verifies it with the corresponding public key:
 
 ```text
-signed_payload = envelope object with `sig` field removed
-verified       = Ed25519.verify(signing_key_pub, signature_input, envelope.sig)
+signed_payload   = envelope object with `sig` field removed
+signature_input  = context_string || 0x00 || JCS(signed_payload)
+verified         = Ed25519.verify(signing_key_pub, signature_input, envelope.sig)
 ```
 
 Context strings are exact ASCII byte sequences.

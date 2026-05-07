@@ -390,7 +390,7 @@ The high-level lifecycle is:
    * `min_refresh_interval`;
    * current UTC `updated`.
 
-2. Form the signed payload by removing the `sig` field (which has not yet been added) from the manifest object.
+2. Treat the manifest object without `sig` as the signed payload. At this point, `sig` has not yet been added.
 
 3. Compute:
 
