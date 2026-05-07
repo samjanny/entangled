@@ -36,6 +36,18 @@ The protocol mitigates this concern by separating the publisher identity from th
 
 These two concerns are addressed by distinct mechanisms: the constrained grammar for the first, and the offline publisher identity for the second. The remainder of this overview introduces the trust architecture that supports the second concern, and the client architecture that supports both.
 
+## Pillars
+
+For organizational purposes, the Entangled v1.0 specification groups its design under three pillars. These labels are referenced from later sections of the specification and from the glossary in §01. They are organizing terminology for the specification, not separate normative layers; normative behavior is defined in the numbered sections that follow.
+
+**Pillar A — Threat model.** Pillar A covers the two classes of threat the protocol addresses: the client-side attack surface posed by malicious or attacker-controlled documents, and server compromise of the publishing infrastructure. The protocol mitigates the first through the constrained document grammar described in §02 and §03, and the second through the offline publisher identity established by the keys and signing chain in §05.
+
+**Pillar B — Trust architecture.** Pillar B covers publisher identity and the trust chain. It includes the three keys `K_publisher`, `K_origin`, and `K_runtime` defined in §05; the manifest that authorizes operational keys, defined in §06; the canary and runtime authorization, defined in §08; the Publisher Identity Phrase introduced above and specified in §05; and the four publisher trust states (Externally verified, TOFU pinned, First contact, Changed/mismatch) specified in §10.
+
+**Pillar C — Client architecture.** Pillar C covers what a conforming Entangled client is. It includes the structural separation between client-controlled chrome and publisher-controlled content area introduced under "Client architecture" below, the validation pipeline and trust state machine specified in §10, and the chrome and conformance requirements specified in §10.
+
+References to "Pillar A", "Pillar B", or "Pillar C" elsewhere in the specification point to the corresponding pillar described here. The numbered specification sections govern normative behavior; the pillar labels are not themselves normative.
+
 ## Trust architecture
 
 Entangled places trust in the publisher identity, not in the address.

@@ -142,13 +142,13 @@ In the manifest, the JSON object declaring the carrier endpoint at which the sit
 The verification rule that a content document's `path` field, or a transaction document's `in_response_to` field, must match byte-exactly the path from which the document was fetched or to which the submit was sent. Prevents path-substitution attacks. Defined in §02 and §10. Related: content document, transaction document, validation pipeline.
 
 **Pillar A**  
-The threat model pillar. Identifies and frames the two threats Entangled addresses: client-side attack surface and server compromise. Defined in `docs/design-decisions.md`. Related: Pillar B, Pillar C, threat model.
+The threat model pillar. Identifies and frames the two threats Entangled addresses: client-side attack surface and server compromise. Defined in §00. Related: Pillar B, Pillar C, threat model.
 
 **Pillar B**  
-The trust architecture pillar. Defines publisher identity, the three keys (`K_publisher`, `K_origin`, `K_runtime`), authorization without identity transfer, and the four trust states. Defined in `docs/design-decisions.md`. Related: Pillar A, Pillar C, trust state, publisher identity.
+The trust architecture pillar. Defines publisher identity, the three keys (`K_publisher`, `K_origin`, `K_runtime`), authorization without identity transfer, and the four trust states. Defined in §00. Related: Pillar A, Pillar C, trust state, publisher identity.
 
 **Pillar C**  
-The client architecture pillar. Defines the structural separation between chrome and content area, the requirements for a conforming client, and the limits on what publisher-controlled content may control. Defined in `docs/design-decisions.md`. Related: Pillar A, Pillar B, chrome, content area, client.
+The client architecture pillar. Defines the structural separation between chrome and content area, the requirements for a conforming client, and the limits on what publisher-controlled content may control. Defined in §00. Related: Pillar A, Pillar B, chrome, content area, client.
 
 **PIP (Publisher Identity Phrase)**  
 The 24-word public phrase derived from `K_publisher.pub` using BIP-39 English wordlist encoding. The user-facing form of publisher identity. Public information; not a wallet seed, password, or recovery secret. Displayed by the client in chrome, used for out-of-band verification of publisher identity. Defined in §05. Related: K_publisher, BIP-39, external verification, chrome.

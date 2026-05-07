@@ -216,16 +216,16 @@ A rejected state set operation does not necessarily invalidate the transaction d
 
 Image resource diagnostics are warnings. A bad image resource is rendered as missing or as a placeholder. It does not invalidate the containing `content` or `transaction` document.
 
-The `document_kind` for these codes is the kind of the containing document: `"content"` when the `image` block appears in a content document, and `"transaction"` when it appears in a transaction document.
+For image resource diagnostics, `document_kind` is the kind of the containing document: `"content"` when the `image` block appears in a content document, and `"transaction"` when it appears in a transaction document. The structured diagnostic schema enum defined above is unchanged: each diagnostic instance carries exactly one of `"manifest"`, `"content"`, `"transaction"`, or `"none"`. The `containing document` notation in the table column below indicates that these diagnostics select between `"content"` and `"transaction"` per instance.
 
-| Code                    | Severity | Document kind          | Meaning                                                                                                                                                 |
-| ----------------------- | -------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `W_IMAGE_HASH_MISMATCH` | warning  | content or transaction | The SHA-256 digest of the fetched image bytes does not match the hash declared in the `image` block                                                     |
-| `W_IMAGE_OVERSIZE`      | warning  | content or transaction | The image response exceeds the 1 MiB image resource limit before hash verification                                                                      |
-| `W_IMAGE_CONTENT_TYPE`  | warning  | content or transaction | The image response `Content-Type` does not match the declared `media_type`, or is one of the reserved Entangled Content-Types defined in §09            |
-| `W_IMAGE_DIMENSIONS`    | warning  | content or transaction | The decoded image dimensions do not match the declared `width` and `height`                                                                             |
-| `W_IMAGE_DECODE_FAILED` | warning  | content or transaction | The image bytes failed to decode in the declared media format                                                                                           |
-| `W_IMAGE_FETCH_FAILED`  | warning  | content or transaction | The image fetch failed at the transport level, for example timeout, network error, or status code other than `200`                                      |
+| Code                    | Severity | Document kind       | Meaning                                                                                                                                                 |
+| ----------------------- | -------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `W_IMAGE_HASH_MISMATCH` | warning  | containing document | The SHA-256 digest of the fetched image bytes does not match the hash declared in the `image` block                                                     |
+| `W_IMAGE_OVERSIZE`      | warning  | containing document | The image response exceeds the 1 MiB image resource limit before hash verification                                                                      |
+| `W_IMAGE_CONTENT_TYPE`  | warning  | containing document | The image response `Content-Type` does not match the declared `media_type`, or is one of the reserved Entangled Content-Types defined in §09            |
+| `W_IMAGE_DIMENSIONS`    | warning  | containing document | The decoded image dimensions do not match the declared `width` and `height`                                                                             |
+| `W_IMAGE_DECODE_FAILED` | warning  | containing document | The image bytes failed to decode in the declared media format                                                                                           |
+| `W_IMAGE_FETCH_FAILED`  | warning  | containing document | The image fetch failed at the transport level, for example timeout, network error, or status code other than `200`                                      |
 
 ## Error reporting requirements
 
