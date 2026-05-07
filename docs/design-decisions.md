@@ -23,3 +23,21 @@ into normative spec text.
 ## Open decisions
 
 (To be filled as we make further choices.)
+
+## Future-version TODOs
+
+These are non-normative notes for future protocol versions. They are not part of Entangled v1.0 and do not affect v1.0 conformance. Each item that affects the wire format or validation will require a new `spec_version` and a new family of signing context strings, per §11.
+
+- **`table` block type.** A table block would broaden the renderable content grammar. It is intentionally absent from v1.0 to keep the reference renderer narrow. Adding a table block is a wire-format change and a v2 candidate; an early stake should choose between a strict cell-grid model and a header/row schema with closed cell content.
+
+- **Machine-readable content index / sitemap.** v1.0 deliberately omits a machine-readable site index; `navigation` is top-level navigation only (see §06). A future version could define an index document kind or an `index` field on the manifest. Either is a wire-format change.
+
+- **Historical manifest archive for new clients.** v1.0 does not define server-provided historical manifest discovery (see §10, "Historical content"). A future version could define a bounded archive endpoint or an in-manifest pointer to historical manifests, with rules that prevent server-pushed historical authorization without prior client observation.
+
+- **Optional `K_publisher` recovery or revocation model.** v1.0 has no in-band recovery from `K_publisher` compromise (§05). A future revocation commitment in the manifest is non-trivial because a compromised key can sign over any in-band field; any design must rely on prior client-observed commitments and out-of-band republication of a new identity. Note for future work, not for v1.
+
+- **Compression tradeoffs.** v1.0 does not negotiate transport compression. A future version could permit content-encoding negotiation or pre-compressed bodies, but any such mechanism must not weaken byte-cap enforcement before parse, must not introduce new request headers in the v1 sense, and must remain compatible with the carrier's confidentiality assumptions.
+
+- **Image count and image size limits.** v1.0 caps a document at 16 image blocks and image responses at 2 MiB (see §03). The 16-block cap reflects "not a web replacement"; the 2 MiB per-image cap is a compromise between usability for editorial images and bounded decoder/transport exposure. Revisit when a reference renderer is in place.
+
+- **Non-empty `code_block.language` and the `"text"` fallback.** v1.0 requires `code_block.language` to be a non-empty slug, with `"text"` as the fallback for unhighlightable content (§03). Document the rationale: avoiding an "absent vs empty" ambiguity in closed-schema parsers, and giving renderers a single sentinel for plain monospaced fallback.

@@ -153,6 +153,20 @@ A publisher who controls multiple carrier endpoints publishes a separate manifes
 
 Multi-origin manifests are not part of Entangled v1 and may be considered in a future version.
 
+### Multi-origin publication cadence
+
+This subsection does not introduce a new enforcement mechanism. It makes explicit a publisher requirement that follows from the existing anti-downgrade rule.
+
+A publisher operating multiple origins under the same `K_publisher.pub` publishes one manifest per origin. Each manifest is single-origin, as defined above.
+
+Publisher history and anti-downgrade are keyed by `K_publisher.pub`, not by carrier origin (see "Caching and publisher history" below and §08). Once a client has observed a verified manifest with canary `issued_at = T_new` for a given `K_publisher.pub`, any later manifest from any origin for the same `K_publisher.pub` whose canary `issued_at` is strictly older than `T_new` is rejected as non-current under that rule.
+
+If a publisher wants its multiple origins to remain acceptable as current by clients that support publisher history, the publisher MUST keep canary `issued_at` values monotonically non-decreasing across all such origins. Equivalently, when the publisher refreshes the canary, the new manifest is deployed to every origin under the same `K_publisher.pub` before clients can begin observing the newer `issued_at`.
+
+If origins drift out of sync, clients that have already seen a newer canary on one origin will reject the older manifest from another origin until that origin publishes a manifest with `issued_at` at least equal to the newest observed value. Anti-downgrade rejection is the existing client behavior; this subsection only names its consequence for multi-origin operators.
+
+Operators of multiple origins should treat manifest publication as an atomic or near-atomic multi-origin deployment step. The requirement does not change the wire format, the single-origin manifest rule, or the anti-downgrade rule.
+
 ### Fetch-origin binding
 
 The client MUST verify that the carrier endpoint from which the manifest was fetched matches the `origin` declared in the manifest.
@@ -227,6 +241,8 @@ No additional fields are permitted.
 * not exceed 256 ASCII characters.
 
 The label is rendered in the chrome navigation control. The path is a relative path within the same site. Cross-host, cross-origin, cross-carrier, and absolute URLs are forbidden in navigation entries.
+
+The `navigation` array is top-level navigation, not a complete content inventory. Entangled v1 does not define a machine-readable full-site index, sitemap, or content enumeration mechanism. A publisher who wishes to expose an archive or index page may publish it as an ordinary `content` document linked from `navigation`; that page is composed from the block types defined in §03. Clients MUST NOT infer that `navigation` enumerates all content available on the site.
 
 A manifest MAY declare an empty navigation array:
 

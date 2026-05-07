@@ -437,7 +437,7 @@ If a WebP file contains animation, the client MUST reject it.
 
 A `content` or `transaction` document MUST NOT contain more than 16 `image` blocks.
 
-The image response body MUST NOT exceed 1 MiB.
+The image response body MUST NOT exceed 2 MiB.
 
 `alt` MUST NOT exceed 1 KiB when encoded as UTF-8.
 

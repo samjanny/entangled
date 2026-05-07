@@ -228,7 +228,7 @@ A non-`200` status code on an image resource fetch is treated as image-resource 
 
 ### Image response handling
 
-The client MUST enforce the 1 MiB image response body limit (§03) before decoding. A response body exceeding 1 MiB is rejected without decoding.
+The client MUST enforce the 2 MiB image response body limit (§03) before decoding. A response body exceeding 2 MiB is rejected without decoding.
 
 The client MUST verify the SHA-256 digest of the exact response body bytes against the `image` block's `sha256` field before decoding the image.
 
@@ -363,9 +363,9 @@ Publisher-driven navigation by HTTP redirect is not a supported pattern in Entan
 
 The client opens a fresh HTTP exchange to the carrier endpoint for each Entangled request, unless the carrier infrastructure transparently multiplexes connections.
 
-For Tor v3, connection multiplexing is handled by the Tor client implementation. The Entangled client MAY issue multiple requests over the same Tor circuit if the underlying Tor library supports it; the protocol does not require nor forbid this.
+Entangled does not define application-level HTTP keep-alive semantics. The client MUST NOT rely on HTTP keep-alive headers, persistent HTTP connection state, or other application-level connection reuse semantics for protocol behavior. Each Entangled HTTP exchange is request-response and does not assume connection persistence at the HTTP layer.
 
-The client MUST NOT use HTTP keep-alive at the application layer. The Entangled HTTP exchange is request-response with no application-level connection reuse semantics.
+This rule applies at the application layer only. It does not forbid the carrier or transport implementation from reusing or multiplexing the underlying connections or circuits transparently. For Tor v3, connection and circuit multiplexing is handled by the Tor client implementation. The Entangled client MAY issue multiple requests over the same Tor circuit if the underlying Tor library supports it; the protocol neither requires nor forbids this. Such reuse is a property of the Tor layer, not of the Entangled HTTP exchange.
 
 The client SHOULD apply a transport timeout suitable for the carrier. For Tor v3, timeouts are typically in the tens of seconds range due to circuit establishment latency.
 
