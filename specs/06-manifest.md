@@ -8,31 +8,7 @@ The manifest is fetched from the canonical path `/manifest.json` on every Entang
 
 ## Manifest envelope
 
-The manifest is a JSON object with exactly two top-level fields:
-
-```json
-{
-  "doc": { },
-  "sig": "..."
-}
-````
-
-* `doc` is the manifest payload.
-* `sig` is the Ed25519 signature over the manifest signature input, encoded as 86 ASCII characters of base64url representing 64 bytes, with no padding.
-
-The signature input is:
-
-```text
-"ENTANGLED-v1 manifest" || 0x00 || JCS(doc)
-```
-
-The `sig` field is outside the signed payload because a value cannot sign itself.
-
-The manifest envelope MUST contain exactly the fields `doc` and `sig`. Additional top-level fields cause the manifest to be rejected.
-
-## Manifest payload (`doc`)
-
-The manifest payload is a JSON object with the following fields:
+The manifest is a flat JSON object whose fields are the signed payload, plus a top-level `sig` field carrying the Ed25519 signature.
 
 ```json
 {
@@ -48,11 +24,20 @@ The manifest payload is a JSON object with the following fields:
   "state_policy": [],
   "navigation": [],
   "min_refresh_interval": 86400,
-  "updated": "2026-05-07T00:00:00Z"
+  "updated": "2026-05-07T00:00:00Z",
+  "sig": "..."
 }
 ```
 
 All fields listed above are required. No other fields are permitted.
+
+The signed payload is the manifest object with the `sig` field removed. The signature input is:
+
+```text
+"ENTANGLED-v1 manifest" || 0x00 || JCS(manifest minus sig)
+```
+
+The `sig` field is encoded as 86 ASCII characters of base64url representing 64 bytes, with no padding.
 
 Field-by-field semantics follow.
 
@@ -293,11 +278,19 @@ The client MUST NOT use `updated` as the primary freshness or anti-downgrade sig
 
 A manifest whose `updated` is more than the allowed clock-skew tolerance in the future relative to the client's clock is rejected. Clock-skew tolerance is defined in §10.
 
+## `sig`
+
+`sig` is the Ed25519 signature over the manifest signature input as defined in §05.
+
+It is encoded as 86 ASCII characters of base64url representing 64 bytes, with no padding.
+
+The `sig` field is outside the signed payload. The signed payload is the manifest object with the `sig` field removed, JCS-canonicalized, and prefixed with the manifest context string and a null-byte separator. The exact signature input formula is defined in §05.
+
 ## Field validation
 
-The client validates the manifest payload according to the closed-schema discipline defined in §02.
+The client validates the manifest according to the closed-schema discipline defined in §02.
 
-A valid manifest payload satisfies all of the following:
+A valid manifest satisfies all of the following:
 
 * all required fields are present;
 * no additional fields are present;
@@ -320,7 +313,7 @@ The following limits apply:
 * the `navigation` array MUST NOT exceed 32 entries;
 * the `state_policy` array MUST NOT exceed 16 entries;
 * individual string fields MUST NOT exceed 1 KiB unless a stricter or more specific limit is defined for that field;
-* `origin.address`, `publisher_pubkey`, `origin_pubkey`, `spec_version`, `kind`, and timestamp fields are limited by their field-specific syntax.
+* `origin.address`, `publisher_pubkey`, `origin.origin_pubkey`, `spec_version`, `kind`, `sig`, and timestamp fields are limited by their field-specific syntax.
 
 The 64 KiB byte cap is enforced before JSON parsing. A response that exceeds 64 KiB is rejected without parsing.
 
@@ -385,7 +378,7 @@ The publisher generates a manifest during a publisher ceremony.
 
 The high-level lifecycle is:
 
-1. Compose the payload with:
+1. Compose the manifest object with:
 
    * `spec_version`;
    * `kind`;
@@ -397,40 +390,35 @@ The high-level lifecycle is:
    * `min_refresh_interval`;
    * current UTC `updated`.
 
-2. Compute:
-
-   ```text
-   payload_jcs = JCS(payload)
-   ```
+2. Form the signed payload by removing the `sig` field (which has not yet been added) from the manifest object.
 
 3. Compute:
 
-   ```text
-   signature_input = "ENTANGLED-v1 manifest" || 0x00 || payload_jcs
-   ```
+```text
+   payload_jcs = JCS(signed_payload)
+```
 
 4. Compute:
 
-   ```text
+```text
+   signature_input = "ENTANGLED-v1 manifest" || 0x00 || payload_jcs
+```
+
+5. Compute:
+
+```text
    sig = Ed25519.sign(K_publisher_priv, signature_input)
-   ```
+```
 
-5. Construct the envelope:
+6. Add the `sig` field to the manifest object.
 
-   ```json
-   {
-     "doc": { ... },
-     "sig": "..."
-   }
-   ```
+7. Deploy the manifest at:
 
-6. Deploy the envelope at:
-
-   ```text
+```text
    /manifest.json
-   ```
+```
 
-7. Make the corresponding `K_runtime_priv` available to the publishing infrastructure according to the operator's key-custody procedure.
+8. Make the corresponding `K_runtime_priv` available to the publishing infrastructure according to the operator's key-custody procedure.
 
 The manifest is replaced, not amended, on every publication cycle.
 
