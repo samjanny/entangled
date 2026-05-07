@@ -115,7 +115,21 @@ If a stage detects multiple violations within itself, for example schema validat
 
 **Stage 6: signature verification** uses the cryptographic primitives and signature input construction defined in §05.
 
+For manifest documents, signature verification requires the expected publisher key. After stage 5 closed-schema validation, the client may safely read `publisher_pubkey` from the validated payload. The client then selects the expected verification key according to the trust-state rules below and in §05:
+
+* if a retained publisher identity (TOFU-pinned or Externally verified) exists for the site or publisher profile and `manifest.publisher_pubkey` differs from the retained `K_publisher.pub`, the client reports `E_TRUST_MISMATCH`. The client MUST NOT silently replace the retained identity, MUST NOT treat the new key as authoritative, and MUST NOT continue to ordinary manifest acceptance. Trust-state resolution for the mismatch is governed by the trust state machine below;
+* if the retained publisher identity matches `manifest.publisher_pubkey`, that retained `K_publisher.pub` is used as the expected verification key;
+* if no retained identity exists for this site or publisher profile, the manifest is in First contact and `manifest.publisher_pubkey` is used as the candidate verification key.
+
+Signature verification proceeds under the expected key selected by the trust-state rules. A signature failure under the correct expected key is reported as `E_SIG_VERIFICATION`. An identity mismatch detected by the rules above is reported as `E_TRUST_MISMATCH` and takes precedence over signature verification, because attempting to verify a manifest under a key that does not match the retained identity is not meaningful.
+
+This manifest-specific sub-step preserves the pipeline model and error precedence: it occurs after stage 5 schema validation and before ordinary stage 6 signature verification, and uses only fields the schema has already validated.
+
+For content and transaction documents, no equivalent pre-check is required: the verification key is `current_manifest.canary.runtime_pubkey` from the already-verified manifest.
+
 **Stage 7: publisher identity and trust state resolution** produces one of the four publisher trust states defined below.
+
+For manifest documents, the manifest-specific identity pre-check above has already detected mismatch with retained identity. Stage 7 resolution covers transitions for First contact, TOFU pinning, and external verification, and any further trust-state bookkeeping not handled by the pre-check.
 
 **Stage 8: canary and anti-downgrade resolution** produces one of the five canary states defined in §08 and applies anti-downgrade rules based on publisher history.
 
@@ -230,7 +244,12 @@ The user resolves Changed/mismatch by one of two actions:
 * abandon the site, preserving the existing retained identity;
 * explicitly confirm the new `K_publisher.pub` as legitimate, replacing the retained identity.
 
-If the user confirms the new identity, the client treats it as a new First contact unless the user also externally verifies the new PIP. The prior identity remains in publisher history as a replaced identity event.
+If the user confirms the new identity, the client:
+
+* replaces the retained identity for the affected site or publisher profile with the newly confirmed `K_publisher.pub`;
+* treats the new identity as a new First contact, unless the user also externally verifies the new PIP, in which case the new identity enters the Externally verified state;
+* on subsequent manifest fetches for the same site, signature verification proceeds with the new `K_publisher.pub` as the expected key under the trust-state rules in §05 and the manifest pre-check in stage 6 above. The `E_TRUST_MISMATCH` check then operates against the new retained identity;
+* preserves the prior identity in publisher history as a replaced-identity event, retrievable through the publisher history detail surface defined under "Expandable detail surfaces" below.
 
 The client MUST NOT offer an option that would automatically resolve future Changed/mismatch events.
 
@@ -463,6 +482,14 @@ It does not apply to:
 * `canary.next_expected`, which is a future commitment by definition.
 
 The 300-second tolerance is normative. A client using a different value is non-conformant.
+
+## Editorial published_at display
+
+`meta.published_at` (§02) is editorial metadata, not a freshness or security signal. The client MUST NOT reject a content document solely because `meta.published_at` is in the past or in the future relative to the client's clock.
+
+If `meta.published_at` is significantly in the future relative to the client clock, the client MAY display a non-security editorial notice indicating that the document is post-dated by the publisher. The threshold and presentation of this notice are implementation-defined.
+
+This editorial notice MUST NOT be confused with canary, trust-state, signature, or transport warnings. It is not a chrome warning of the kinds defined in this section. Its visual treatment MUST be distinct from the warnings listed under "Conditional always-visible warnings" above.
 
 ## Refresh policy
 

@@ -93,11 +93,13 @@ An Entangled deployment involves three components: the publisher, the publishing
 
 The publisher generates `K_publisher` offline and stores it offline. The PIP is computed once and published through out-of-band channels.
 
-Annually, or at a longer interval, the publisher uses `K_publisher` to issue a `static_cert` authorizing a `K_origin` for a specific carrier endpoint. The cert and `K_origin` are deployed to the publishing infrastructure. The frequency of this ceremony is bounded by the cert's validity window, which is declared in the cert itself.
+At each publication cycle, the publisher uses `K_publisher` to sign a manifest that authorizes the current `K_origin` and the current `K_runtime` for that cycle. The manifest is the only object signed by `K_publisher` in the core trust chain. Entangled v1 does not define a separate `static_cert` or intermediate certificate.
+
+`K_origin` is deployed to the publishing infrastructure because the carrier requires it. For Tor v3, the onion-service infrastructure must hold `K_origin_priv` in order to operate the endpoint from which the site is reached.
 
 The publishing infrastructure runs the carrier service and serves Entangled documents over HTTP. It holds `K_origin`, because the carrier requires it, and `K_runtime`, the current operational signing key.
 
-At a periodic interval, typically every 30 days, the publisher uses `K_publisher` to sign a fresh manifest with a new `K_runtime` declared in its canary. The new manifest and the new `K_runtime` private key are transferred to the infrastructure.
+At a periodic interval, typically every 30 days, the publisher uses `K_publisher` to sign a fresh manifest with a new `K_runtime` declared in its canary. The new manifest and the new `K_runtime` private key are transferred to the infrastructure. A new `K_origin` is authorized by the same mechanism: a fresh manifest signed by `K_publisher` declares the new `origin`.
 
 Old `K_runtime` private keys are destroyed. Previously signed content remains cryptographically valid as historical content, but only the `K_runtime` authorized by the current manifest is accepted for current publication.
 

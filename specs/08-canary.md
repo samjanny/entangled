@@ -131,7 +131,7 @@ The client computes a canary state from the canary's `issued_at` and `next_expec
 * **Fresh.** Current time is between `issued_at` and `next_expected`, with substantial margin remaining before `next_expected`.
 * **Near-expiration.** Current time is approaching `next_expected`. The publisher has not yet issued a fresh canary, but the deadline has not passed.
 * **Expired.** Current time is at or after `next_expected`. The publisher has not issued a fresh canary by the committed deadline.
-* **Invalid.** The canary fails structural or cryptographic validation independently of timing (malformed fields, signature failure, `issued_at` in the future beyond clock-skew tolerance, `next_expected - issued_at` outside permitted bounds).
+* **Invalid.** The manifest signature is otherwise valid, but the canary fails structural or semantic validation independently of timing. Examples include: malformed canary fields; invalid timestamp syntax; `issued_at` more than the allowed clock-skew tolerance in the future; `next_expected` not strictly later than `issued_at`; `next_expected - issued_at` outside the 7-to-90-day bounds; other canary-specific validation failures defined in this section. Manifest signature failure is not a canary Invalid condition: it is reported under the manifest signature failure class defined in §05 and §11.
 * **Unavailable.** The client could not fetch a manifest, and therefore could not obtain a canary, for reasons of carrier reachability or transport failure.
 
 The exact thresholds defining "near-expiration" are implementation-defined. The client SHOULD treat the canary as near-expiration when the current time is within the last 10% of the `issued_at` to `next_expected` interval, or within 24 hours of `next_expected`, whichever is longer. The client MUST document the threshold it uses, in user-accessible form.
@@ -166,7 +166,9 @@ If a client has observed an expired canary for a publisher identity, and later o
 
 The client MUST refuse to render any content from the site whose manifest contains an invalid canary. The chrome shows the canary state as invalid with a prominent error.
 
-Unlike expiration, invalidity indicates structural failure of the cryptographic or schema discipline that the protocol relies on. The publisher who controls a valid `K_publisher` cannot legitimately produce an invalid canary; therefore the manifest is treated as unauthentic regardless of whether the signature itself verifies.
+Unlike expiration, invalidity indicates structural or semantic failure of the canary discipline. The publisher who controls a valid `K_publisher` cannot legitimately produce an invalid canary in a signed manifest; therefore the manifest is rejected even though its signature otherwise verifies.
+
+Manifest signature failure is a distinct condition: it is detected at stage 6 and reported as `E_SIG_VERIFICATION` (§11), not as canary Invalid.
 
 ### Unavailable
 

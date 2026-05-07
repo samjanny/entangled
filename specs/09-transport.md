@@ -188,6 +188,58 @@ The publisher MAY reject submits exceeding this size with `413 Payload Too Large
 
 The client SHOULD validate body size before transmission and refuse to submit oversize bodies.
 
+## Image resource fetches
+
+An image resource referenced by an `image` block (§03) is not itself an Entangled document. It is a binary image file fetched separately and bound to the containing signed document by SHA-256 digest.
+
+Image resource fetches use a constrained subset of the rules in this section.
+
+The client MUST NOT fetch an image resource until the containing `content` or `transaction` document has passed signature verification and closed-schema validation, as defined in §03 and §10.
+
+The client uses `GET`:
+
+```http
+GET /<image-path> HTTP/1.1
+Host: <56-character-onion-address>.onion
+```
+
+The request uses the same restrictive request-header discipline as Entangled `GET` requests defined under "Request headers" below: `Host` only, with no request body, no `Cookie`, no `User-Agent`, no `Accept` or other Accept-family header, no `Referer`, no `Origin`, no cache-directive header, no custom `X-` header.
+
+The image path MUST be same-origin, that is, the client connects to the same carrier endpoint as the containing document, and MUST satisfy the image `src` path syntax defined in §03.
+
+Cross-origin image fetches are forbidden, as defined in §03.
+
+### Image response headers
+
+Image resource responses are not Entangled documents. They are not required to use `Content-Type: application/entangled+json`.
+
+For an image resource response with status `200 OK`, the publisher SHOULD return:
+
+* `Content-Length`: the byte length of the response body;
+* `Content-Type`: a media type matching the `media_type` declared in the `image` block (`image/png`, `image/jpeg`, or `image/webp`).
+
+The client MUST reject an image resource response whose `Content-Type` is `application/entangled+json` or `application/entangled-submit+json`. These Content-Types are reserved for Entangled documents and submit bodies only. An image resource is not an Entangled document and MUST NOT use those Content-Types. The image resource is rejected with the appropriate image diagnostic defined in §11.
+
+Rejection of an image resource because of a reserved Content-Type, a `Content-Type` that does not match the declared `media_type`, or any other image-fetch failure does not invalidate the containing signed `content` or `transaction` document. The image is rendered as missing or unavailable; other blocks of the document continue to render normally.
+
+Other response headers, including those listed under "Response headers" below as ignored for Entangled documents, are also ignored for image resource responses.
+
+A non-`200` status code on an image resource fetch is treated as image-resource unavailable. The publisher MAY use `404 Not Found` for missing image resources. Status codes outside the whitelist defined under "Status codes" below are treated as transport errors as for Entangled documents.
+
+### Image response handling
+
+The client MUST enforce the 1 MiB image response body limit (§03) before decoding. A response body exceeding 1 MiB is rejected without decoding.
+
+The client MUST verify the SHA-256 digest of the exact response body bytes against the `image` block's `sha256` field before decoding the image.
+
+The client MUST decode and render the image only if:
+
+* the SHA-256 digest matches;
+* the decoded media type matches the declared `media_type`;
+* the decoded dimensions match the declared `width` and `height` and satisfy the per-block dimension limits in §03.
+
+A bad image resource — including transport failure, size-limit violation, hash mismatch, decode failure, media-type mismatch, dimension mismatch, or animation in a WebP file (§03) — invalidates the image rendering only. It does not invalidate the containing signed `content` or `transaction` document. The image is rendered as missing or unavailable, while other blocks of the document continue to render normally.
+
 ## Headers
 
 ### Request headers

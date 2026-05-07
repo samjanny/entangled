@@ -398,7 +398,7 @@ The client MUST verify the SHA-256 digest of the exact image response body bytes
 The verification order is:
 
 1. verify the containing Entangled document;
-2. fetch the image from `src` using the same-origin transport rules in §09;
+2. fetch the image from `src` using the image resource fetch rules in §09;
 3. enforce image response size limits;
 4. compute SHA-256 over the exact response body bytes;
 5. compare the digest to the block's `sha256` field;
@@ -443,7 +443,7 @@ The image response body MUST NOT exceed 1 MiB.
 
 `caption`, when present, MUST NOT exceed 500 bytes when encoded as UTF-8.
 
-The decoded image dimensions MUST match the declared `width` and `height`. A mismatch causes the image to be rejected.
+The decoded image dimensions MUST match the declared `width` and `height`. A mismatch causes the image to be rejected. Dimension-mismatch rejection does not invalidate the containing signed document; the image is rendered as missing or unavailable, and the diagnostic is reported under the image resource diagnostics defined in §11.
 
 The decoded image dimensions MUST NOT exceed 4096 by 4096 pixels.
 
@@ -495,7 +495,7 @@ An `entangled` target points to another Entangled site.
 }
 ```
 
-`carrier` is the carrier profile identifier. In Entangled v1, the only fully specified value is `"tor-v3"`.
+`carrier` is the carrier profile identifier. A conforming Entangled v1.0 client MUST reject an `entangled` link target whose `carrier` is not exactly `"tor-v3"`, in the same way it rejects manifests with non-`tor-v3` carriers (§06).
 
 `address` is the carrier address of the destination site.
 

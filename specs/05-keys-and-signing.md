@@ -132,7 +132,9 @@ For Tor v3, the binding is structural:
 
 Failure of any of these checks rejects the manifest with the origin-mismatch error defined in §11.
 
-For other carrier profiles, the binding rule is profile-specific. Entangled v1 fully specifies only the Tor v3 binding. I2P and Yggdrasil remain draft carrier profiles until their address-to-key binding rules are specified byte-for-byte.
+For other carrier profiles, the binding rule is profile-specific. Entangled v1 fully specifies only the Tor v3 binding. I2P and Yggdrasil remain draft carrier profiles until their address-to-key binding rules are specified byte-for-byte; they are outside Entangled v1.0 conformance.
+
+A v1.0 conforming implementation MUST NOT validate manifests with carrier values other than `tor-v3`. This aligns with the strict `origin.carrier` rule in §06. Future protocol versions may define additional carrier bindings; such bindings are part of those future versions, not of v1.0.
 
 ## Signature inputs
 
@@ -203,6 +205,8 @@ verified = Ed25519.verify(expected_K_publisher_pub, input, manifest.sig)
 * from `manifest.publisher_pubkey` as a first-contact candidate in first-contact state.
 
 In all cases, the verifier MUST confirm that `manifest.publisher_pubkey == expected_K_publisher_pub` before accepting the manifest.
+
+When a retained publisher identity exists (TOFU-pinned or externally verified) and `manifest.publisher_pubkey` differs from the retained `K_publisher.pub`, the manifest is rejected with `E_TRUST_MISMATCH` (§11) rather than `E_SIG_VERIFICATION`. This precedence reflects that attempting to verify a manifest under a key that does not match the retained identity is not meaningful: the diagnostic must identify the actual failure, which is publisher-identity mismatch. The client MUST NOT silently replace the retained identity. Trust-state behavior for mismatch resolution is defined in §10.
 
 ### Content document signature input
 

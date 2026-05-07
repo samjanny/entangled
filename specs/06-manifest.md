@@ -109,9 +109,11 @@ Entangled v1 fully specifies only:
 "carrier": "tor-v3"
 ```
 
-A v1 conforming client MUST reject any manifest whose `origin.carrier` is not `"tor-v3"`, unless the client implements an explicitly named future carrier profile.
+A conforming Entangled v1.0 client MUST reject any manifest whose `origin.carrier` is not exactly `"tor-v3"`.
 
-The values `"i2p"` and `"yggdrasil"` are reserved for draft carrier profiles. They are not part of Entangled v1 conformance until their address-to-key binding rules are specified byte-for-byte.
+The values `"i2p"` and `"yggdrasil"` are reserved for draft carrier profiles. They are not v1.0-conformant values, and a v1.0 client MUST reject manifests declaring them, until their address-to-key binding rules are specified byte-for-byte under a future protocol version.
+
+Note: implementations MAY experimentally support additional carrier profiles outside Entangled v1.0 conformance, for example for prototyping or research. Such support is not part of v1.0 validation, MUST NOT be enabled by default in a v1.0-conformant client, and does not change the rejection rule above for v1.0 conformance.
 
 ### `origin.address`
 
@@ -190,7 +192,7 @@ The field is required even when empty.
 
 `navigation` is a JSON array declaring the site's top-level navigation entries.
 
-Each entry has an ASCII label and a path within the site.
+Each entry has a label and a path within the site.
 
 Example:
 
@@ -204,10 +206,25 @@ Example:
 
 Each navigation entry MUST have exactly two fields:
 
-* `label`, a string;
-* `path`, a string beginning with `/`.
+* `label`, a UTF-8 string;
+* `path`, a same-site path.
 
 No additional fields are permitted.
+
+`label` MUST satisfy:
+
+* it is a UTF-8 string;
+* it MUST NOT exceed 100 bytes when encoded as UTF-8;
+* it MUST NOT contain control characters in the range U+0000 through U+001F or the value U+007F.
+
+`path` MUST satisfy the same path syntax as content document `path` values defined in §02:
+
+* begin with `/`;
+* contain only ASCII characters in the range `[A-Za-z0-9._~/-]`;
+* not contain consecutive `/` characters;
+* not contain `.` or `..` path segments;
+* not contain a query string, fragment, scheme, or host;
+* not exceed 256 ASCII characters.
 
 The label is rendered in the chrome navigation control. The path is a relative path within the same site. Cross-host, cross-origin, cross-carrier, and absolute URLs are forbidden in navigation entries.
 
@@ -311,7 +328,7 @@ The following limits apply:
 
 * the total manifest envelope MUST NOT exceed 64 KiB on the wire;
 * the `navigation` array MUST NOT exceed 32 entries;
-* the `state_policy` array MUST NOT exceed 16 entries;
+* the `state_policy` array MUST NOT exceed 32 entries;
 * individual string fields MUST NOT exceed 1 KiB unless a stricter or more specific limit is defined for that field;
 * `origin.address`, `publisher_pubkey`, `origin.origin_pubkey`, `spec_version`, `kind`, `sig`, and timestamp fields are limited by their field-specific syntax.
 
