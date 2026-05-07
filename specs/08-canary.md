@@ -1,0 +1,230 @@
+# 08 — Canary
+
+The canary is the structure within the manifest by which the publisher attests, on a recurring basis, that the site is operating under publisher control and authorizes the current operational signing key.
+
+The canary serves two roles simultaneously:
+
+1. **Warrant canary.** A periodic, signed statement in which the publisher attests certain conditions, typically along the lines of having not been compromised, coerced, or compelled to act against users. The protocol does not, and cannot, verify whether the attestation is true. What the protocol provides is a visible failure condition when the publisher cannot, or will not, sign on schedule. The signal is structural, not semantic: failure to produce a fresh canary by the committed deadline is the protocol-level warning condition.
+
+2. **Runtime authorization.** The canary declares the `runtime_pubkey` authorized to sign `content` and `transaction` documents for the current publication cycle.
+
+These two roles are unified in v1: refreshing the canary requires a publisher ceremony involving `K_publisher`, and the same ceremony rotates `K_runtime`. A site that fails to refresh its canary therefore both stops maintaining a fresh publisher-control attestation and stops authorizing new content as current publication without warning.
+
+The canary is part of the manifest payload. The manifest signature, produced by `K_publisher`, covers the canary. The canary is not signed independently in Entangled v1.
+
+## Canary structure
+
+The canary is a JSON object with the following fields:
+
+```json
+{
+  "runtime_pubkey": "<base64url, 32 bytes>",
+  "issued_at": "2026-05-07T00:00:00Z",
+  "next_expected": "2026-06-07T00:00:00Z",
+  "statement": "...",
+  "freshness_proof": "..."
+}
+````
+
+The fields `runtime_pubkey`, `issued_at`, `next_expected`, and `statement` are required.
+
+The field `freshness_proof` is optional. When omitted, the field is absent from the JSON object; an empty string or null value is not permitted.
+
+No other fields are permitted in the canary object.
+
+### `runtime_pubkey`
+
+`runtime_pubkey` is the public key of `K_runtime`, the operational signing key authorized for the current publication cycle.
+
+It is encoded as 43 ASCII characters of base64url representing 32 bytes, with no padding.
+
+This is the key against which the client verifies `content` and `transaction` document signatures during the publication cycle covered by the current manifest, as defined in §05.
+
+A new manifest with a fresh canary declares a new `runtime_pubkey`. The publisher generates a new `K_runtime` keypair as part of the rotation ceremony.
+
+### `issued_at`
+
+`issued_at` is the timestamp at which the canary was signed by the publisher, in RFC 3339 format with the `Z` suffix indicating UTC.
+
+```json
+"issued_at": "2026-05-07T00:00:00Z"
+```
+
+Only this timestamp form is permitted:
+
+```text
+YYYY-MM-DDTHH:MM:SSZ
+```
+
+Other RFC 3339 forms are not permitted, including numeric UTC offsets, fractional seconds, and leap-second values.
+
+`issued_at` is the authoritative anti-downgrade and freshness signal for Entangled. Specifically:
+
+* The client uses `issued_at` to determine whether a fetched manifest is newer than a cached manifest for the same `K_publisher.pub`. A manifest with `issued_at` strictly older than the newest verified `issued_at` already observed for the same `K_publisher.pub` MUST NOT be accepted as current. See §06 (publisher history) and §10 (anti-downgrade enforcement).
+* The client uses `issued_at` to determine canary age and the corresponding trust state of the canary, as defined in this section.
+
+`issued_at` MUST NOT be more than the allowed clock-skew tolerance in the future relative to the client's clock. A manifest whose canary `issued_at` is implausibly far in the future is rejected. Clock-skew tolerance is defined in §10.
+
+### `next_expected`
+
+`next_expected` is the timestamp by which the publisher commits to issuing a fresh canary, in the same RFC 3339 form as `issued_at`.
+
+```json
+"next_expected": "2026-06-07T00:00:00Z"
+```
+
+`next_expected` MUST be strictly later than `issued_at`.
+
+The interval between `issued_at` and `next_expected` MUST be:
+
+* at least 7 days (604800 seconds);
+* at most 90 days (7776000 seconds).
+
+These bounds prevent two pathological cases:
+
+* intervals shorter than 7 days impose excessive ceremony burden on the publisher and offer diminishing operational returns;
+* intervals longer than 90 days defeat the purpose of the warrant canary by allowing prolonged silence to pass without signal.
+
+The publisher chooses the interval based on operational practice. Higher-threat publishers may choose intervals close to 7 days. Lower-threat publishers may choose intervals close to 30 days. Intervals up to 90 days are permitted but discouraged for sites that rely on the canary as a security signal.
+
+A client receiving a manifest with `next_expected - issued_at` outside the permitted bounds rejects the manifest.
+
+### `statement`
+
+`statement` is a human-readable text that the publisher includes in the canary as the substance of the warrant.
+
+It is a UTF-8 string. It MUST NOT exceed 2048 bytes when encoded as UTF-8. It MUST NOT contain control characters in the range U+0000 through U+001F or the value U+007F, except for the line feed character U+000A which is permitted to support multi-line statements.
+
+Line feed is permitted only as plain text formatting. It has no markup semantics.
+
+The protocol does not prescribe the wording of the statement. Publishers customarily include attestations such as that no warrant has been received, no compelled disclosure has occurred, no third party has obtained operational keys, and similar language adapted to their jurisdiction and threat model.
+
+The statement is rendered by the client as part of the chrome's canary status display, available to users who expand the canary detail view. Display behavior is defined in §10.
+
+The protocol attaches no semantic meaning to the contents of the statement. The cryptographic significance of the canary is the act of signing it on schedule, not the literal text. A publisher who is compelled to issue a misleading canary signs an attestation that may be factually false, but the security property the protocol provides is not the truth of the statement: it is the absence of fresh signatures when the publisher cannot truthfully sign.
+
+### `freshness_proof`
+
+`freshness_proof` is an optional field by which the publisher may anchor the canary to a temporal reference outside the publisher's control.
+
+When present, it is a UTF-8 string not exceeding 200 bytes. It MUST NOT contain control characters.
+
+Common uses include:
+
+* a recent block hash from a public blockchain;
+* a short reference to a widely published news item;
+* a hash of a public bulletin recently posted by a third party;
+* any other short reference to a real-world event whose existence at the time of signing can be independently confirmed.
+
+The protocol does not validate the contents of `freshness_proof`. The client renders it in the chrome's canary detail view when present, allowing users to independently confirm that the canary was signed after the referenced event.
+
+`freshness_proof` is a tool that helps detect certain forms of backdating. A canary signed weeks earlier and held for delayed publication can carry a fabricated `issued_at`, but cannot reference an event that had not yet occurred at signing time. Including such a reference therefore constrains how far back the actual signing time can plausibly be.
+
+`freshness_proof` does not eliminate backdating. A publisher under coercion may still sign a canary using a freshness reference at the time of signing, while the substance of the warrant has already been broken. The field constrains the temporal claim of the signature, not the truth of the statement.
+
+The field is optional in v1 because it is operationally heavier than the other canary fields and not all publishers will use it. Publishers who omit `freshness_proof` rely on `issued_at` alone as the temporal anchor of the canary.
+
+## Canary states
+
+The client computes a canary state from the canary's `issued_at` and `next_expected` and the current time. The states are mutually exclusive at any given time:
+
+* **Fresh.** Current time is between `issued_at` and `next_expected`, with substantial margin remaining before `next_expected`.
+* **Near-expiration.** Current time is approaching `next_expected`. The publisher has not yet issued a fresh canary, but the deadline has not passed.
+* **Expired.** Current time is at or after `next_expected`. The publisher has not issued a fresh canary by the committed deadline.
+* **Invalid.** The canary fails structural or cryptographic validation independently of timing (malformed fields, signature failure, `issued_at` in the future beyond clock-skew tolerance, `next_expected - issued_at` outside permitted bounds).
+* **Unavailable.** The client could not fetch a manifest, and therefore could not obtain a canary, for reasons of carrier reachability or transport failure.
+
+The exact thresholds defining "near-expiration" are implementation-defined. The client SHOULD treat the canary as near-expiration when the current time is within the last 10% of the `issued_at` to `next_expected` interval, or within 24 hours of `next_expected`, whichever is longer. The client MUST document the threshold it uses, in user-accessible form.
+
+## Client behavior on canary states
+
+The client MUST display the canary state persistently in client-controlled UI, as part of the chrome elements defined in Pillar C and §10.
+
+The required behavior for each state:
+
+### Fresh
+
+The client renders content normally. The chrome shows the canary state as fresh, including the `next_expected` timestamp.
+
+### Near-expiration
+
+The client renders content normally. The chrome shows the canary state as near-expiration with visual emphasis. The user is informed that the publisher's commitment deadline is approaching.
+
+### Expired
+
+The client continues to render content but MUST display a prominent warning in the chrome. The warning is not easily dismissible.
+
+The client MUST NOT refuse to render content solely because the canary has expired. Hard-failing on expiration would conflate publisher operational pause (vacation, server outage, ceremony delay) with publisher compromise, producing false positives that erode the credibility of the warning.
+
+The user is presented with the elapsed time since `next_expected` and the contents of the canary's `statement` and `freshness_proof` (if present). The user decides whether to continue using the site.
+
+The client MUST NOT pin a new manifest with a fresh canary to replace the expired one without user awareness. Manifest refresh is normal protocol behavior, but the user MUST be notified when an expired canary is replaced, since the gap itself is the protocol-level warning condition.
+
+If a client has observed an expired canary for a publisher identity, and later observes a fresh canary for the same `K_publisher.pub`, the client MUST notify the user that a canary gap occurred. The fresh canary may restore current freshness, but it MUST NOT erase the historical fact that the publisher missed a committed refresh deadline.
+
+### Invalid
+
+The client MUST refuse to render any content from the site whose manifest contains an invalid canary. The chrome shows the canary state as invalid with a prominent error.
+
+Unlike expiration, invalidity indicates structural failure of the cryptographic or schema discipline that the protocol relies on. The publisher who controls a valid `K_publisher` cannot legitimately produce an invalid canary; therefore the manifest is treated as unauthentic regardless of whether the signature itself verifies.
+
+### Unavailable
+
+The client MUST display the unavailable state in the chrome and MUST NOT use cached content if no cached manifest exists for the site.
+
+If a cached manifest exists from a prior session, the client MAY display previously cached content with explicit indication that it is cached and that the current canary state cannot be verified.
+
+The unavailable state is distinguished in display from invalid: unavailable indicates network or transport conditions, not a security failure.
+
+## Anti-downgrade enforcement
+
+A client MUST NOT accept a manifest as current when its canary `issued_at` is strictly older than the newest verified `issued_at` previously observed for the same `K_publisher.pub`.
+
+This rule applies across all carrier origins and addresses for the same publisher. If the client has observed a manifest with `issued_at = T_new` for `K_publisher.pub = P`, and later fetches a manifest from any address with `issued_at = T_old < T_new` for the same `P`, the client MUST reject the older manifest as a downgrade attempt.
+
+The client MAY use older manifests to verify historical content, subject to the historical-content rules defined in §10. Anti-downgrade restricts what is considered current; it does not retroactively invalidate cryptographically valid older signatures.
+
+The publisher history records defined in §06 are the storage from which anti-downgrade decisions are made.
+
+## Canary lifecycle
+
+The publisher refreshes the canary by performing a publisher ceremony:
+
+1. Generate a new `K_runtime` keypair offline. Set aside `K_runtime_priv` for transfer to the publishing infrastructure.
+
+2. Compose a new canary object with:
+
+   * `runtime_pubkey` set to the new `K_runtime.pub`;
+   * `issued_at` set to the current UTC time;
+   * `next_expected` set to a future UTC time within the permitted bounds;
+   * `statement` set to the publisher's chosen warrant text;
+   * `freshness_proof` set to the publisher's chosen proof, if any.
+
+3. Compose a new manifest including this canary, as defined in §06.
+
+4. Sign the manifest with `K_publisher`, as defined in §05.
+
+5. Deploy the new manifest and make the new `K_runtime_priv` available to the publishing infrastructure according to the operator's key-custody procedure.
+
+6. Deploy the new manifest at `/manifest.json`. Replace, do not amend, the existing manifest.
+
+7. Configure the publishing infrastructure to use the new `K_runtime_priv` for signing content and transaction documents. Destroy the previous `K_runtime_priv` according to the operator's key-custody procedure.
+
+The frequency of this ceremony is determined by the publisher's chosen `next_expected` interval. A publisher who declares a 30-day interval performs this ceremony approximately every 30 days, with a margin to refresh before reaching `next_expected`.
+
+The ceremony is the operational price of the canary mechanism. A publisher unwilling or unable to maintain ceremony cadence cannot maintain a fresh canary, and therefore cannot maintain the warrant property.
+
+## What this section does not cover
+
+This section defines the canary structure, its states, the required client behavior per state, anti-downgrade enforcement, and the canary lifecycle.
+
+It does not define:
+
+* the manifest schema in which the canary is embedded (see §06);
+* the keys and signing primitives applied to the manifest (see §05);
+* the document schema and envelope rules (see §02);
+* canonicalization rules (see §04);
+* block types displayed when rendering canary statements (see §03);
+* the full client verification pipeline, including pipeline ordering, error precedence, clock-skew tolerance values, and chrome layout (see §10);
+* error codes for canary failure conditions (see §11);
+* operational practices for protecting `K_publisher_priv` during canary ceremonies (see operator playbook, outside the normative spec).
