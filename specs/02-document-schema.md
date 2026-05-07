@@ -191,12 +191,13 @@ A transaction document is not addressable by a path. It is generated in response
   "spec_version": "1.0",
   "kind": "transaction",
   "in_response_to": "/contact",
+  "state_updates": [],
   "blocks": [ ],
   "sig": "..."
 }
 ```
 
-All five fields are required. No other top-level fields are permitted.
+All six fields are required. No other top-level fields are permitted.
 
 ### `in_response_to`
 
@@ -216,6 +217,20 @@ The `in_response_to` field is part of the signed payload. The client MUST compar
 The comparison is byte-exact, with the same disciplines as `path` comparison: no normalization, case-folding, percent-decoding, dot-segment resolution, or slash collapsing.
 
 This binding prevents an attacker controlling the server from substituting a transaction signed for one submit endpoint as the response to a different submit endpoint.
+
+### `state_updates`
+
+`state_updates` is a JSON array of state update operations requested by the transaction response.
+
+The field is required. If the transaction does not request state changes, it is an empty array:
+
+```json
+"state_updates": []
+```
+
+The array MUST contain between 0 and 32 entries.
+
+The schema and semantics of state update operations are defined in §07.
 
 ### `blocks`
 
@@ -242,7 +257,7 @@ Per-document-kind limits override the general limits when stricter:
 
 * manifests have a 64 KiB envelope limit (see §06);
 * content documents have a 1024-block array limit (above);
-* transaction documents have a 256-block array limit (above).
+* transaction documents have a 256-block array limit and a 32-state-update limit (above).
 
 Parser resource-limit enforcement is defined in §10.
 
@@ -270,6 +285,7 @@ It does not define:
 * the block types and field kinds used inside `blocks` arrays (see §03);
 * canonicalization of JSON values for signing (see §04);
 * key roles, signature inputs, or verification chain (see §05);
+* state policy, consent model, or state update semantics (see §07);
 * canary structure and lifecycle (see §08);
 * transport protocol details (see §09);
 * client behavior, validation order, error precedence, and chrome (see §10);
