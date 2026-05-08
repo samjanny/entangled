@@ -47,6 +47,22 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.7
+
+Date: 2026-05-08
+
+Changes since v1.0-rc.6:
+
+- §00 — Added a "v1.0 limitations" subsection that consolidates protocol-level limitations a v1.0 implementation should disclose to users: no in-band runtime-key revocation, canary expiration is not cryptographic revocation, no general anti-replay against malicious backends, no historical-content bootstrap for new clients, no in-band origin-migration discovery, no protection from a malicious publisher, image decoding is a residual attack surface. Each bullet references the section that defines the underlying rule.
+- §03 — Added a "Decoder safety" subsection. Hash verification authenticates image bytes against the signed document but does not make decoding safe; a publisher with a valid `K_runtime` may sign a document referencing an intentionally crafted image. Implementations SHOULD use memory-safe decoders, hardened parsers, sandboxed processes, or other isolation appropriate to the deployment environment. Protocol-level rejections (media-type allowlist, no SVG, no animation, hash verification, dimension limits, pixel budget) are necessary but not sufficient.
+- §07 — Strengthened the request-state consent prompt: the client MUST explain that the item is included in future submit requests across every submit endpoint under the publisher's identity, not only the current form or endpoint. Made explicit that request-state scope in v1 is publisher-wide and endpoint-scoped request state is not part of v1.
+- §10 — Strengthened the First contact → TOFU pinned transition from MAY to SHOULD. The recommended trigger is the user explicitly choosing to continue to the site or the first successful render of content. The client SHOULD document, in user-accessible form, the trigger it uses. Other triggers (e.g. dismissal of the first-contact notice) remain permitted.
+- §10 — Added a clock-skew UX hint. When rejecting a timestamp because it exceeds the 300-second tolerance, the client SHOULD indicate to the user that the local clock may be incorrect, since clock skew is a likely cause of false positives. The protocol-level diagnostic remains the one specified for the failing field; the advisory is a presentation hint, not a separate diagnostic code.
+
+This rc is editorial. It does not change the wire format, signature inputs, signature input construction, or the diagnostic code catalog.
+
+The wire-level `spec_version` remains `"1.0"`.
+
 ### v1.0-rc.6
 
 Date: 2026-05-08
