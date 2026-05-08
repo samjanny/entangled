@@ -35,6 +35,8 @@ corpus/
 - `context` — optional fields needed to apply the vector (fetched path, fetched origin address, prerequisites such as a previously verified manifest, the corresponding submit body for transactions, etc.);
 - `extra_files` — additional files in the vector directory.
 
+The corpus index also carries a top-level `clock_now` field, in RFC 3339 form. Harnesses MUST mock the implementation's wall clock to this value for the duration of the test run. This is required because canary diagnostics depend on `now` and the corpus uses fixed `issued_at` timestamps; without clock mocking, time-dependent vectors are not reproducible.
+
 ## Test keys
 
 `keys.json` records the test-only Ed25519 keypairs derived from fixed 32-byte seeds. The seeds are public ASCII strings (e.g., `b"ENTANGLED-v1.0-publisher-test01\x00"`); the corresponding private keys are NOT secret. They MUST NOT be used for any deployment.
@@ -52,7 +54,8 @@ Negative vectors carry the normative diagnostic code from §11 of the specificat
 The general test harness pattern:
 
 1. Load `corpus.json`.
-2. For each vector:
+2. Set the implementation's wall clock to `corpus.json["clock_now"]` (mock or inject) for the duration of the test run.
+3. For each vector:
    - read the raw input bytes from `input` (no normalization, no transcoding);
    - apply implementation-specific context: e.g., set the "fetched path" to `context.fetched_path` for content documents, set the "previously verified manifest" for canary-conflict vectors, etc.;
    - run the input through the implementation's validation pipeline;
@@ -84,3 +87,5 @@ Requires Python 3.10+ and the `cryptography` package (for raw Ed25519 RFC 8032 s
 | 180–189 | Canary (equal `issued_at` conflict) |
 
 Future tranches will extend the corpus with additional cases: image hash mismatch, image content-type mismatch, oversized images, state-policy violations, anti-downgrade across origins, transaction state_updates rejection, chrome-separation requirements (out of pipeline scope), and JCS edge cases (Unicode property ordering, large but valid integer strings, etc.).
+
+Coverage relative to the §11 diagnostic code catalog is intentionally partial in this initial corpus. The categories above exercise representative codes per pipeline stage; future tranches will fill out the remaining codes.

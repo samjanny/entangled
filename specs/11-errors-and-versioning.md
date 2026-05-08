@@ -152,6 +152,7 @@ The structured diagnostic format for `E_PARSE_DUPLICATE_KEY` SHOULD include in `
 | `E_SCHEMA_FIELD_TYPE`          | error    | any           | A field has the wrong type                                                                                                                                |
 | `E_SCHEMA_FIELD_RANGE`         | error    | any           | A numeric field is outside its permitted range                                                                                                            |
 | `E_SCHEMA_FIELD_SYNTAX`        | error    | any           | A string field violates its declared syntax: slug rules, base64url format, RFC 3339 form, path syntax, or similar                                         |
+| `E_SCHEMA_ENUM_VIOLATION`      | error    | any           | A field whose value is required to be one of an enumerated set carries a syntactically valid value not in that set. For example, a block `kind` slug not in the enumerated block kinds (§03), an unknown state-policy `mode`, or an unknown transaction `feedback` `variant`. |
 | `E_SCHEMA_FIELD_LENGTH`        | error    | any           | A field exceeds its specific length limit                                                                                                                 |
 | `E_SCHEMA_NULL_VALUE`          | error    | any           | A `null` literal appears in the document; null values are not permitted                                                                                   |
 | `E_SCHEMA_NON_INTEGER`         | error    | any           | A numeric value is not a non-negative integer permitted by the schema                                                                                     |
@@ -163,7 +164,7 @@ The structured diagnostic format for `E_PARSE_DUPLICATE_KEY` SHOULD include in `
 | -------------------- | -------- | ------------- | ----------------------------------------------------------------------------- |
 | `E_SIG_VERIFICATION` | error    | any           | Ed25519 signature verification failed                                         |
 | `E_SIG_INVALID_KEY`  | error    | any           | The expected verification key for this document is not available              |
-| `E_SIG_MALFORMED`    | error    | any           | The `sig` field is not a valid 64-byte Ed25519 signature encoded as base64url |
+| `E_SIG_MALFORMED`    | error    | any           | The signature cannot be decoded to a 64-byte Ed25519 signature in a context where stage-5 wire-side field-syntax validation does not apply. When the `sig` field is received on the wire, length and base64url-alphabet violations are reported as `E_SCHEMA_FIELD_SYNTAX` at stage 5 per §04 and §10 first-failing-stage precedence. |
 
 For content and transaction documents, `E_SIG_INVALID_KEY` includes the case where no relevant verified manifest is available from which to obtain the authorized `runtime_pubkey`.
 
