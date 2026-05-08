@@ -47,6 +47,19 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.5
+
+Date: 2026-05-08
+
+Changes since v1.0-rc.4:
+
+- §04 — Added an explicit ABNF integer grammar (`integer = "0" / non-zero-digit *digit`) and a parser-level enforcement rule. Numeric tokens MUST be validated lexically before any conversion to a numeric type. JSON parsers that convert numeric tokens to IEEE 754 binary64 first are non-conforming for Entangled use because they cannot reliably distinguish `42` from `42.0` or `1e0`, lose precision above `2^53` (so `9007199254740993` becomes `9007199254740992`), and conflate `-0` with `+0`. Implementations MUST use a parser that either exposes raw numeric tokens for lexical inspection, or rejects non-integer tokens at parse time, or perform a separate raw-bytes validation pass. The integer's decimal value MUST be in `[0, 2^63 − 1]`.
+- §04 — Added a "Strict base64url decoding" section that pins decoder behavior for every base64url-encoded field in the protocol (`sig`, `publisher_pubkey`, `origin_pubkey`, `runtime_pubkey`, `expected_publisher_pubkey`, `request_id`, `image.sha256`, `transaction.request_hash`). The decoder MUST use only the URL-safe alphabet (`A-Z`, `a-z`, `0-9`, `-`, `_`), reject every character outside it including `+`, `/`, whitespace, line breaks, and non-ASCII characters, reject the padding character `=`, enforce the field-declared exact ASCII length, and reject non-canonical trailing-group encodings (the unused bits in the final encoded character MUST be zero). Permissive decoders that accept padded input, ignore whitespace, accept the standard `+`/`/` alphabet, or accept non-canonical trailing-group encodings are non-conforming.
+
+This rc tightens parsing strictness without changing the wire format, signature inputs, signature input construction, or the diagnostic code catalog. Documents that an rc.4 client accepted by virtue of a permissive JSON parser or base64 decoder may be rejected by an rc.5 client; conforming current parsers and decoders are unaffected.
+
+The wire-level `spec_version` remains `"1.0"`.
+
 ### v1.0-rc.4
 
 Date: 2026-05-08
