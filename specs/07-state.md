@@ -336,7 +336,7 @@ Consent presentation occurs in client-controlled UI, in the chrome region define
 
 ### Safe display of opaque state values
 
-State values are opaque byte strings; the client does not parse or interpret their contents (see "value" above). State values MAY contain control characters in the range U+0000 through U+001F or U+007F, line feeds, escape sequences, or any other byte sequence permitted by the wire schema.
+State values are opaque UTF-8 strings; the client does not parse or interpret their contents (see "value" above). State values MAY contain control characters in the range U+0000 through U+001F or U+007F, line feeds, escape sequences, or any other Unicode scalar values permitted by the wire schema. The wire form is JSON UTF-8 text; non-UTF-8 byte sequences are not transmissible.
 
 When presenting a value to the user during consent or in the chrome's state inspection surfaces, the client MUST NOT render the value as trusted text, markup, terminal control sequences, script, or executable content. The client MUST NOT pass the value to any rendering path that interprets in-band markup or interprets ANSI/VT or other terminal control sequences.
 
@@ -350,7 +350,7 @@ The client MUST display state values in a bounded, escaped, or otherwise neutral
 
 The choice among these representations is implementation-defined. The presentation MUST be visually distinguishable from publisher-supplied document content and MUST NOT be confused with chrome warnings, trust-state indicators, or canary status.
 
-This rule does not change the wire format. The value remains an opaque UTF-8 byte string of up to the smaller of the declared `max_size` and 4096 bytes. Control characters in the value remain permitted on the wire.
+This rule does not change the wire format. The value remains an opaque UTF-8 string whose UTF-8 encoding is at most the smaller of the declared `max_size` and 4096 bytes. Control characters in the value remain permitted on the wire.
 
 The visual treatment MUST clearly distinguish `client_only` and `request` mode. A user MUST be able to identify, before granting consent, whether the item will be transmitted in future submits.
 

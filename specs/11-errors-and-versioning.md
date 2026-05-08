@@ -105,6 +105,8 @@ The following catalog defines all diagnostic codes for Entangled v1.0. Codes are
 | `E_TRANSPORT_PAYLOAD_TOO_LARGE`  | error    | transaction   | HTTP 413 received in response to a submit                                          |
 | `E_TRANSPORT_UNAVAILABLE`        | error    | any           | HTTP 503 received or transport-level unreachability                                |
 | `E_TRANSPORT_BAD_REQUEST`        | error    | transaction   | HTTP 400 received in response to a submit                                          |
+| `E_TRANSPORT_CONTENT_ENCODING`   | error    | any           | Response carries a `Content-Encoding` header; encoded responses are not permitted (§09) |
+| `E_TRANSPORT_TRANSFER_ENCODING`  | error    | any           | Response carries a `Transfer-Encoding` header; transfer encodings, including chunked, are not permitted (§09) |
 
 When a `3xx` status code is received, `E_TRANSPORT_REDIRECT` takes precedence over `E_TRANSPORT_STATUS`. The client MUST NOT interpret the `Location` header and MUST NOT issue follow-up requests based on it.
 

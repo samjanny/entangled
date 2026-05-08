@@ -345,6 +345,42 @@ with no parameters.
 
 The publisher SHOULD reject submit requests with any other `Content-Type` as `400 Bad Request`.
 
+## Content-Encoding and Transfer-Encoding
+
+Entangled responses are transmitted as raw, unencoded body bytes whose length is declared by `Content-Length`. Encoding negotiation and chunked transfer are forbidden in both directions.
+
+### Content-Encoding
+
+Publishers MUST NOT use `Content-Encoding` on responses to manifest fetches, content fetches, transaction responses, or image resource fetches. The `Content-Encoding` header MUST NOT be present on any Entangled response.
+
+Clients MUST disable automatic HTTP-layer decompression in the underlying HTTP stack. A response carrying a `Content-Encoding` header is rejected with `E_TRANSPORT_CONTENT_ENCODING` (§11). The body is not parsed as an Entangled document and is not subject to image-hash verification.
+
+Clients MUST NOT send `Content-Encoding` on submit `POST` requests. The submit body is transmitted unencoded with the byte length declared in `Content-Length`. Publishers MUST reject submit requests carrying a `Content-Encoding` header as `400 Bad Request` and MUST NOT attempt to decode the body.
+
+Since clients are forbidden from sending `Accept-Encoding` (see "Request headers" above), publishers receive no signal indicating client decoding capability and have no protocol-level reason to apply content encoding. The `Content-Encoding` rule eliminates the residual ambiguity created by transport stacks that compress responses by default.
+
+### Transfer-Encoding
+
+Publishers MUST NOT use `Transfer-Encoding` on any Entangled response. In particular, `Transfer-Encoding: chunked` is forbidden. The response body MUST be transmitted in full with a `Content-Length` header declaring the exact byte length.
+
+A response carrying a `Transfer-Encoding` header is rejected with `E_TRANSPORT_TRANSFER_ENCODING` (§11). The body is not parsed.
+
+Clients MUST NOT send `Transfer-Encoding` on submit `POST` requests. Publishers MUST reject submit requests carrying a `Transfer-Encoding` header as `400 Bad Request`.
+
+### Rationale
+
+These restrictions ensure that:
+
+- the byte cap (§02, §06, §10) is applied uniformly to the same byte sequence in every conforming implementation, with no ambiguity about whether the cap precedes or follows decompression;
+- the SHA-256 digest of an image resource (§03) is computed over a single, well-defined byte sequence;
+- `Content-Length` consistency checks (`E_TRANSPORT_CONTENT_LENGTH`) compare the declared length against the same bytes the application sees;
+- HTTP-stack-level differences in default decompression and chunking behavior do not produce divergent validation outcomes between client implementations;
+- the overall transport profile remains a fixed-shape exchange suitable for the protocol's strict header discipline.
+
+### Implementation note
+
+Implementations MUST use an HTTP stack that allows automatic decompression and any default `Accept-Encoding`, `Connection`, `User-Agent`, or other headers to be disabled, as required by this section and "Request headers" above. A stack whose defaults cannot be turned off is unsuitable for a conforming Entangled client.
+
 ## Status codes
 
 Entangled defines a closed whitelist of HTTP status codes. Each has defined semantics. Status codes outside this whitelist are treated as generic transport or protocol errors.

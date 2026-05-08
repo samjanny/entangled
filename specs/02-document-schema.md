@@ -243,7 +243,7 @@ The format is byte-for-byte identical to the format used for `image.sha256` in Â
 
 The total string length is exactly 51 ASCII characters (8 prefix + 43 digest).
 
-The publisher computes `request_hash` over the exact submit body bytes received, after JCS-canonicalization of the submit body object:
+The publisher computes `request_hash` by JCS-canonicalizing the parsed submit body object and applying SHA-256 to the canonical bytes. The hash is not computed over the wire bytes received from the client. Insignificant JSON whitespace and member ordering in the submitted wire body do not affect `request_hash`:
 
 ```text
 submit_body_canonical = JCS(submit_body_object)

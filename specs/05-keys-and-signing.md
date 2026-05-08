@@ -138,6 +138,54 @@ For other carrier profiles, the binding rule is profile-specific. Entangled v1 f
 
 A v1.0 conforming implementation MUST NOT validate manifests with carrier values other than `tor-v3`. This aligns with the strict `origin.carrier` rule in §06. Future protocol versions may define additional carrier bindings; such bindings are part of those future versions, not of v1.0.
 
+## Ed25519 verification profile
+
+Implementations MUST verify Ed25519 signatures using the strict validation profile defined in this section. The profile pins which signatures are accepted, eliminating cross-implementation divergence between cofactored and cofactorless verification, between strict and permissive small-order checks, and between canonical and non-canonical encodings.
+
+The strict profile is RFC 8032 Ed25519 plus the additional rejections defined here. A signature accepted by RFC 8032 alone but rejected under this profile is non-conformant for Entangled v1.0.
+
+### Public key (`A`) validation
+
+A public key encoded as a 32-byte octet string is valid only if all of the following hold:
+
+- the encoding is exactly 32 bytes;
+- the encoding decodes to a point on the Ed25519 curve under the canonical compressed encoding. Non-canonical encodings are rejected;
+- the decoded point is not a small-order point. A point of order dividing 8 (the cofactor) is rejected.
+
+A public key failing any of these checks causes the document being verified under that key to be rejected as a signature failure, reported as `E_SIG_VERIFICATION` (§11) with diagnostic details indicating the public-key rejection.
+
+This rule applies to `K_publisher.pub` and `K_runtime.pub`. It also applies to `K_origin.pub` for carrier profiles whose endpoint key is Ed25519, including Tor v3.
+
+### Signature (`R || S`) validation
+
+A signature is a 64-byte octet string parsed as `R` (32 bytes) followed by `S` (32 bytes). The wire encoding is base64url over the 64-byte octet string, as specified for the `sig` field in §02.
+
+A signature is valid only if all of the following hold:
+
+- the base64url-decoded encoding is exactly 64 bytes;
+- `R` decodes to a point on the Ed25519 curve under the canonical compressed encoding. Non-canonical encodings of `R` are rejected;
+- `S`, interpreted as a little-endian unsigned integer, satisfies `0 ≤ S < L`, where `L = 2^252 + 27742317777372353535851937790883648493` is the order of the Ed25519 base point. A non-canonical `S` (`S ≥ L`) is rejected;
+- the cofactorless verification equation holds: `[S]B = R + [k]A`, where `B` is the Ed25519 base point, `A` is the validated verification public key, `k = SHA-512(R || A || M) mod L`, and `M` is the signature input constructed as defined in "Signature inputs" below.
+
+A signature whose base64url-decoded length is not exactly 64 bytes is rejected with `E_SIG_MALFORMED` (§11). A signature failing any cryptographic check is rejected with `E_SIG_VERIFICATION` (§11).
+
+### Library guidance
+
+The strict profile corresponds to the verification mode named `verify_strict` in `ed25519-dalek` (Rust). Implementations MUST select the strict mode where their library distinguishes strict from cofactored or "permissive" verification. Implementations MUST NOT use cofactored verification (`[8S]B = [8]R + [8][k]A`) for Entangled signature checks.
+
+Where a library does not expose a strict mode separately, the implementation MUST add the rejections defined above on top of the library's default verification path: validate the public key against the small-order rejection, check `S < L`, and reject non-canonical encodings of `R` and `A` before invoking verification.
+
+### Compatibility note
+
+The strict profile is incompatible with older Ed25519 verification implementations that:
+
+- accept non-canonical `S` (`S ≥ L`);
+- accept non-canonical encodings of `R` or `A`;
+- accept small-order public keys without rejection;
+- use the cofactored verification equation.
+
+Publishers MUST sign with implementations that produce signatures acceptable under this profile. All current well-maintained Ed25519 signing libraries produce canonical signatures by default; the constraint affects verifiers more than signers.
+
 ## Signature inputs
 
 Every independently signed object in Entangled has a precise signature input.
