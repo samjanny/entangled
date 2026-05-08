@@ -110,7 +110,8 @@ The value MUST:
 * contain only ASCII characters in the range `[A-Za-z0-9._~/-]`;
 * not contain consecutive `/` characters;
 * not contain `.` or `..` path segments;
-* not contain a query string, fragment, scheme, or host.
+* not contain a query string, fragment, scheme, or host;
+* not equal `/manifest.json`, which is reserved for manifest fetches (§09).
 
 The value MUST NOT exceed 256 ASCII characters.
 
@@ -212,6 +213,7 @@ The value MUST satisfy the same path syntax as `path` in content documents:
 * not contain consecutive `/` characters;
 * not contain `.` or `..` path segments;
 * not contain a query string, fragment, scheme, or host;
+* not equal `/manifest.json`, which is reserved for manifest fetches (§09);
 * not exceed 256 ASCII characters.
 
 The `in_response_to` field is part of the signed payload. The client MUST compare it against the path to which the submit was sent. A transaction document whose `in_response_to` does not equal the path of the originating submit is rejected.
@@ -256,6 +258,8 @@ The client MUST verify, on receiving a transaction document:
 * `transaction.request_hash` equals the locally computed hash of the submit body the client sent.
 
 A mismatch on either field rejects the transaction. This binding prevents replay of a transaction signed in response to one submit body as the response to a different submit to the same path.
+
+`request_id` and `request_hash` bind the signed transaction response to the submit body observed by the client. They do not provide general anti-replay against a malicious or compromised publisher backend, which may still receive, store, or reuse submit bodies and sign transaction responses for any submit body it accepts. The protocol's guarantee is that the transaction the client sees is authentically the response to the submit the client sent; it is not a guarantee about the publisher's internal handling of submit data.
 
 ### `state_updates`
 

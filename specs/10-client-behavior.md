@@ -351,6 +351,18 @@ The client MAY bound this list to a reasonable cap. When the cap is reached, the
 
 Evicting old authorization history may make some historical content unverifiable by that client.
 
+## Verification key trial order
+
+A historical content document is signed by a `K_runtime.pub` other than the one currently authorized by the manifest in effect for the publisher. The client verifies the document signature against retained runtime keys in its authorization history for the same `K_publisher.pub`.
+
+The order in which retained `K_runtime.pub` entries are tried is implementation-defined. The recommended order is reverse chronological by the entry's first-observed `issued_at`, since most historical-content reads are for recently superseded runtimes.
+
+The first retained `K_runtime.pub` under which the document signature verifies is the authorizing runtime key for the document. The corresponding authorization-history entry determines the `issued_at` displayed in the historical-content chrome marker.
+
+If no retained runtime key verifies the document, the document is rejected with `E_HISTORICAL_NO_AUTHORIZATION` (§11).
+
+If signature verification succeeds under more than one distinct retained `K_runtime.pub` for the same document — an outcome whose probability under Ed25519 is approximately `2^-256` and which therefore indicates a cryptographic anomaly, an implementation bug, or corruption in the authorization-history store — the client MUST reject the document and surface a client-implementation diagnostic. The document is not rendered. Entangled v1 does not assign a normative error code to this case; clients SHOULD log the condition for offline analysis.
+
 ## Historical content marker
 
 When historical content is rendered, the client MUST display a clear marker in chrome indicating that the content is historical.

@@ -196,7 +196,7 @@ A publisher MUST NOT issue two distinct manifests with the same `canary.issued_a
 
 A client that has already accepted a manifest with `canary.issued_at = T` for `K_publisher.pub = P`, and later observes a different manifest from any origin with `canary.issued_at = T` for the same `P`, MUST reject the later manifest and report the conflict. The reported diagnostic is `E_CANARY_CONFLICT` (§11).
 
-This rule does not affect refetching the same manifest. A subsequent fetch returning a byte-for-byte equivalent manifest (same JCS-canonical payload and same signature) is not a conflict.
+This rule does not affect refetching the same manifest. A subsequent fetch returning a manifest with the same JCS-canonical signed payload as the previously verified one is not a conflict, regardless of wire-level JSON formatting differences that JCS normalizes away. Ed25519 signing under the same private key over identical signature inputs is deterministic (RFC 8032), so a same-payload refetch necessarily carries an identical `sig`; the protocol-level criterion is the JCS-canonical signed payload, not the wire bytes or the `sig` value.
 
 `E_CANARY_DOWNGRADE` and `E_CANARY_CONFLICT` are mutually exclusive. The former applies when a fetched manifest has a strictly older `canary.issued_at` than the newest verified one for the same `K_publisher.pub`. The latter applies when the `issued_at` is equal but the signed payload differs. The strictly-greater case is acceptance: the fetched manifest becomes the new newest verified record for the publisher.
 

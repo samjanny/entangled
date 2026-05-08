@@ -363,6 +363,7 @@ The image bytes are not embedded in the document. They are fetched separately fr
 * does not contain consecutive `/` characters;
 * does not contain `.` or `..` path segments;
 * does not contain a query string, fragment, scheme, or host;
+* does not equal `/manifest.json`, which is reserved for manifest fetches (§09);
 * does not exceed 256 ASCII characters.
 
 `sha256` is the SHA-256 digest of the exact response body bytes of the image resource, encoded as a string of the form:
@@ -407,14 +408,17 @@ The client MUST verify the SHA-256 digest of the exact image response body bytes
 The verification order is:
 
 1. verify the containing Entangled document;
-2. fetch the image from `src` using the image resource fetch rules in §09;
-3. enforce image response size limits;
-4. compute SHA-256 over the exact response body bytes;
-5. compare the digest to the block's `sha256` field;
-6. decode the image only if the digest matches;
-7. render the image only if the decoded media type and dimensions satisfy the declared fields and protocol limits.
+2. fetch the image from `src` using the image resource fetch rules in §09. Transport failure is `W_IMAGE_FETCH_FAILED` (§11);
+3. compare the response `Content-Type` against the declared `media_type`. Mismatch, including a Content-Type matching one of the reserved Entangled Content-Types defined in §09, is `W_IMAGE_CONTENT_TYPE`;
+4. enforce the 2 MiB image response body cap before any decoding. Over-cap is `W_IMAGE_OVERSIZE`;
+5. compute SHA-256 over the exact response body bytes and compare to the block's `sha256` field. Mismatch is `W_IMAGE_HASH_MISMATCH`;
+6. decode the image bytes using a decoder for the declared `media_type`. The declared `media_type` is authoritative for decoder selection; the response `Content-Type` is checked for header consistency in step 3 but is not itself the format identifier. Decode failure, including a body whose bytes are valid for a different format than the declared `media_type`, is `W_IMAGE_DECODE_FAILED`;
+7. for `media_type` `image/webp`, determine whether the resource is animated; an animated WebP is `W_IMAGE_DECODE_FAILED` (see "SVG and animated formats are forbidden" below);
+8. compare the decoded image dimensions against the declared `width` and `height`. Mismatch is `W_IMAGE_DIMENSIONS`;
+9. apply the document's 16-megapixel decoded pixel budget (defined under "Limits" below). Over-budget is `W_IMAGE_BUDGET`;
+10. render the image.
 
-A hash mismatch causes the image to be rejected and rendered as missing or unavailable. A hash mismatch does not by itself invalidate the containing document.
+Failure at any step from 2 to 9 rejects the image resource; the image is rendered as missing or unavailable, and the corresponding diagnostic is reported. None of these failures invalidate the containing `content` or `transaction` document.
 
 ### Inline image data is forbidden
 
@@ -441,6 +445,8 @@ The only permitted image media types are:
 * `image/webp`
 
 If a WebP file contains animation, the client MUST reject it.
+
+A client MUST determine whether a WebP resource contains animation before rendering, by inspecting the RIFF container's chunk structure or by querying its decoding library for an animation flag. An implementation whose WebP library cannot expose this property reliably MUST reject all WebP resources, or MUST disable WebP support in the client. A WebP file determined to be animated is reported as `W_IMAGE_DECODE_FAILED` (§11). Silently rendering only the first frame of an animated WebP is non-conformant.
 
 ### Limits
 
