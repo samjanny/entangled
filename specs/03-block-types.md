@@ -448,6 +448,14 @@ If a WebP file contains animation, the client MUST reject it.
 
 A client MUST determine whether a WebP resource contains animation before rendering, by inspecting the RIFF container's chunk structure or by querying its decoding library for an animation flag. An implementation whose WebP library cannot expose this property reliably MUST reject all WebP resources, or MUST disable WebP support in the client. A WebP file determined to be animated is reported as `W_IMAGE_DECODE_FAILED` (§11). Silently rendering only the first frame of an animated WebP is non-conformant.
 
+### Decoder safety
+
+SHA-256 hash verification authenticates the bytes of an image resource against the signed document; it does not make image decoding safe. A document signed by an authorized `K_runtime` may reference an image whose bytes are intentionally crafted to exploit bugs in the decoder. The publisher may be malicious or compromised even when its operational keys are not.
+
+Implementations SHOULD use memory-safe image decoders, hardened parsers, sandboxed decoder processes, or other isolation mechanisms appropriate to the deployment environment. The choice among these mitigations is implementation-defined; the protocol does not mandate any specific decoder or sandboxing technology.
+
+The protocol-level rejections in this section — the media-type allowlist, the SVG and animated-format prohibitions, hash verification, dimension limits, and the document-wide pixel budget — are necessary but not sufficient to make decoding fully safe. They reduce the attack surface; they do not eliminate it.
+
 ### Limits
 
 A `content` or `transaction` document MUST NOT contain more than 16 `image` blocks.

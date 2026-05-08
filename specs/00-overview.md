@@ -141,6 +141,26 @@ The latter point is worth stating explicitly. Entangled's security properties de
 
 The operator playbook describes recommended practices for `K_publisher` custody. Those practices are operational and outside the protocol's normative scope.
 
+## v1.0 limitations
+
+Beyond the high-level non-goals above, Entangled v1.0 has specific limitations that affect what guarantees the protocol can offer in particular threat scenarios. They are listed here so that integrators do not overclaim protection in user-facing material. Each limitation references the section that specifies the underlying rule.
+
+- **No in-band revocation.** Entangled v1 has no protocol-level revocation list for compromised `K_runtime` keys. Forgery exposure for a compromised `K_runtime` is bounded by the publisher's rotation cadence only after the publisher deploys a fresh manifest authorizing a new runtime key (§05, §08).
+
+- **Canary expiration is not cryptographic revocation.** An expired canary is a UX warning state. It does not invalidate `K_runtime` mathematically; documents signed by the runtime key the manifest still authorizes continue to verify cryptographically. Users who require strict freshness can enable expired-canary-block mode (§08, §10).
+
+- **No general anti-replay against malicious backends.** The `request_id` and `request_hash` fields bind the signed transaction response to the submit body the client sent. They do not prevent a compromised or malicious publisher backend from receiving, storing, or reusing submit bodies it has accepted (§02).
+
+- **No historical content bootstrap for new clients.** A client that has never observed a runtime key cannot verify content signed under that key. Entangled v1 does not provide server-supplied historical manifest discovery; historical authorization is based on publisher history the client has previously verified (§10).
+
+- **No in-band origin migration discovery.** If a publisher migrates to a new origin, Entangled v1 preserves identity continuity once the client reaches the new origin and verifies the same `K_publisher.pub`, but does not provide an authenticated, in-band discovery mechanism for the new origin from the old. Discovery is out-of-band or through signed content while the old origin remains available (§10).
+
+- **No protection from a malicious publisher.** Entangled protects readers from server compromise and from the client-side attack surface. It does not protect them from a publisher who legitimately controls `K_publisher` and uses that control to publish deceptive content, request misleading state, or link to harmful resources.
+
+- **Image decoding is a residual attack surface.** SHA-256 verification authenticates the bytes of an image resource against the signed document; it does not make image decoding safe. A publisher with a valid `K_runtime` can sign a document referencing an image whose bytes are intentionally crafted to exploit decoder bugs (§03).
+
+These limitations are implementation-relevant: a v1.0 client and publisher SHOULD align user-facing security claims with what the protocol actually enforces.
+
 ## Structure of this specification
 
 The remaining sections cover, in order:

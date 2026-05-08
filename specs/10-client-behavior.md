@@ -237,7 +237,7 @@ The client MUST display the First contact state in chrome and MUST display the P
 
 ### First contact → TOFU pinned
 
-The client transitions from First contact to TOFU pinned when the first-contact observation is retained for future visits. This MAY occur after the user continues navigation, dismisses the first-contact notice, or completes the first successful interaction with the site.
+The client SHOULD transition from First contact to TOFU pinned after the user explicitly chooses to continue to the site or after the first successful render of content from the site. The transition MAY also occur in response to other events such as dismissal of the first-contact notice. A client SHOULD document, in user-accessible form, the trigger it uses.
 
 The transition MUST be visible to the user. The client MUST notify the user that the publisher identity has been retained for future mismatch detection.
 
@@ -528,6 +528,8 @@ It does not apply to:
 * `canary.next_expected`, which is a future commitment by definition.
 
 The 300-second tolerance is normative. A client using a different value is non-conformant.
+
+When rejecting a timestamp because it exceeds the clock-skew tolerance, the client SHOULD indicate to the user that the local clock may be incorrect, since clock-skew failures are a likely cause of false positives on devices with unsynchronized clocks. The protocol-level diagnostic remains the one specified for the failing field (`E_CANARY_INVALID` for canary `issued_at`, `E_SCHEMA_FIELD_SYNTAX` for `manifest.updated`); the local-clock advisory is a user-presentation hint, not a separate diagnostic code.
 
 ## Editorial published_at display
 

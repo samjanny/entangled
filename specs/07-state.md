@@ -354,7 +354,7 @@ This rule does not change the wire format. The value remains an opaque UTF-8 str
 
 The visual treatment MUST clearly distinguish `client_only` and `request` mode. A user MUST be able to identify, before granting consent, whether the item will be transmitted in future submits.
 
-For request-state items, the client MUST explain that the item will be included in future submit requests to the same publisher until it expires, is deleted, or consent is revoked.
+For request-state items, the client MUST explain that the item will be included in future submit requests to the same publisher — across every submit endpoint under that publisher's identity, not only the current form or endpoint — until it expires, is deleted, or consent is revoked. Request-state scope in Entangled v1 is publisher-wide; endpoint-scoped request state is not part of v1.
 
 If the user rejects a set operation, the client MUST NOT commit it.
 
