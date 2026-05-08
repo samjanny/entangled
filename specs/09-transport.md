@@ -102,11 +102,11 @@ The submit body is a JSON object as defined below.
 
 The publisher responds with `200 OK` and a transaction document as the response body, or with an error status as defined below.
 
-The transaction document's `in_response_to` field MUST equal the submit path, byte-exact, as defined in §02. The client rejects a transaction whose `in_response_to` does not match.
+The transaction document's `in_response_to` field MUST equal the submit path, byte-exact, as defined in §02. The transaction document's `request_id` MUST equal the `request_id` of the submit body, and its `request_hash` MUST equal the SHA-256 digest of the JCS-canonical submit body, both as defined in §02. The client rejects a transaction whose `in_response_to`, `request_id`, or `request_hash` does not match.
 
 ### Submit body schema
 
-The submit body is a flat JSON object with exactly two top-level fields:
+The submit body is a flat JSON object with exactly three top-level fields:
 
 ```json
 {
@@ -120,15 +120,24 @@ The submit body is a flat JSON object with exactly two top-level fields:
       "key": "auth",
       "value": "..."
     }
-  ]
+  ],
+  "request_id": "AAECAwQFBgcICQoLDA0ODw"
 }
 ```
 
-Both fields are required. No additional top-level fields are permitted.
+All three fields are required. No additional top-level fields are permitted.
 
 The submit body is unsigned. It is user input transmitted under carrier-provided confidentiality. The client does not sign submit requests in Entangled v1.
 
 Because submit bodies are unsigned user input, publishers MUST treat all submit fields and request-state values as untrusted input.
+
+#### `request_id`
+
+`request_id` is a base64url string encoding 16 random bytes (128 bits) with no padding (22 ASCII characters).
+
+The client MUST generate `request_id` using a cryptographically secure random source. Each submit MUST have a freshly generated `request_id`; the client MUST NOT reuse `request_id` values across submits.
+
+`request_id` is in the unsigned submit body. It is not signed by the client (the client signs nothing in v1). The publisher echoes it in the corresponding transaction document, as defined in §02, where it is signed under `K_runtime` together with the `request_hash` that binds the transaction to the specific submit body bytes.
 
 #### `fields`
 

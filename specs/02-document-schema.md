@@ -191,13 +191,15 @@ A transaction document is not addressable by a path. It is generated in response
   "spec_version": "1.0",
   "kind": "transaction",
   "in_response_to": "/contact",
+  "request_id": "AAECAwQFBgcICQoLDA0ODw",
+  "request_hash": "sha-256:47DEQpj8HBSa-_TImW-5JCeuQeRkm5NMpJWZG3hSuFU",
   "state_updates": [],
   "blocks": [ ],
   "sig": "..."
 }
 ```
 
-All six fields are required. No other top-level fields are permitted.
+All eight fields are required. No other top-level fields are permitted.
 
 ### `in_response_to`
 
@@ -217,6 +219,38 @@ The `in_response_to` field is part of the signed payload. The client MUST compar
 The comparison is byte-exact, with the same disciplines as `path` comparison: no normalization, case-folding, percent-decoding, dot-segment resolution, or slash collapsing.
 
 This binding prevents an attacker controlling the server from substituting a transaction signed for one submit endpoint as the response to a different submit endpoint.
+
+### `request_id`
+
+`request_id` is a base64url string of 22 ASCII characters representing the 16 random bytes the client included in the submit body, with no padding.
+
+The publisher copies `request_id` byte-for-byte from the submit body into the transaction response. The transaction's `request_id` MUST equal the submit's `request_id`. The client rejects a transaction whose `request_id` does not match the value it generated for the originating submit.
+
+The submit-body generation rules for `request_id`, including the cryptographic-randomness and no-reuse requirements, are defined in §09.
+
+### `request_hash`
+
+`request_hash` is a string of the form:
+
+```text
+sha-256:<base64url>
+```
+
+where `<base64url>` is the base64url-encoded SHA-256 digest of the JCS-canonical form of the submit body, with no padding (43 ASCII characters in the digest). The literal prefix `sha-256:` is required, matching the format used for image hash binding in §03.
+
+The publisher computes `request_hash` over the exact submit body bytes received, after JCS-canonicalization of the submit body object:
+
+```text
+submit_body_canonical = JCS(submit_body_object)
+request_hash_value    = "sha-256:" || base64url(SHA-256(submit_body_canonical))
+```
+
+The client MUST verify, on receiving a transaction document:
+
+* `transaction.request_id` equals the `request_id` the client placed in the originating submit body;
+* `transaction.request_hash` equals the locally computed hash of the submit body the client sent.
+
+A mismatch on either field rejects the transaction. This binding prevents replay of a transaction signed in response to one submit body as the response to a different submit to the same path.
 
 ### `state_updates`
 

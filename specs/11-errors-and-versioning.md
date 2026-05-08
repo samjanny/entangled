@@ -118,13 +118,19 @@ When a `3xx` status code is received, `E_TRANSPORT_REDIRECT` takes precedence ov
 
 ## Parsing diagnostics (Stage 3)
 
-| Code                    | Severity | Document kind | Meaning                          |
-| ----------------------- | -------- | ------------- | -------------------------------- |
-| `E_PARSE_JSON`          | error    | any           | Body is not parseable as JSON    |
-| `E_PARSE_NESTING_DEPTH` | error    | any           | JSON nesting depth exceeds 16    |
-| `E_PARSE_STRING_LENGTH` | error    | any           | A string exceeds 100 KiB         |
-| `E_PARSE_ARRAY_LENGTH`  | error    | any           | An array exceeds 10000 elements  |
-| `E_PARSE_OBJECT_KEYS`   | error    | any           | An object has more than 256 keys |
+| Code                    | Severity | Document kind | Meaning                                                   |
+| ----------------------- | -------- | ------------- | --------------------------------------------------------- |
+| `E_PARSE_JSON`          | error    | any           | Body is not parseable as JSON                             |
+| `E_PARSE_NESTING_DEPTH` | error    | any           | JSON nesting depth exceeds 16                             |
+| `E_PARSE_STRING_LENGTH` | error    | any           | A string exceeds 100 KiB                                  |
+| `E_PARSE_ARRAY_LENGTH`  | error    | any           | An array exceeds 10000 elements                           |
+| `E_PARSE_OBJECT_KEYS`   | error    | any           | An object has more than 256 keys                          |
+| `E_PARSE_DUPLICATE_KEY` | error    | any           | An object in the document contains duplicate member names |
+
+The structured diagnostic format for `E_PARSE_DUPLICATE_KEY` SHOULD include in `details`:
+
+* `duplicate_key`: the duplicated member name;
+* `object_path`: a JSON pointer or dot-path identifying the object containing the duplicate.
 
 ## Document kind diagnostics (Stage 4)
 
@@ -171,22 +177,36 @@ For content and transaction documents, `E_SIG_INVALID_KEY` includes the case whe
 
 ## Canary diagnostics (Stage 8)
 
-| Code                       | Severity | Document kind | Meaning                                                                                                                              |
-| -------------------------- | -------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `E_CANARY_INVALID`         | error    | manifest      | The canary structure fails validation: malformed fields, interval bounds violated, `issued_at` implausibly in the future, or similar |
-| `E_CANARY_DOWNGRADE`       | error    | manifest      | Anti-downgrade failure: canary `issued_at` is older than the newest verified `issued_at` for the same `K_publisher.pub`              |
-| `W_CANARY_NEAR_EXPIRATION` | warning  | manifest      | The canary is approaching `next_expected`                                                                                            |
-| `W_CANARY_EXPIRED`         | warning  | manifest      | The canary has passed `next_expected`                                                                                                |
-| `W_CANARY_GAP`             | warning  | manifest      | A canary gap was previously observed and has not been dismissed by the user                                                          |
-| `W_CANARY_UNAVAILABLE`     | warning  | manifest      | The current canary state could not be determined; cached content may be available                                                    |
+| Code                       | Severity | Document kind | Meaning                                                                                                                                                |
+| -------------------------- | -------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `E_CANARY_INVALID`         | error    | manifest      | The canary structure fails validation: malformed fields, interval bounds violated, `issued_at` implausibly in the future, or similar                   |
+| `E_CANARY_DOWNGRADE`       | error    | manifest      | Anti-downgrade failure: canary `issued_at` is older than the newest verified `issued_at` for the same `K_publisher.pub`                                |
+| `E_CANARY_CONFLICT`        | error    | manifest      | A manifest with the same canary `issued_at` as a previously verified manifest for the same `K_publisher.pub` presents a different signed payload       |
+| `W_CANARY_NEAR_EXPIRATION` | warning  | manifest      | The canary is approaching `next_expected`                                                                                                              |
+| `W_CANARY_EXPIRED`         | warning  | manifest      | The canary has passed `next_expected`                                                                                                                  |
+| `W_CANARY_GAP`             | warning  | manifest      | A canary gap was previously observed and has not been dismissed by the user                                                                            |
+| `W_CANARY_UNAVAILABLE`     | warning  | manifest      | The current canary state could not be determined; cached content may be available                                                                      |
+
+The structured diagnostic format for `E_CANARY_CONFLICT` SHOULD include in `details`:
+
+* `issued_at`: the conflicting timestamp;
+* `retained_runtime_pubkey`: the `runtime_pubkey` from the previously verified manifest;
+* `presented_runtime_pubkey`: the `runtime_pubkey` from the current manifest.
 
 ## Binding diagnostics (Stage 9)
 
-| Code                   | Severity | Document kind | Meaning                                                                                                                            |
-| ---------------------- | -------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `E_BIND_PATH`          | error    | content       | The `path` field of the content document does not match the path from which it was fetched                                         |
-| `E_BIND_RESPONSE_PATH` | error    | transaction   | The `in_response_to` field of the transaction document does not match the submit path                                              |
-| `E_BIND_ORIGIN`        | error    | manifest      | The carrier origin from which the manifest was fetched does not match `origin`, including Tor v3 address-to-key derivation failure |
+| Code                   | Severity | Document kind | Meaning                                                                                                                                                  |
+| ---------------------- | -------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `E_BIND_PATH`          | error    | content       | The `path` field of the content document does not match the path from which it was fetched                                                               |
+| `E_BIND_RESPONSE_PATH` | error    | transaction   | The `in_response_to` field of the transaction document does not match the submit path                                                                    |
+| `E_BIND_REQUEST_ID`    | error    | transaction   | The `request_id` field of the transaction document does not match the `request_id` the client included in the submit body                                |
+| `E_BIND_REQUEST_HASH`  | error    | transaction   | The `request_hash` field of the transaction document does not match the locally computed JCS-hash of the submit body the client sent                     |
+| `E_BIND_ORIGIN`        | error    | manifest      | The carrier origin from which the manifest was fetched does not match `origin`, including Tor v3 address-to-key derivation failure                       |
+
+The structured diagnostic format for `E_BIND_REQUEST_ID` and `E_BIND_REQUEST_HASH` SHOULD include in `details`:
+
+* `expected`: the value the client computed (the `request_id` generated for the submit, or the SHA-256 hash of the JCS-canonical submit body);
+* `received`: the value the publisher returned in the corresponding transaction field.
 
 ## State diagnostics
 

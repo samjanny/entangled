@@ -188,6 +188,14 @@ The client MAY use older manifests to verify historical content, subject to the 
 
 The publisher history records defined in §06 are the storage from which anti-downgrade decisions are made.
 
+### Equal issued_at conflict
+
+A publisher MUST NOT issue two distinct manifests with the same `canary.issued_at` for the same `K_publisher.pub`. Distinct here means any difference in the JCS-canonicalized manifest payload (excluding the `sig` field).
+
+A client that has already accepted a manifest with `canary.issued_at = T` for `K_publisher.pub = P`, and later observes a different manifest from any origin with `canary.issued_at = T` for the same `P`, MUST reject the later manifest and report the conflict. The reported diagnostic is `E_CANARY_CONFLICT` (§11).
+
+This rule does not affect refetching the same manifest. A subsequent fetch returning a byte-for-byte equivalent manifest (same JCS-canonical payload and same signature) is not a conflict.
+
 ## Canary lifecycle
 
 The publisher refreshes the canary by performing a publisher ceremony:

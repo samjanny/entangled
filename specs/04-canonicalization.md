@@ -62,6 +62,14 @@ A document containing a non-integer numeric value at any position is rejected.
 
 JCS specifies deterministic serialization for numbers based on ECMAScript rules. That serialization is well-defined but is not exercised for floating-point values by Entangled, because Entangled documents never contain floating-point values in conforming form.
 
+## No duplicate member names
+
+Every JSON object in an Entangled document, including nested objects, MUST have unique member names. A document containing duplicate member names at any object level MUST be rejected during JSON parsing, before schema validation and before canonicalization.
+
+This rule applies uniformly to manifest, content, and transaction documents, and to submit bodies.
+
+Implementations MUST configure their JSON parser to detect and reject duplicate member names, rather than silently accepting first-wins or last-wins semantics. Different parser defaults (first-wins, last-wins, merge, error) would otherwise produce divergent validation outcomes across implementations.
+
 ## Strict UTF-8 input
 
 All Entangled documents on the wire are UTF-8 byte sequences.

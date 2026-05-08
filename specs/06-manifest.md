@@ -397,6 +397,8 @@ A client MUST NOT accept a manifest as current if it has a canary `issued_at` st
 
 This prevents an attacker controlling an old carrier endpoint from presenting an earlier manifest as current after the client has already observed a newer manifest for the same publisher identity.
 
+Publisher history also detects equal-`issued_at` conflicts: a manifest with the same canary `issued_at` as a previously verified manifest for the same `K_publisher.pub` but with a different signed payload triggers `E_CANARY_CONFLICT` (see §08 and §11).
+
 ### Historical manifests
 
 A manifest that is older than the newest verified manifest for the same `K_publisher.pub` is not current.

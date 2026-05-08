@@ -50,6 +50,7 @@ Stage 3.  JSON parsing
               - string length: max 100 KiB
               - array length: max 10000
               - object keys: max 256 per object
+            - duplicate object member names: rejected
 
 Stage 4.  Document kind discrimination
             - presence and primitive type of `spec_version`, `kind`, and `sig`
@@ -82,7 +83,11 @@ Stage 8.  Canary and anti-downgrade resolution
 Stage 9.  Path and origin binding
             - for manifest: carrier origin binding, such as Tor v3 address derivation
             - for content: byte-exact comparison of `path` field against fetched path
-            - for transaction: byte-exact comparison of `in_response_to` against submit path
+            - for transaction:
+              - byte-exact comparison of `in_response_to` against submit path
+              - byte-exact comparison of `request_id` against the request_id sent
+              - byte-exact comparison of `request_hash` against the locally
+                computed JCS-hash of the submit body sent
 
 Stage 10. Render or report
             - if all required stages pass, the document is rendered or processed
@@ -136,6 +141,21 @@ For manifest documents, the manifest-specific identity pre-check above has alrea
 **Stage 9: path and origin binding** prevents path-substitution and origin-substitution attacks.
 
 **Stage 10: render or report** is where the client either commits the document to rendering/processing or surfaces an error to the user.
+
+## Persistence ordering
+
+A client MUST NOT persist any of the following until all applicable manifest validation stages have succeeded, including Stage 9 origin binding:
+
+* publisher identity observations (first-contact records or new pins);
+* TOFU pin transitions;
+* canary acceptance into history;
+* runtime authorization history entries;
+* state policy acceptance;
+* manifest cache entries.
+
+In particular, a manifest whose signature verifies (Stage 6) but whose origin binding fails (Stage 9) MUST NOT cause any persistent record to be created or updated. The manifest is rejected as if no information had been observed.
+
+This ordering rule applies uniformly to first-contact, TOFU-pinned, externally-verified, and changed/mismatch trust states.
 
 ## Trust state machine
 
@@ -205,9 +225,11 @@ Even if the new manifest's signature verifies under the newly presented key, it 
 
 ### No record → First contact
 
-When the client verifies a manifest for a site for which it has no previous retained publisher identity, the trust state is First contact.
+When the client completes all applicable validation pipeline stages for a manifest from a site for which it has no previous retained publisher identity, the trust state is First contact. The client creates an observation record for the presented `K_publisher.pub` only after Stage 9 origin binding has succeeded.
 
-The client creates an observation record for the presented `K_publisher.pub`. This record is not yet an external verification. It is a retained observation used to detect later changes.
+Failed manifests do not create observation records. See "Persistence ordering" above.
+
+The observation record is not yet an external verification. It is a retained observation used to detect later changes.
 
 The client MUST display the First contact state in chrome and MUST display the PIP so the user can compare it against an out-of-band reference.
 
@@ -505,6 +527,12 @@ The client refreshes the manifest when at least one of the following holds:
 
 The client MUST NOT refresh more frequently than `min_refresh_interval` except in the conditions above.
 
+## Submit request identifiers
+
+For every submit, the client MUST generate a fresh `request_id` (§09) using a cryptographically secure random source. The client MUST NOT reuse `request_id` values across submits, including retries of a previously failed submit.
+
+The client retains, for the duration of an in-flight submit, both the generated `request_id` and the JCS-canonical bytes of the submit body it sent, so that the Stage 9 transaction binding checks (`request_id` and `request_hash`, §02) can be performed against the originating submit. After the submit completes (success or failure), this retained material may be discarded.
+
 ## Parser limits
 
 The client enforces, during JSON parsing in stage 3:
@@ -521,6 +549,8 @@ A document exceeding any of these limits is rejected at parse time. The client d
 These limits are normative unless a stricter field-specific or document-kind-specific limit applies, in which case the stricter limit wins.
 
 A client allowing larger values for these parser limits is non-conformant.
+
+The client also rejects, at parse time, any object containing duplicate member names, as defined in §04. The reported diagnostic is `E_PARSE_DUPLICATE_KEY` (§11).
 
 Implementations SHOULD apply implementation-appropriate parser timeouts or cancellation limits.
 
