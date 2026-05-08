@@ -47,6 +47,20 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.4
+
+Date: 2026-05-08
+
+Changes since v1.0-rc.3:
+
+- §02 — Clarified that `request_hash` is computed over the JCS-canonical bytes of the parsed submit body, not over the wire bytes received. The formula already pinned this; the prose previously read "the exact submit body bytes received, after JCS-canonicalization", which was ambiguous. Insignificant whitespace and member ordering in the wire submit body are now stated explicitly to not affect the hash.
+- §05 — Added an "Ed25519 verification profile" section that pins the strict, cofactorless validation rules. Public keys MUST be in canonical encoding and MUST NOT be small-order; signatures MUST use canonical `R` and canonical `S` (`0 ≤ S < L`); verification uses the cofactorless equation `[S]B = R + [k]A`. The profile aligns with `verify_strict` in `ed25519-dalek`. Implementations MUST NOT use cofactored verification or accept non-canonical encodings. This eliminates cross-implementation divergence in signature acceptance, in particular between libraries that historically split between RFC 8032 permissive and ZIP-215-style strict modes.
+- §07 — Replaced the "opaque byte strings" terminology for state values with "opaque UTF-8 strings", aligning the safe-display subsection with the value field schema (`value` is a UTF-8 string). Editorial only; no wire-format change.
+- §09 — Added a "Content-Encoding and Transfer-Encoding" section that forbids both headers in both directions. Publishers MUST NOT use `Content-Encoding` on any Entangled response or `Transfer-Encoding` (including `chunked`) on any response; clients MUST disable automatic HTTP-layer decompression and reject responses carrying either header. The same rules apply to submit `POST` request bodies. Closes the interop ambiguity that arose when transport stacks decompressed responses by default, which would change the byte sequence used for the byte cap (§02, §06, §10), for `Content-Length` consistency checks, and for the SHA-256 digest of image resources (§03). Adds a normative implementation note that conforming clients must use an HTTP stack whose default header injection and decompression can be disabled.
+- §11 — Added `E_TRANSPORT_CONTENT_ENCODING` and `E_TRANSPORT_TRANSFER_ENCODING` to the Stage 1 transport diagnostics catalog.
+
+This rc tightens transport and signature-verification behavior. Responses or signatures that an rc.3 client might have accepted under HTTP-stack default decompression or under cofactored Ed25519 verification can now be rejected; conforming current signers and HTTP stacks are unaffected. The wire-level `spec_version` remains `"1.0"`; the rc number tracks pre-release stabilization, not protocol identity (§11).
+
 ### v1.0-rc.3
 
 Date: 2026-05-08
