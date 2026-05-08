@@ -527,14 +527,22 @@ def negative_vectors(keys) -> list[dict]:
         body_obj=bad2,
     ))
 
+    m_null_nav = dict(m)
+    m_null_nav["navigation"] = None
+    m_null_nav["sig"] = "A" * 86  # placeholder; stage 5 fails before stage 6
     out.append(vec(
         "132-schema-null-value",
         kind="manifest",
-        description="Manifest with a null literal in the navigation field. Entangled v1 forbids null values; rejected with E_SCHEMA_NULL_VALUE.",
-        spec_refs=["§04"],
+        description=(
+            "Manifest where navigation is null. All other required fields "
+            "are present and well-formed; only the null literal triggers "
+            "stage 5 rejection. E_SCHEMA_NULL_VALUE."
+        ),
+        spec_refs=["§04", "§06"],
         verdict="reject",
         diagnostic="E_SCHEMA_NULL_VALUE",
-        body=b'{"spec_version":"1.0","kind":"manifest","navigation":null,"sig":"' + (b"A" * 86) + b'"}',
+        body_obj=m_null_nav,
+        context={"fetched_origin_address": m_null_nav["origin"]["address"]},
     ))
 
     # Invalid block kind in content document
@@ -547,10 +555,14 @@ def negative_vectors(keys) -> list[dict]:
     out.append(vec(
         "133-schema-block-kind-unknown",
         kind="content",
-        description="Content document with a block whose kind is \"marquee\", not in the eleven enumerated block kinds (§03). Rejected at stage 5 schema validation.",
-        spec_refs=["§03"],
+        description=(
+            "Content document with a block whose kind is \"marquee\", a "
+            "syntactically valid slug not in the enumerated block kinds "
+            "(§03). Stage 5 schema rejection. E_SCHEMA_ENUM_VIOLATION."
+        ),
+        spec_refs=["§03", "§11"],
         verdict="reject",
-        diagnostic="E_SCHEMA_FIELD_SYNTAX",
+        diagnostic="E_SCHEMA_ENUM_VIOLATION",
         body_obj=c_bad_block,
         context={
             "fetched_path": c_bad_block["path"],
@@ -577,14 +589,23 @@ def negative_vectors(keys) -> list[dict]:
         diagnostic="E_SCHEMA_NON_INTEGER",
         body=b'{"spec_version":"1.0","kind":"manifest","min_refresh_interval":3.6e3,"sig":"' + (b"A" * 86) + b'"}',
     ))
+    m_overflow = dict(m)
+    m_overflow["min_refresh_interval"] = 9223372036854775808  # 2**63
+    m_overflow["sig"] = "A" * 86
     out.append(vec(
         "142-numeric-overflow",
         kind="manifest",
-        description="Manifest where min_refresh_interval is 9223372036854775808 (= 2^63), one above the protocol's 64-bit signed integer cap. Rejected with E_SCHEMA_NON_INTEGER (or, depending on detection point, E_SCHEMA_FIELD_RANGE).",
-        spec_refs=["§04"],
+        description=(
+            "Manifest where min_refresh_interval is 9223372036854775808 "
+            "(= 2^63), one above the protocol's 64-bit signed integer "
+            "cap. All other required fields are present and well-formed. "
+            "E_SCHEMA_NON_INTEGER."
+        ),
+        spec_refs=["§04", "§06"],
         verdict="reject",
         diagnostic="E_SCHEMA_NON_INTEGER",
-        body=b'{"spec_version":"1.0","kind":"manifest","min_refresh_interval":9223372036854775808,"sig":"' + (b"A" * 86) + b'"}',
+        body_obj=m_overflow,
+        context={"fetched_origin_address": m_overflow["origin"]["address"]},
     ))
 
     # ---- signature: modified payload, wrong length ----
@@ -602,17 +623,25 @@ def negative_vectors(keys) -> list[dict]:
         context={"fetched_origin_address": m_tamper["origin"]["address"]},
     ))
 
-    # Wrong signature length: 32 bytes instead of 64
-    short_sig = b64u(b"\x00" * 32)
+    # Sig field length: 43 chars instead of the canonical 86. Stage 5 §04
+    # declared-length check fires before stage 6 signature decoding (§10
+    # first-failing-stage rule), so the diagnostic is E_SCHEMA_FIELD_SYNTAX,
+    # not E_SIG_MALFORMED.
+    short_sig = b64u(b"\x00" * 32)  # 43 chars
     m_short = dict(m)
     m_short["sig"] = short_sig
     out.append(vec(
-        "151-sig-malformed-length",
+        "151-sig-syntax-length",
         kind="manifest",
-        description="Manifest whose sig field decodes to 32 bytes instead of 64. Rejected with E_SIG_MALFORMED at signature decoding.",
-        spec_refs=["§05", "§02"],
+        description=(
+            "Manifest whose sig field is 43 ASCII characters instead of the "
+            "canonical 86. §04 declared-length check at stage 5 rejects with "
+            "E_SCHEMA_FIELD_SYNTAX before stage 6 signature decoding fires "
+            "(§10 first-failing-stage precedence)."
+        ),
+        spec_refs=["§04", "§02"],
         verdict="reject",
-        diagnostic="E_SIG_MALFORMED",
+        diagnostic="E_SCHEMA_FIELD_SYNTAX",
         body_obj=m_short,
         context={"fetched_origin_address": m_short["origin"]["address"]},
     ))
@@ -842,6 +871,7 @@ def main() -> int:
         "spec_version_target": "1.0",
         "rc_target": "1.0-rc.8",
         "keys": "keys.json",
+        "clock_now": "2026-05-07T00:01:00Z",
         "vectors": vectors,
     }
     (ROOT / "corpus.json").write_text(

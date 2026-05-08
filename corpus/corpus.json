@@ -3,6 +3,7 @@
   "spec_version_target": "1.0",
   "rc_target": "1.0-rc.8",
   "keys": "keys.json",
+  "clock_now": "2026-05-07T00:01:00Z",
   "vectors": [
     {
       "id": "001-manifest-valid-minimal",
@@ -189,27 +190,32 @@
     {
       "id": "132-schema-null-value",
       "kind": "manifest",
-      "description": "Manifest with a null literal in the navigation field. Entangled v1 forbids null values; rejected with E_SCHEMA_NULL_VALUE.",
+      "description": "Manifest where navigation is null. All other required fields are present and well-formed; only the null literal triggers stage 5 rejection. E_SCHEMA_NULL_VALUE.",
       "spec_refs": [
-        "§04"
+        "§04",
+        "§06"
       ],
       "input": "vectors/132-schema-null-value/input.json",
       "expected": {
         "verdict": "reject",
         "diagnostic": "E_SCHEMA_NULL_VALUE"
+      },
+      "context": {
+        "fetched_origin_address": "dkptfyethnbfsj7qsxscia4w6lg4yssjca2gdrqlk457qav2lkna4xqd.onion"
       }
     },
     {
       "id": "133-schema-block-kind-unknown",
       "kind": "content",
-      "description": "Content document with a block whose kind is \"marquee\", not in the eleven enumerated block kinds (§03). Rejected at stage 5 schema validation.",
+      "description": "Content document with a block whose kind is \"marquee\", a syntactically valid slug not in the enumerated block kinds (§03). Stage 5 schema rejection. E_SCHEMA_ENUM_VIOLATION.",
       "spec_refs": [
-        "§03"
+        "§03",
+        "§11"
       ],
       "input": "vectors/133-schema-block-kind-unknown/input.json",
       "expected": {
         "verdict": "reject",
-        "diagnostic": "E_SCHEMA_FIELD_SYNTAX"
+        "diagnostic": "E_SCHEMA_ENUM_VIOLATION"
       },
       "context": {
         "fetched_path": "/articles/bad-block",
@@ -245,14 +251,18 @@
     {
       "id": "142-numeric-overflow",
       "kind": "manifest",
-      "description": "Manifest where min_refresh_interval is 9223372036854775808 (= 2^63), one above the protocol's 64-bit signed integer cap. Rejected with E_SCHEMA_NON_INTEGER (or, depending on detection point, E_SCHEMA_FIELD_RANGE).",
+      "description": "Manifest where min_refresh_interval is 9223372036854775808 (= 2^63), one above the protocol's 64-bit signed integer cap. All other required fields are present and well-formed. E_SCHEMA_NON_INTEGER.",
       "spec_refs": [
-        "§04"
+        "§04",
+        "§06"
       ],
       "input": "vectors/142-numeric-overflow/input.json",
       "expected": {
         "verdict": "reject",
         "diagnostic": "E_SCHEMA_NON_INTEGER"
+      },
+      "context": {
+        "fetched_origin_address": "dkptfyethnbfsj7qsxscia4w6lg4yssjca2gdrqlk457qav2lkna4xqd.onion"
       }
     },
     {
@@ -272,17 +282,17 @@
       }
     },
     {
-      "id": "151-sig-malformed-length",
+      "id": "151-sig-syntax-length",
       "kind": "manifest",
-      "description": "Manifest whose sig field decodes to 32 bytes instead of 64. Rejected with E_SIG_MALFORMED at signature decoding.",
+      "description": "Manifest whose sig field is 43 ASCII characters instead of the canonical 86. §04 declared-length check at stage 5 rejects with E_SCHEMA_FIELD_SYNTAX before stage 6 signature decoding fires (§10 first-failing-stage precedence).",
       "spec_refs": [
-        "§05",
+        "§04",
         "§02"
       ],
-      "input": "vectors/151-sig-malformed-length/input.json",
+      "input": "vectors/151-sig-syntax-length/input.json",
       "expected": {
         "verdict": "reject",
-        "diagnostic": "E_SIG_MALFORMED"
+        "diagnostic": "E_SCHEMA_FIELD_SYNTAX"
       },
       "context": {
         "fetched_origin_address": "dkptfyethnbfsj7qsxscia4w6lg4yssjca2gdrqlk457qav2lkna4xqd.onion"
