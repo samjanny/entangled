@@ -47,6 +47,23 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.6
+
+Date: 2026-05-08
+
+Changes since v1.0-rc.5:
+
+- §02 — Reserved `/manifest.json` at the protocol level. The path is now explicitly forbidden as a content document `path`, transaction `in_response_to`, image `src` (§03), submit endpoint, and inline-link target. Added a bullet to each path-syntax restatement.
+- §02 — Clarified the scope of the `request_id` / `request_hash` binding: they bind the signed transaction response to the submit body the client sent, but are not a general anti-replay mechanism against a malicious or compromised publisher backend, which may still receive, store, or reuse submit bodies and sign transaction responses for any submit body it accepts.
+- §03 — Replaced the abstract image-resource verification list with a precise, ten-step ordered sequence that names the specific diagnostic for each step (`W_IMAGE_FETCH_FAILED`, `W_IMAGE_CONTENT_TYPE`, `W_IMAGE_OVERSIZE`, `W_IMAGE_HASH_MISMATCH`, `W_IMAGE_DECODE_FAILED`, `W_IMAGE_DIMENSIONS`, `W_IMAGE_BUDGET`). Made explicit that the declared `media_type` is authoritative for decoder selection while the response `Content-Type` is checked separately for header consistency.
+- §03 — Added a normative WebP animation detection requirement. A client MUST determine animation status before rendering, by inspecting the RIFF chunk structure or by querying its decoding library. An implementation whose WebP library cannot expose this property reliably MUST reject all WebP resources or disable WebP support. Silently rendering only the first frame of an animated WebP is non-conformant.
+- §08 — Refined the equal-`issued_at`-not-a-conflict criterion to depend solely on the JCS-canonical signed payload rather than on byte-for-byte wire equivalence and signature equality. Under deterministic Ed25519 (RFC 8032) signing the same payload under the same key produces an identical `sig`, so the canonical-payload criterion subsumes the signature criterion; framing it as canonical payload makes the protocol-level invariant clear.
+- §10 — Added a "Verification key trial order" section for historical content. The order in which retained `K_runtime.pub` entries are tried is implementation-defined (reverse chronological by first-observed `issued_at` recommended). Verification under more than one distinct retained key for the same document is treated as a cryptographic anomaly, an implementation bug, or authorization-history corruption; the client MUST reject the document. No new normative error code; clients SHOULD log the condition.
+
+This rc clarifies path reservation, image verification ordering, and historical-content trial order, and scopes the submit-binding guarantees against backend replay. None of these changes alter the wire format, signature inputs, signature input construction, or the diagnostic code catalog.
+
+The wire-level `spec_version` remains `"1.0"`.
+
 ### v1.0-rc.5
 
 Date: 2026-05-08
