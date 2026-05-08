@@ -157,6 +157,8 @@ In particular, a manifest whose signature verifies (Stage 6) but whose origin bi
 
 This ordering rule applies uniformly to first-contact, TOFU-pinned, externally-verified, and changed/mismatch trust states.
 
+In-flight per-submit state is excluded from this rule. The `request_id` and JCS-canonical submit body bytes that the client retains during an in-flight submit (see "Submit request identifiers") are transient in-memory state, not durable persistence. They are not publisher identity records, TOFU pins, canary history, runtime authorization, state policy acceptance, or manifest cache entries. Their retention before Stage 9 of the corresponding manifest fetch is not a persistence-ordering violation.
+
 ## Trust state machine
 
 The client maintains trust state records for publisher identities and the origins from which they have been observed.
@@ -397,6 +399,16 @@ The client MUST provide, accessible from the compact indicators by user action, 
 
 The expansion mechanism is implementation-defined.
 
+PIP labeling.
+
+The client MUST label the PIP as "publisher identity phrase", "publisher phrase", or an equivalent term that conveys public identity.
+
+The client MUST NOT label the PIP using any of the following terms or their close synonyms: "seed phrase", "recovery phrase", "wallet phrase", "secret phrase", "private phrase", or any term suggesting private cryptographic material.
+
+This rule prevents users from confusing the PIP with cryptocurrency wallet seeds (which use the same BIP-39 encoding for very different purposes) and from treating the PIP as secret material that must be hidden.
+
+Localized translations of the label are permitted and encouraged. The labeling rule applies in spirit to translations: the chosen translation MUST convey "public identity" semantics, not "secret" or "recovery" semantics.
+
 ## Conditional always-visible warnings
 
 The client MUST display, prominently and not easily dismissibly, when present:
@@ -527,6 +539,17 @@ The client refreshes the manifest when at least one of the following holds:
 
 The client MUST NOT refresh more frequently than `min_refresh_interval` except in the conditions above.
 
+Submit-time freshness.
+
+Before sending a submit request, the client MUST ensure that the manifest used to authorize the submit endpoint, the `K_runtime` under which the eventual transaction will be verified, and the `state_policy` governing `request_state` is not stale. The manifest is considered fresh for submit purposes when:
+
+* the cached manifest's canary state is Fresh or Near-expiration; and
+* `min_refresh_interval` has not elapsed since the last successful manifest fetch.
+
+If either condition fails, the client MUST refresh the manifest before transmitting the submit. If the refresh fails, the client MUST NOT transmit the submit and MUST surface the failure to the user.
+
+This rule applies to every submit, regardless of whether the submit carries `request_state`.
+
 ## Submit request identifiers
 
 For every submit, the client MUST generate a fresh `request_id` (§09) using a cryptographically secure random source. The client MUST NOT reuse `request_id` values across submits, including retries of a previously failed submit.
@@ -603,6 +626,9 @@ A client MAY support modes with reduced functionality:
 * **Stateless mode** (§07): state items are not persisted across sessions. Other state semantics apply normally during the session.
 * **Read-only mode**: the client refuses all submit operations regardless of user input. Useful for archival viewers.
 * **Externally-verified-only mode**: the client refuses to render content from sites in First contact or TOFU pinned trust states; only Externally verified publishers are accepted. Useful for high-threat users.
+* **Expired-canary-block mode**: the client refuses to render current content from sites whose canary is in Expired state. Historical content rules are unaffected. Useful for users who want canary expiration to act as a hard block, not a warning.
+
+When this mode is active, the client MUST display the mode in chrome, and the rendered content area is replaced by a clear notice that the canary is expired and rendering is blocked by client policy.
 
 When a reduced mode is active, the client MUST display the mode in chrome.
 

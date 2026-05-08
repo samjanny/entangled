@@ -53,6 +53,14 @@ Once the user consents to a request-state item, the client includes that item in
 - the publisher deletes the item through a signed transaction update;
 - the client is operating in a stateless or session-only mode whose lifetime has ended.
 
+Request state is publisher-wide, not endpoint-private.
+
+The client attaches every non-expired consented request-state item for the current publisher to every submit request to that publisher, regardless of which submit endpoint the user is interacting with. There is no endpoint-level scoping in v1.
+
+Publishers MUST treat request-mode state as publisher-wide. Sensitive data that should be confined to a specific endpoint or backend SHOULD NOT be stored as request state in v1.
+
+Endpoint-scoped request state is reserved for a future protocol version.
+
 Examples include:
 
 - session token for submit endpoints;

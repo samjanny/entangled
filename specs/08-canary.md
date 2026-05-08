@@ -162,6 +162,8 @@ The client MUST NOT pin a new manifest with a fresh canary to replace the expire
 
 If a client has observed an expired canary for a publisher identity, and later observes a fresh canary for the same `K_publisher.pub`, the client MUST notify the user that a canary gap occurred. The fresh canary may restore current freshness, but it MUST NOT erase the historical fact that the publisher missed a committed refresh deadline.
 
+Canary expiration does not cryptographically revoke `K_runtime` in v1. Forgery exposure for a compromised `K_runtime` is bounded by rotation cadence only when the publisher actively rotates `K_runtime` and deploys a fresh manifest. An expired canary is a UX warning state, not a cryptographic revocation. Clients MAY offer a high-security policy that refuses to render current content while the canary is expired; see §10.
+
 ### Invalid
 
 The client MUST refuse to render any content from the site whose manifest contains an invalid canary. The chrome shows the canary state as invalid with a prominent error.
@@ -195,6 +197,8 @@ A publisher MUST NOT issue two distinct manifests with the same `canary.issued_a
 A client that has already accepted a manifest with `canary.issued_at = T` for `K_publisher.pub = P`, and later observes a different manifest from any origin with `canary.issued_at = T` for the same `P`, MUST reject the later manifest and report the conflict. The reported diagnostic is `E_CANARY_CONFLICT` (§11).
 
 This rule does not affect refetching the same manifest. A subsequent fetch returning a byte-for-byte equivalent manifest (same JCS-canonical payload and same signature) is not a conflict.
+
+`E_CANARY_DOWNGRADE` and `E_CANARY_CONFLICT` are mutually exclusive. The former applies when a fetched manifest has a strictly older `canary.issued_at` than the newest verified one for the same `K_publisher.pub`. The latter applies when the `issued_at` is equal but the signed payload differs. The strictly-greater case is acceptance: the fetched manifest becomes the new newest verified record for the publisher.
 
 ## Canary lifecycle
 

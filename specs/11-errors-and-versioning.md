@@ -219,8 +219,16 @@ State diagnostics arise during state operation processing. They are related to t
 | `E_STATE_TTL`                | error    | transaction   | A state set operation `ttl` is outside permitted bounds: 300 to 7776000 seconds and within `max_lifetime` |
 | `E_STATE_OP`                 | error    | transaction   | A state update operation has an unknown `op` value or is missing required fields for its operation form   |
 | `E_STATE_STORAGE_CAP`        | error    | transaction   | The client's per-publisher storage cap would be exceeded by the operation                                 |
+| `E_STATE_DUPLICATE`          | error    | transaction   | The `request_state` array of a submit body contains duplicate `(namespace, key)` pairs                    |
 | `I_STATE_CONSENT_REJECTED`   | info     | transaction   | The user rejected a state set operation                                                                   |
 | `I_STATE_CONSENT_REMEMBERED` | info     | transaction   | The user remembered consent for a state item                                                              |
+
+The structured diagnostic format for `E_STATE_DUPLICATE` SHOULD include in `details`:
+
+* `duplicate_namespace`: the namespace of the duplicated entry;
+* `duplicate_key`: the key of the duplicated entry.
+
+`E_STATE_DUPLICATE` is a publisher-side diagnostic in practice: the publisher detects it when parsing the submit body. A conformant client never generates it.
 
 A rejected state set operation does not necessarily invalidate the transaction document. It means the requested state change was not committed. The transaction response may still render as defined in §07 and §10.
 
@@ -246,6 +254,13 @@ For image resource diagnostics, `document_kind` is the kind of the containing do
 | `W_IMAGE_DIMENSIONS`    | warning  | containing document | The decoded image dimensions do not match the declared `width` and `height`                                                                             |
 | `W_IMAGE_DECODE_FAILED` | warning  | containing document | The image bytes failed to decode in the declared media format                                                                                           |
 | `W_IMAGE_FETCH_FAILED`  | warning  | containing document | The image fetch failed at the transport level, for example timeout, network error, or status code other than `200`                                      |
+| `W_IMAGE_BUDGET`        | warning  | containing document | Decoding this image would exceed the document's 16-megapixel decoded pixel budget; the image is rendered as missing                                     |
+
+The structured diagnostic format for `W_IMAGE_BUDGET` SHOULD include in `details`:
+
+* `budget_pixels`: the document budget (16777216 in v1);
+* `consumed_pixels`: pixels already consumed by previously decoded images;
+* `skipped_image_dimensions`: width and height of the skipped image.
 
 ## Error reporting requirements
 

@@ -1,0 +1,54 @@
+# Release engineering
+
+This document describes the release engineering conventions for the Entangled specification repository. It is not part of the protocol specification.
+
+## Tag naming
+
+Tags follow these patterns:
+
+| Type | Format | Example |
+|---|---|---|
+| Release candidate | v\<MAJOR\>.\<MINOR\>-rc.\<N\> | v1.0-rc.1, v1.0-rc.2 |
+| Final release | v\<MAJOR\>.\<MINOR\> | v1.0, v1.1 |
+| Patch release (spec text only) | v\<MAJOR\>.\<MINOR\>.\<PATCH\> | v1.0.1, v1.0.2 |
+
+All tags use a leading "v". The release-candidate suffix uses a dot before the number ("rc.1", not "rc1") for consistency with the semver-style pre-release format.
+
+Tag uniqueness is normative: a tag once published is immutable. To correct a mistaken tag, create a new tag with a new name; do not rewrite or move existing tags.
+
+## Release types
+
+### Release candidate
+
+A release candidate marks a state in which the specification is considered substantially complete and ready for community review, but is not yet final. Multiple rc tags are expected during stabilization.
+
+Each rc must have a corresponding entry in the repository describing what changed since the previous tag.
+
+### Final release
+
+A final release marks a stable specification version. After a final release, the specification text for that version is frozen except for patch releases that correct errors without changing protocol behavior (see §11 for the spec release rules).
+
+### Patch release
+
+A patch release corrects errors in the specification text without changing wire-format behavior, validation rules, error codes, or cryptographic primitives. Patch releases follow the rules in §11 "Spec release".
+
+## Release process
+
+1. Apply substantive changes via pull request review or direct commits to the main branch.
+2. Verify cross-references and run any available automated checks.
+3. Update this file's release notes section if applicable.
+4. Tag the commit with the appropriate name from the table above.
+5. Push the tag to the origin remote.
+6. Verify the tag appears in the repository tag list.
+
+Tag deletion is reserved for accidental or malformed tags only and requires explicit communication if the tag has been published or referenced externally.
+
+## Release notes
+
+Release notes for each tag should be added below as releases are made.
+
+(Empty initially. Future releases will add entries here.)
+
+## Relationship to the specification
+
+This document describes engineering process. It does not define protocol behavior. The authoritative protocol specification lives in the `specs/` directory; this file does not override or modify it.

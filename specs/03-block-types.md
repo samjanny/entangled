@@ -343,7 +343,7 @@ The image bytes are not embedded in the document. They are fetched separately fr
 {
   "kind": "image",
   "src": "/assets/diagram.png",
-  "sha256": "base64url-encoded-32-byte-sha256-digest",
+  "sha256": "sha-256:47DEQpj8HBSa-_TImW-5JCeuQeRkm5NMpJWZG3hSuFU",
   "media_type": "image/png",
   "width": 800,
   "height": 600,
@@ -365,9 +365,18 @@ The image bytes are not embedded in the document. They are fetched separately fr
 * does not contain a query string, fragment, scheme, or host;
 * does not exceed 256 ASCII characters.
 
-`sha256` is the SHA-256 digest of the exact response body bytes of the image resource, encoded as base64url without padding.
+`sha256` is the SHA-256 digest of the exact response body bytes of the image resource, encoded as a string of the form:
 
-It MUST be exactly 43 ASCII characters, representing a 32-byte digest.
+```text
+sha-256:<base64url>
+```
+
+The format is byte-for-byte identical to the format used for `request_hash` in §02:
+
+* literal prefix: lowercase ASCII `sha-256:` (eight characters, including the trailing colon);
+* digest: base64url encoding (RFC 4648 Section 5) of the 32-byte SHA-256 digest, with no padding, exactly 43 ASCII characters.
+
+The total string length is exactly 51 ASCII characters (8 prefix + 43 digest).
 
 `media_type` is one of exactly:
 
@@ -446,6 +455,16 @@ The image response body MUST NOT exceed 2 MiB.
 The decoded image dimensions MUST match the declared `width` and `height`. A mismatch causes the image to be rejected. Dimension-mismatch rejection does not invalidate the containing signed document; the image is rendered as missing or unavailable, and the diagnostic is reported under the image resource diagnostics defined in §11.
 
 The decoded image dimensions MUST NOT exceed 4096 by 4096 pixels.
+
+Decoded pixel budget.
+
+The total decoded pixel count across all rendered image blocks in a single content or transaction document MUST NOT exceed 16 megapixels (16,777,216 pixels).
+
+When the budget would be exceeded by an additional image, the client MUST refuse to decode that image and any subsequent images in the document, rendering them as missing or as a placeholder. Already-decoded images in the same document remain rendered.
+
+The budget applies after hash verification: a client MUST NOT count an image whose hash failed against the budget. A client MAY count an image whose hash matched but which it chose to skip rendering for other reasons.
+
+16 megapixels is approximately one full 4096x4096 image, four 2048x2048 images, or sixteen 1024x1024 images.
 
 ## Link target schema
 
@@ -532,10 +551,12 @@ A `citation` target points to a clearnet URL intended as an external reference.
 
 `url` is a UTF-8 string. It MUST:
 
-* begin with `http://` or `https://`;
+* begin with `https://`;
 * not exceed 1 KiB when encoded as UTF-8;
 * contain only valid URL characters per RFC 3986;
 * not contain control characters.
+
+`http://` URLs are not permitted as citation targets in v1. A future protocol version may revisit this if a clear use case for unencrypted external citations emerges.
 
 The client MUST display citation links distinctly, indicating that the destination is outside Entangled.
 

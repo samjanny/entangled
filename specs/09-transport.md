@@ -139,6 +139,12 @@ The client MUST generate `request_id` using a cryptographically secure random so
 
 `request_id` is in the unsigned submit body. It is not signed by the client (the client signs nothing in v1). The publisher echoes it in the corresponding transaction document, as defined in §02, where it is signed under `K_runtime` together with the `request_hash` that binds the transaction to the specific submit body bytes.
 
+Collision avoidance.
+
+The 128-bit `request_id` space makes accidental collisions across submits astronomically unlikely. The client SHOULD nonetheless ensure that an in-flight submit's `request_id` is not reused for any other in-flight submit to the same publisher; in practice this is satisfied by drawing each `request_id` from a cryptographically secure random source.
+
+The publisher SHOULD treat a `request_id` seen in an active submit as unique to that submit; concurrent submits with identical `request_id` values are a malformed-client condition and MAY be rejected at the publisher's discretion.
+
 #### `fields`
 
 `fields` is a JSON object representing the user input portion of the submit.
@@ -180,6 +186,8 @@ Constraints:
 * each `namespace` and `key` MUST satisfy the slug syntax defined in §07;
 * each `value` MUST be a UTF-8 string;
 * entries reflect the state items the client is transmitting at submit time, scoped to the same `K_publisher.pub` that authorized the manifest currently in effect for this site.
+
+The `request_state` array MUST NOT contain duplicate `(namespace, key)` pairs. Each `(namespace, key)` appears at most once in a single submit body. Publishers MUST reject submit bodies containing duplicate `request_state` entries.
 
 If the user has no consented request-state items applicable to this submit, `request_state` is an empty array:
 

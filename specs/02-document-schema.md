@@ -236,7 +236,12 @@ The submit-body generation rules for `request_id`, including the cryptographic-r
 sha-256:<base64url>
 ```
 
-where `<base64url>` is the base64url-encoded SHA-256 digest of the JCS-canonical form of the submit body, with no padding (43 ASCII characters in the digest). The literal prefix `sha-256:` is required, matching the format used for image hash binding in §03.
+The format is byte-for-byte identical to the format used for `image.sha256` in §03:
+
+* literal prefix: lowercase ASCII `sha-256:` (eight characters, including the trailing colon);
+* digest: base64url encoding (RFC 4648 Section 5) of the 32-byte SHA-256 digest of the JCS-canonical form of the submit body, with no padding, exactly 43 ASCII characters.
+
+The total string length is exactly 51 ASCII characters (8 prefix + 43 digest).
 
 The publisher computes `request_hash` over the exact submit body bytes received, after JCS-canonicalization of the submit body object:
 
