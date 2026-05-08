@@ -47,6 +47,18 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.8
+
+Date: 2026-05-08
+
+Changes since v1.0-rc.7:
+
+- Added a normative conformance corpus under `corpus/`. A v1.0-conforming implementation MUST agree with the verdict (accept or reject + diagnostic) recorded for each vector. The corpus is generated deterministically from fixed test seeds by `corpus/tools/generate.py` (Python 3.10+ with `cryptography`).
+- Initial corpus: 28 vectors covering manifest, content, and transaction documents. 5 positive (must accept) and 23 negative (must reject), spanning input checks (BOM, bad UTF-8), JSON parsing (duplicate keys), kind / spec_version, schema (unknown field, missing required, null, unknown block kind), numeric grammar (float, exponent, overflow), signatures (modified payload, malformed length, non-canonical S, small-order A), strict base64url (padding, alphabet, whitespace), binding (path mismatch, reserved `/manifest.json`, request_hash), and canary (equal-`issued_at` conflict). Each vector carries a description, spec references, and a normative diagnostic code from §11.
+- §04 — Replaced the "distributed separately" disclaimer for the conformance corpus with a normative reference to `corpus/`. The illustrative single-object JCS test vector remains.
+
+The wire-level `spec_version` remains `"1.0"`. The corpus does not change protocol behavior; it makes the existing rules testable across implementations.
+
 ### v1.0-rc.7
 
 Date: 2026-05-08
