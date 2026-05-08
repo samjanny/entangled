@@ -45,9 +45,20 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 ## Release notes
 
-Release notes for each tag should be added below as releases are made.
+Release notes for each tag are added below as releases are made. Newest entries first.
 
-(Empty initially. Future releases will add entries here.)
+### v1.0-rc.3
+
+Date: 2026-05-08
+
+Changes since v1.0-rc.2:
+
+- §03 — Added a fourth link target kind, `target.kind = "carrier"`, for linking to non-Entangled services reachable through an Entangled-supported carrier (for example, non-Entangled Tor onion services). The `carrier` kind takes `carrier` and `url` fields, accepts only `http://` URLs (the carrier provides confidentiality and integrity at the rendezvous layer, and the destination identity is anchored at the carrier address itself), and shares the no-auto-navigate and no-request-state disciplines of `citation` while additionally requiring a carrier-aware browser handoff.
+- §03 — Replaced the placeholder note on `citation`'s `http://` ban ("a future protocol version may revisit this...") with an explicit redirect: non-clearnet destinations belong under `kind: "carrier"`, not under `kind: "citation"`.
+- §01 — Added the **Carrier link** glossary entry; updated the **Citation link**, **Entangled link**, **Link**, and **Same-site link** entries to reference the new kind. The **Link** entry now describes four target kinds, not three.
+- §09 — Clarified that the transport rules govern requests issued by the Entangled client to Entangled endpoints. They do not constrain how the client hands off non-Entangled URLs (`target.kind = "carrier"` or `"citation"`) to external components such as Tor Browser or a system browser.
+
+This rc adds a value to a closed-schema enum (`target.kind`). A document using `kind:"carrier"` is rejected by rc.1 and rc.2 clients during schema validation. The wire-level `spec_version` remains `"1.0"`; the rc number tracks pre-release stabilization, not protocol identity (§11).
 
 ## Relationship to the specification
 

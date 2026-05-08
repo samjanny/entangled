@@ -20,6 +20,8 @@ Clients MUST NOT use public Web PKI certificate validation as publisher identity
 
 Other carrier profiles MAY require transport-layer encryption, such as TLS, when the carrier itself does not provide confidentiality. The carrier profile specifies the requirement.
 
+The transport rules in this section govern requests issued by the Entangled client to Entangled endpoints. They do not constrain how the client hands off non-Entangled URLs (`target.kind = "carrier"` or `"citation"`, see §03) to external components such as Tor Browser or a system browser; those handoffs are external to the Entangled protocol.
+
 ## HTTP version and methods
 
 Entangled uses HTTP/1.1 over the carrier connection.

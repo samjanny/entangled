@@ -30,6 +30,9 @@ The address at which an Entangled site is reachable via a specific carrier. For 
 **Carrier profile**  
 A protocol-defined profile that specifies how a particular carrier (Tor v3, I2P, Yggdrasil, etc.) is used by Entangled, including address syntax, transport expectations, and address-to-key binding rules. Defined in §05 and §09. Related: carrier, carrier endpoint.
 
+**Carrier link**  
+A link target kind referencing a non-Entangled service reachable through an Entangled-supported carrier, such as a non-Entangled Tor onion service. The destination is not an Entangled site and does not declare an Entangled publisher identity; the client never navigates automatically and offers an external handoff to a carrier-aware browser. Defined in §03. Related: link, citation link, entangled link, same-site link, carrier.
+
 **Changed/mismatch**  
 The trust state entered when the client has a retained publisher identity for a site or publisher profile, but a newly fetched manifest presents a different `K_publisher.pub`. The client must not silently replace the retained identity. Defined in §10. Related: trust state, TOFU pinned, externally verified, publisher history.
 
@@ -37,7 +40,7 @@ The trust state entered when the client has a retained publisher identity for a 
 The client-controlled UI surface that surrounds and accompanies the content area. The chrome displays publisher identity state, PIP, canary state, carrier address, verification warnings, request-state indicators, and other status information that must remain outside publisher control. Structurally separated from the content area. Defined in Pillar C and §10. Related: content area, trust state, canary state.
 
 **Citation link**  
-A link target kind referencing a clearnet (non-Entangled) URL. The client never navigates automatically to a citation link; an external handoff, such as opening in a browser or copying the URL, is offered to the user. Defined in §03. Related: link, same-site link, entangled link.
+A link target kind referencing a clearnet (non-Entangled) URL. The client never navigates automatically to a citation link; an external handoff, such as opening in a browser or copying the URL, is offered to the user. Defined in §03. Related: link, same-site link, entangled link, carrier link.
 
 **Client**  
 A software component that fetches Entangled documents from a carrier, verifies them, and renders them to the user. A conforming client implements the validation pipeline, the trust state machine, chrome layout, state handling, and operational disciplines defined in §10. Browser extensions are not conforming Entangled v1 clients. Defined in Pillar C and §10. Related: chrome, content area, validation pipeline.
@@ -82,7 +85,7 @@ A public-key signature algorithm specified in RFC 8032. Entangled uses Ed25519 f
 The protocol defined by this specification: a system for publishing signed, structured documents over hostile or anonymity-oriented carrier networks, with a publisher identity that survives address rotation, server replacement, and carrier migration. Defined in §00. Related: carrier, document, publisher.
 
 **Entangled link**  
-A link target kind referencing another Entangled site. Navigation requires explicit user confirmation in chrome. The target may include `expected_publisher_pubkey` for pre-confirmation. Defined in §03. Related: link, same-site link, citation link.
+A link target kind referencing another Entangled site. Navigation requires explicit user confirmation in chrome. The target may include `expected_publisher_pubkey` for pre-confirmation. Defined in §03. Related: link, same-site link, citation link, carrier link.
 
 **Envelope**  
 The flat JSON object structure of a signed Entangled document: all signed fields at the top level, plus a single `sig` field that is the only unsigned top-level field. The signed payload is the envelope with `sig` removed. Defined in §02. Related: document, signed payload, sig.
@@ -127,7 +130,7 @@ The publisher identity key. An Ed25519 keypair generated and stored offline, use
 The operational signing key. An Ed25519 keypair used to sign content and transaction documents within a publication cycle. Authorized by the manifest, declared in the canary structure, and rotated periodically. Defined in §05. Related: K_publisher, K_origin, canary, content document, transaction document.
 
 **Link**  
-A navigational element referring to a destination. Links appear inline within block content as inline `link` elements, or as standalone `link` blocks. Three target kinds are permitted: same-site, entangled, citation. Defined in §03. Related: same-site link, entangled link, citation link, inline element.
+A navigational element referring to a destination. Links appear inline within block content as inline `link` elements, or as standalone `link` blocks. Four target kinds are permitted: same-site, entangled, carrier, citation. Defined in §03. Related: same-site link, entangled link, carrier link, citation link, inline element.
 
 **Manifest**  
 The signed document by which a publisher declares the current authorization state of an Entangled site. Signed directly by `K_publisher`. Contains `publisher_pubkey`, `origin`, `canary`, `state_policy`, `navigation`, `min_refresh_interval`, and `updated`. Fetched at the canonical path `/manifest.json`. Defined in §06. Related: K_publisher, K_origin, K_runtime, canary, document.
@@ -172,7 +175,7 @@ A state mode in which a state item is stored by the client and may be attached a
 The standard for date and time format used in Entangled. All timestamps are in the form `YYYY-MM-DDTHH:MM:SSZ` (UTC, integer seconds, no fractional seconds, no numeric offset). Defined where used, primarily §06 and §08. Related: issued_at, updated.
 
 **Same-site link**  
-A link target kind referencing a path within the current Entangled site and current carrier origin. Direct navigation without cross-site confirmation. Defined in §03. Related: link, entangled link, citation link.
+A link target kind referencing a path within the current Entangled site and current carrier origin. Direct navigation without cross-site confirmation. Defined in §03. Related: link, entangled link, citation link, carrier link.
 
 **SHA-256**  
 The cryptographic hash function specified in FIPS PUB 180-4. Used in Entangled for the BIP-39 PIP checksum (§05) and for image hash binding (§03). The authoritative definition is FIPS PUB 180-4. Related: BIP-39, image, hash binding.

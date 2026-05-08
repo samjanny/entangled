@@ -481,6 +481,7 @@ The link target is a JSON object with a discriminator field `kind`.
 
 * `"same_site"`
 * `"entangled"`
+* `"carrier"`
 * `"citation"`
 
 No other link target kinds are permitted.
@@ -538,6 +539,40 @@ The confirmation UI MUST present:
 
 If `expected_publisher_pubkey` is declared and the destination manifest presents a different `publisher_pubkey`, the client MUST treat the destination as Changed/mismatch and apply §10.
 
+### `target.kind = "carrier"`
+
+A `carrier` target points to a service reachable through an Entangled-supported carrier but **not** governed by the Entangled protocol. Typical uses are linking to non-Entangled wikis, repositories, or mirrors that exist only as carrier-native services (for example, a non-Entangled Tor onion service).
+
+```json
+{
+  "kind": "carrier",
+  "carrier": "tor-v3",
+  "url": "http://<56-character-onion-address>.onion/<path>"
+}
+```
+
+`carrier` is the carrier profile identifier. A conforming Entangled v1.0 client MUST reject a `carrier` link target whose `carrier` is not exactly `"tor-v3"`, in the same way it rejects manifests with non-`tor-v3` carriers (§06).
+
+`url` is a UTF-8 string. It MUST:
+
+* begin with `http://`;
+* have a host that is a valid carrier address for the declared `carrier` — for `tor-v3`, a 56-character onion address followed by `.onion`;
+* not exceed 1 KiB when encoded as UTF-8;
+* contain only valid URL characters per RFC 3986;
+* not contain control characters.
+
+`https://` URLs are not permitted as `carrier` targets in v1. The carrier already provides confidentiality and integrity at the rendezvous layer, and the destination identity is anchored at the carrier address itself rather than at a Web PKI certificate, for the same reasons Entangled transport runs over plain HTTP on Tor v3 (§09).
+
+The `carrier` kind does not assert any Entangled publisher identity. The destination is not an Entangled site, so `expected_publisher_pubkey`, `K_publisher`, manifest-level state, and Entangled trust transitions do not apply to it.
+
+The client MUST display `carrier` links distinctly, indicating that the destination is outside Entangled but still reachable via the carrier.
+
+The client MUST NOT navigate automatically to a `carrier` URL.
+
+The user may be offered an external handoff: opening the URL in a carrier-aware external browser (such as Tor Browser for `tor-v3`), copying the URL, or canceling. The handoff mechanism is implementation-defined. However, the client MUST NOT hand a `carrier` URL to a component that would resolve the host through public DNS or route the request over the clearnet, since this would leak the request and defeat the carrier's confidentiality.
+
+`carrier` links MUST NOT carry Entangled request state.
+
 ### `target.kind = "citation"`
 
 A `citation` target points to a clearnet URL intended as an external reference.
@@ -556,7 +591,7 @@ A `citation` target points to a clearnet URL intended as an external reference.
 * contain only valid URL characters per RFC 3986;
 * not contain control characters.
 
-`http://` URLs are not permitted as citation targets in v1. A future protocol version may revisit this if a clear use case for unencrypted external citations emerges.
+`http://` URLs are not permitted as citation targets in v1. Citation targets are by definition clearnet references; over the clearnet, plaintext HTTP is exposed to in-path tampering, injection, and tracking, and the destination must present a Web PKI certificate to be safely opened in a system browser. To link to a non-Entangled service reachable through an Entangled carrier (for example, a non-Entangled onion service), use `target.kind = "carrier"` instead of `citation`.
 
 The client MUST display citation links distinctly, indicating that the destination is outside Entangled.
 
