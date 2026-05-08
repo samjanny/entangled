@@ -47,6 +47,24 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.9
+
+Date: 2026-05-08
+
+Changes since v1.0-rc.8:
+
+- §11 — Added `E_SCHEMA_ENUM_VIOLATION` to the stage 5 schema diagnostics catalog. The code applies when a field whose value is required to be one of an enumerated set carries a syntactically valid value not in that set: for example a block `kind` slug not in the enumerated block kinds (§03), an unknown state-policy `mode`, or an unknown transaction `feedback` `variant`. Previously such cases were forced into `E_SCHEMA_FIELD_SYNTAX`, which conflated lexical-form violations (slug grammar, base64url alphabet, RFC 3339 form) with set-membership violations.
+- §11 — Reformulated the `E_SIG_MALFORMED` row to make the §04 / §05 precedence boundary explicit. When the `sig` field is received on the wire, length and base64url-alphabet violations are reported as `E_SCHEMA_FIELD_SYNTAX` at stage 5 per §04 and §10's first-failing-stage rule; `E_SIG_MALFORMED` covers signature decoding contexts where stage-5 wire-side field-syntax validation does not apply. No semantic change.
+- corpus — Added a top-level `clock_now` field (`"2026-05-07T00:01:00Z"`) to `corpus.json`. Harnesses MUST mock the implementation's wall clock to this value for the duration of the test run. Canary diagnostics depend on `now` against fixed `issued_at` timestamps; without clock mocking, time-dependent vectors drift into `W_CANARY_EXPIRED` or `E_CANARY_INVALID` as real time advances. `corpus/README.md` documents the requirement and adds it as a step to the harness pattern.
+- corpus — Vectors 132 (`schema-null-value`) and 142 (`numeric-overflow`) now carry all required manifest fields. Previously six required fields were omitted, allowing `E_SCHEMA_REQUIRED_FIELD` to compete with the targeted diagnostic at stage 5; with the fix, the `null` literal (132) and the 2^63 overflow (142) are unambiguously the only stage-5 violations. Diagnostic codes are unchanged.
+- corpus — Vector 133 (`schema-block-kind-unknown`) diagnostic changes from `E_SCHEMA_FIELD_SYNTAX` to `E_SCHEMA_ENUM_VIOLATION`, reflecting the new §11 code.
+- corpus — Vector 151 renamed from `sig-malformed-length` to `sig-syntax-length`, diagnostic changes from `E_SIG_MALFORMED` to `E_SCHEMA_FIELD_SYNTAX`. The `sig` field is 43 ASCII characters instead of the canonical 86; the §04 declared-length check at stage 5 fires before §05 stage-6 signature decoding under §10's first-failing-stage rule, so the prior `E_SIG_MALFORMED` diagnostic was unreachable.
+- corpus/README.md — Added a coverage note: this initial corpus exercises representative diagnostic codes per pipeline stage and does not cover every code in the §11 catalog. Future tranches will fill out the remaining codes.
+
+This rc adds one new diagnostic code (`E_SCHEMA_ENUM_VIOLATION`) and corrects two corpus-vector diagnostic mappings (133 → `E_SCHEMA_ENUM_VIOLATION`; 151 → `E_SCHEMA_FIELD_SYNTAX`). Vectors 132 and 142 keep their codes but are now unambiguously isolated to the targeted violation. Implementations that consumed the rc.8 corpus need to update their diagnostic mapping for vectors 133 and 151 and must mock the wall clock to `corpus.json["clock_now"]`. The wire format, signature inputs, signature input construction, and the rest of the diagnostic code catalog are unchanged.
+
+The wire-level `spec_version` remains `"1.0"`.
+
 ### v1.0-rc.8
 
 Date: 2026-05-08
