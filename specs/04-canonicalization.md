@@ -250,7 +250,7 @@ The byte sequence length is 72 bytes.
 
 Implementations are expected to reproduce this byte sequence exactly when canonicalizing the input above. Disagreement with this byte sequence indicates a non-conforming JCS implementation or a misapplication of these rules.
 
-This test vector is illustrative. A full conformance corpus, including manifest, content, and transaction documents with known canonical forms and signatures, is distributed separately from the specification text.
+This test vector is illustrative. The full conformance corpus, including manifest, content, and transaction documents with known canonical forms and signatures, plus negative vectors covering input checks, parsing, schema, numeric grammar, signature strictness, base64url decoding, binding, and canary rules, is distributed in the `corpus/` directory of the specification repository. The corpus is normative: a v1.0-conforming implementation MUST agree with the verdict recorded for each vector.
 
 ## What this section does not cover
 
