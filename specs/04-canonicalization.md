@@ -62,6 +62,38 @@ A document containing a non-integer numeric value at any position is rejected.
 
 JCS specifies deterministic serialization for numbers based on ECMAScript rules. That serialization is well-defined but is not exercised for floating-point values by Entangled, because Entangled documents never contain floating-point values in conforming form.
 
+### Integer grammar
+
+Every numeric token in an Entangled document MUST match the following grammar exactly, in ABNF form:
+
+```text
+integer        = "0" / non-zero-digit *digit
+non-zero-digit = %x31-39   ; "1" through "9"
+digit          = %x30-39   ; "0" through "9"
+```
+
+This is the strict subset of RFC 8259 §6 numbers that produces a non-negative integer with no sign, no leading zeros, no decimal point, and no exponent.
+
+The integer's decimal value MUST be in the range `[0, 2^63 − 1]`. Values outside this range are rejected even if a field's own schema would accept a smaller subset; the absolute upper bound is the protocol's, not the field's.
+
+### Parser-level enforcement
+
+Numeric tokens MUST be validated against the integer grammar at the lexical or parse level, before any conversion to a numeric type.
+
+A JSON parser that converts numeric tokens to IEEE 754 binary64 before applying the grammar is non-conforming for Entangled use. Such a parser cannot reliably distinguish:
+
+- `42`, `42.0`, `4.2e1`, and `42E0` — all convert to the same binary64 value;
+- integers above `2^53` — they round silently, so `9007199254740993` becomes `9007199254740992`;
+- `-0` from `+0`.
+
+Implementations MUST use one of:
+
+- a JSON parser that exposes each numeric token as a string before numeric conversion, allowing lexical inspection;
+- a JSON parser that rejects, during parsing, any numeric token whose lexical form does not match the integer grammar above;
+- a separate validation pass over the raw document bytes that verifies every numeric token against the integer grammar before parsed values are used.
+
+A document containing a numeric token that fails the integer grammar is rejected with `E_SCHEMA_NON_INTEGER` (§11). The diagnostic's `stage` field reflects the implementation stage at which the violation was detected; the protocol-level meaning is constant.
+
 ## No duplicate member names
 
 Every JSON object in an Entangled document, including nested objects, MUST have unique member names. A document containing duplicate member names at any object level MUST be rejected during JSON parsing, before schema validation and before canonicalization.
@@ -104,6 +136,22 @@ JSON strings within an Entangled document MUST satisfy all of the following:
 For example, line feed `U+000A` is permitted in `canary.statement`, as defined in §08. It is not permitted in `state_policy.purpose`, which is single-line plain text as defined in §07.
 
 JCS produces deterministic output for valid Unicode strings. Entangled rejects malformed Unicode material during validation, before canonicalization is performed.
+
+## Strict base64url decoding
+
+Several Entangled fields are base64url-encoded byte strings: signatures (`sig`), public keys (`publisher_pubkey`, `origin_pubkey`, `runtime_pubkey`, `expected_publisher_pubkey`), submit request identifiers (`request_id`), and SHA-256 digest payloads in `image.sha256` and `transaction.request_hash`. Each such field declares its expected decoded length and the corresponding exact ASCII length on the wire (32 bytes / 43 chars, 64 bytes / 86 chars, 16 bytes / 22 chars).
+
+All base64url-encoded fields MUST be decoded using strict RFC 4648 §5 ("Base 64 Encoding with URL and Filename Safe Alphabet") rules. The decoder MUST:
+
+- accept only the URL-safe alphabet: `A-Z`, `a-z`, `0-9`, `-`, `_`;
+- reject every character outside this alphabet, including `+`, `/`, whitespace, line breaks, control characters, and any Unicode character above U+007F;
+- reject the padding character `=`. Entangled base64url fields are unpadded;
+- reject inputs whose length is not the field-declared exact ASCII length;
+- reject non-canonical encodings: the unused bits in the final group's encoded character MUST be zero, ensuring a unique decoded byte string for each input.
+
+A field whose value violates any of these rules is rejected with `E_SCHEMA_FIELD_SYNTAX` (§11).
+
+Permissive base64 decoders that accept padded input, silently ignore whitespace, accept the standard `+`/`/` alphabet, or accept non-canonical trailing-group encodings are non-conforming for Entangled use. Implementations MUST configure or replace such decoders.
 
 ## Closed-schema validation precedes signature verification
 
