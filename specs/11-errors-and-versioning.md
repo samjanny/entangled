@@ -88,7 +88,7 @@ A client MAY apply stricter user-selected policies that block rendering or opera
 
 ## Diagnostic code catalog
 
-The following catalog defines all diagnostic codes for Entangled v1.0. Codes are organized by pipeline stage and category.
+The following catalog defines all diagnostic codes for Entangled v1.0. Codes are organized primarily by pipeline stage and category, with the Trust state diagnostics group spanning Stage 6 (manifest pre-check) and Stage 7 (resolution) as documented below.
 
 ## Transport diagnostics (Stage 1)
 

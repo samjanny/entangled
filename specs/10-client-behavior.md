@@ -73,7 +73,9 @@ Stage 6.  Signature verification (manifest: identity pre-check then
             - Ed25519 verification
 
 Stage 7.  Publisher identity and trust state resolution
-            - for manifests: compare `publisher_pubkey` against the expected or observed `K_publisher.pub`
+            - for manifests: apply trust-state transitions for First contact,
+              TOFU pinning, and external verification (mismatch detection and
+              E_TRUST_MISMATCH already handled in the Stage 6 pre-check)
             - for content/transaction: ensure a relevant verified manifest exists
             - apply trust state transitions
 

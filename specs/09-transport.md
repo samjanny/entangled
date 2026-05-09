@@ -137,7 +137,7 @@ Because submit bodies are unsigned user input, publishers MUST treat all submit 
 
 `request_id` is a base64url string encoding 16 random bytes (128 bits) with no padding (22 ASCII characters).
 
-The client MUST generate `request_id` using a cryptographically secure random source. Each submit MUST have a freshly generated `request_id`; the client MUST NOT reuse `request_id` values across submits.
+The client MUST generate `request_id` using a cryptographically secure random source. Each submit MUST carry a freshly generated `request_id`; the no-reuse rules are stated under "Collision avoidance" below.
 
 `request_id` is in the unsigned submit body. It is not signed by the client (the client signs nothing in v1). The publisher echoes it in the corresponding transaction document, as defined in §02, where it is signed under `K_runtime` together with the `request_hash` that binds the transaction to the specific submit body bytes.
 
