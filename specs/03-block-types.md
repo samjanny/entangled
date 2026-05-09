@@ -615,6 +615,8 @@ The client MUST NOT navigate automatically to a citation URL.
 
 The user may be offered an external handoff: opening the URL in an external browser, copying the URL, or canceling. The handoff mechanism is implementation-defined.
 
+Opening a citation URL transmits it to a browser and a network outside Entangled's carrier. The destination's operators, any in-path observer on the clearnet route, and the chosen browser may learn that the URL was reached from the user's local environment, along with whatever identifying metadata each layer collects. This is outside the privacy and integrity properties Entangled provides for in-protocol fetches over a carrier such as Tor v3. The handoff mechanism SHOULD make this trust boundary visible to the user before navigation proceeds, so that the act of opening a citation is an informed step out of Entangled rather than a transparent one.
+
 Citation links MUST NOT carry Entangled request state.
 
 ## Link block
