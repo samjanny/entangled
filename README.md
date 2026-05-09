@@ -319,7 +319,8 @@ Links are explicitly typed:
 
 * `same_site` links navigate within the current site;
 * `entangled` links point to another Entangled site and require user confirmation;
-* `citation` links point to clearnet URLs and are handled as external references, not automatic Entangled navigation.
+* `carrier` links point to a non-Entangled service reachable through the same carrier (such as a non-Entangled Tor onion service) and are not auto-navigated; the client offers an external handoff to a carrier-aware browser;
+* `citation` links point to clearnet `https://` URLs and are handled as external references, not automatic Entangled navigation.
 
 Images are same-origin resources bound by SHA-256. A document may reference an image path, but the signed document contains the expected digest. The client verifies the digest before decoding or rendering the image.
 
@@ -460,15 +461,31 @@ specs/
   11-errors-and-versioning.md
 ```
 
-Additional design rationale and operational notes may live in:
+Additional design rationale, operational notes, and release engineering live in:
 
 ```text
 docs/
   design-decisions.md
   operator-playbook.md
+  RELEASES.md
 ```
 
 The numbered specification sections define protocol behavior. Design notes explain why decisions were made. If design notes and the numbered specification conflict, the numbered specification governs.
+
+A normative conformance corpus accompanies the specification:
+
+```text
+corpus/
+  README.md         corpus layout, harness contract, and clock-mocking rules
+  corpus.json       machine-readable index of vectors with expected verdicts
+  keys.json         test-only Ed25519 keys and the publisher PIP
+  vectors/<id>/     one directory per vector, with input.json (and optional extras)
+  tools/
+    generate.py        deterministic generator for the corpus
+    bip39_english.txt  canonical BIP-39 English wordlist used for PIP derivation
+```
+
+Each rejection vector carries the normative §11 diagnostic the implementation must produce. See [`corpus/README.md`](corpus/README.md) for the harness contract.
 
 ## License
 
