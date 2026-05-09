@@ -346,6 +346,8 @@ Server compromise may expose `K_origin` and `K_runtime`. It does not compromise 
 
 Compromise of `K_publisher` is publisher identity compromise. An attacker with `K_publisher_priv` can sign manifests authorizing arbitrary origins and runtime keys. Entangled v1 provides no in-band recovery from this condition.
 
+Entangled also provides no in-band way to retire a publisher identity key while keeping the corresponding PIP attributable. Once `K_publisher.pub` has been published with a PIP, any object verifiable under that key is, at the protocol level, indistinguishable from a legitimate publisher action regardless of when it was produced. An operator who wishes to permanently decommission an identity SHOULD treat `K_publisher_priv` as destroyed and avoid any subsequent use of the corresponding `K_publisher.pub`; the protocol cannot distinguish "the publisher stopped publishing" from "the publisher resumed publishing under attacker control after a long pause."
+
 ### `K_origin` compromise
 
 Compromise of `K_origin` is carrier endpoint compromise. The attacker may control the address, but cannot sign valid manifests unless they also compromise `K_publisher`.

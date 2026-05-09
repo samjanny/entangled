@@ -1,1 +1,14 @@
+# Force LF on JSON metadata to keep the corpus byte-for-byte
+# reproducible across platforms (the corpus generator writes LF on
+# every platform; .gitattributes prevents core.autocrlf from
+# converting on checkout/commit).
+*.json text eol=lf
+
+# Markdown and source files: stable LF throughout the repo.
+*.md text eol=lf
+*.py text eol=lf
+
+# BIP-39 wordlist: LF-pinned so the SHA-256 published in
+# corpus/README.md and the PIP derived from it remain stable
+# across platforms.
 corpus/tools/bip39_english.txt text eol=lf

@@ -923,9 +923,9 @@ def main() -> int:
             "pub_b64u": b64u(runtime_pub_2),
         },
     }
-    (ROOT / "keys.json").write_text(
-        json.dumps(keys_doc, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
+    (ROOT / "keys.json").write_bytes(
+        (json.dumps(keys_doc, indent=2, ensure_ascii=False) + "\n")
+        .encode("utf-8")
     )
 
     vectors: list[dict] = []
@@ -940,9 +940,9 @@ def main() -> int:
         "clock_now": "2026-05-07T00:01:00Z",
         "vectors": vectors,
     }
-    (ROOT / "corpus.json").write_text(
-        json.dumps(corpus, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
+    (ROOT / "corpus.json").write_bytes(
+        (json.dumps(corpus, indent=2, ensure_ascii=False) + "\n")
+        .encode("utf-8")
     )
 
     print(f"Generated {len(vectors)} vectors -> {VECTORS_DIR}")
