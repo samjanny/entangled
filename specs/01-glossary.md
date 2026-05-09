@@ -106,7 +106,10 @@ The technique by which a signed document commits to external bytes by including 
 A content document signed by a `K_runtime` other than the one currently authorized by the publisher's current manifest, but previously authorized for the same `K_publisher`. Renderable by the client only under the historical-content rules, with a clear historical marker in chrome. Defined in §10. Related: K_runtime, manifest, content document, chrome.
 
 **Image**  
-A block kind that references a same-origin image resource and binds it to the signed document by SHA-256 digest. Image bytes are not embedded in the document. The client fetches the image only after verifying the containing document, verifies the SHA-256 digest before decoding, and renders only if the digest and format checks pass. Defined in §03. Related: hash binding, SHA-256, block.
+A block kind that references a same-origin image resource and binds it to the signed document by SHA-256 digest. Image bytes are not embedded in the document. The client fetches the image only after verifying the containing document, verifies the SHA-256 digest before decoding, and renders only if the digest and format checks pass. Defined in §03. Related: hash binding, SHA-256, block, image resource.
+
+**Image resource**  
+The binary image file fetched separately from the same origin as the document referencing it, bound to the document by SHA-256. Distinct from the `image` block, which carries the reference and the expected digest within the signed document. Defined in §03 and §09. Related: image, hash binding, SHA-256.
 
 **Inline element**  
 A `text` or `link` element appearing within an inline content array of a block (paragraph, heading, list item, etc.). Carries visible string content plus optional text marks and, for link elements, a target. Defined in §03. Related: block, text mark, link.
@@ -139,7 +142,10 @@ The signed document by which a publisher declares the current authorization stat
 A service in the Tor network reachable through a `.onion` address. In Tor v3, an onion service is identified by a 56-character base32-encoded address derived from the onion service public key. In Entangled, the Tor v3 onion service key is `K_origin`. The authoritative definition is the Tor rendezvous specification. Defined in §05 and §09. Related: Tor v3, carrier, K_origin.
 
 **Origin**  
-In the manifest, the JSON object declaring the carrier endpoint at which the site is reachable: `carrier`, `address`, and `origin_pubkey`. Distinct from the HTTP-style "origin" concept; this term refers to the carrier-level reachability declaration. Defined in §06. Related: manifest, carrier endpoint, K_origin.
+In the manifest, the JSON object declaring the carrier endpoint at which the site is reachable: `carrier`, `address`, and `origin_pubkey`. Distinct from the HTTP-style "origin" concept; this term refers to the carrier-level reachability declaration. Defined in §06. Related: manifest, carrier endpoint, K_origin, origin binding.
+
+**Origin binding**  
+The verification rule that the carrier endpoint from which a manifest was fetched matches the `origin` declared in the manifest, with carrier-specific key derivation (for Tor v3, the `.onion` address derived from `origin_pubkey`). Origin binding is enforced at Stage 9 of the validation pipeline; failure is reported as `E_BIND_ORIGIN`. Defined in §05 and §06. Related: origin, K_origin, manifest, validation pipeline.
 
 **Path binding**  
 The verification rule that a content document's `path` field, or a transaction document's `in_response_to` field, must match byte-exactly the path from which the document was fetched or to which the submit was sent. Prevents path-substitution attacks. Defined in §02 and §10. Related: content document, transaction document, validation pipeline.
@@ -205,7 +211,10 @@ Per-user information that a publisher may persist on the client's device, declar
 The manifest's declaration of every state item the site is authorized to use, with mode, maximum size, maximum lifetime, and purpose for each. Required field of the manifest, even when empty. Defined in §06 and §07. Related: state, manifest.
 
 **Submit**  
-A user-initiated request from the client to a transaction endpoint, carrying user input (`fields`) and consented request-state items. Always uses HTTP POST with Content-Type `application/entangled-submit+json`. Defined in §07 and §09. Related: transaction document, request state, fields.
+A user-initiated request from the client to a transaction endpoint, carrying user input (`fields`) and consented request-state items. Always uses HTTP POST with Content-Type `application/entangled-submit+json`. Defined in §07 and §09. Related: transaction document, request state, fields, submit body.
+
+**Submit body**  
+The unsigned JSON object transmitted as the body of a POST submit request, containing `fields`, `request_state`, and `request_id`. Defined in §09. Related: submit, transaction document, request state, fields.
 
 **Submit form**  
 A block kind that declares a form whose user input the client packages into a submit request. Defines the transaction endpoint path, the form fields, and the submit button label. Defined in §03. Related: submit, transaction document, fields.

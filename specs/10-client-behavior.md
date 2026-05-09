@@ -64,7 +64,9 @@ Stage 5.  Closed-schema validation
             - per-field type, range, syntax, and length checks
             - nested object and array schema checks
 
-Stage 6.  Signature verification
+Stage 6.  Signature verification (manifest: identity pre-check then
+            Ed25519 verify; content/transaction: Ed25519 verify under
+            current_manifest.canary.runtime_pubkey)
             - construct signed payload by removing top-level `sig`
             - JCS canonicalization
             - construct signature input with context string and 0x00 separator
@@ -361,7 +363,7 @@ The first retained `K_runtime.pub` under which the document signature verifies i
 
 If no retained runtime key verifies the document, the document is rejected with `E_HISTORICAL_NO_AUTHORIZATION` (§11).
 
-If signature verification succeeds under more than one distinct retained `K_runtime.pub` for the same document — an outcome whose probability under Ed25519 is approximately `2^-256` and which therefore indicates a cryptographic anomaly, an implementation bug, or corruption in the authorization-history store — the client MUST reject the document and surface a client-implementation diagnostic. The document is not rendered. Entangled v1 does not assign a normative error code to this case; clients SHOULD log the condition for offline analysis.
+If signature verification succeeds under more than one distinct retained `K_runtime.pub` for the same document — an outcome whose probability under Ed25519 is approximately `2^-256` and which therefore indicates a cryptographic anomaly, an implementation bug, or corruption in the authorization-history store — the client MUST reject the document and surface `W_HISTORICAL_RUNTIME_AMBIGUOUS` (§11). The document is not rendered. Clients SHOULD log the condition for offline analysis.
 
 ## Historical content marker
 
@@ -531,6 +533,8 @@ The 300-second tolerance is normative. A client using a different value is non-c
 
 When rejecting a timestamp because it exceeds the clock-skew tolerance, the client SHOULD indicate to the user that the local clock may be incorrect, since clock-skew failures are a likely cause of false positives on devices with unsynchronized clocks. The protocol-level diagnostic remains the one specified for the failing field (`E_CANARY_INVALID` for canary `issued_at`, `E_SCHEMA_FIELD_SYNTAX` for `manifest.updated`); the local-clock advisory is a user-presentation hint, not a separate diagnostic code.
 
+For `manifest.updated` future-skew rejection specifically, the `details` field of the structured `E_SCHEMA_FIELD_SYNTAX` diagnostic SHOULD include `reason: "future_beyond_skew_tolerance"` and the offending timestamp, to distinguish this temporal-domain failure from lexical RFC 3339 violations.
+
 ## Editorial published_at display
 
 `meta.published_at` (§02) is editorial metadata, not a freshness or security signal. The client MUST NOT reject a content document solely because `meta.published_at` is in the past or in the future relative to the client's clock.
@@ -642,7 +646,7 @@ A client MAY support modes with reduced functionality:
 * **Externally-verified-only mode**: the client refuses to render content from sites in First contact or TOFU pinned trust states; only Externally verified publishers are accepted. Useful for high-threat users.
 * **Expired-canary-block mode**: the client refuses to render current content from sites whose canary is in Expired state. Historical content rules are unaffected. Useful for users who want canary expiration to act as a hard block, not a warning.
 
-When this mode is active, the client MUST display the mode in chrome, and the rendered content area is replaced by a clear notice that the canary is expired and rendering is blocked by client policy.
+When Expired-canary-block mode is active, the rendered content area is replaced by a clear notice that the canary is expired and rendering is blocked by client policy.
 
 When a reduced mode is active, the client MUST display the mode in chrome.
 

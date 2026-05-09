@@ -162,9 +162,9 @@ Publisher identity has four mutually exclusive states. A conforming client must 
 | State | Meaning | Trust level |
 |---|---|---|
 | Externally verified | The user has confirmed this `K_publisher.pub` by comparing its PIP with an out-of-band reference | Highest |
-| TOFU pinned | The client has previously retained this `K_publisher.pub` for the current site entry, origin, or publisher profile, and the PIP is unchanged | Intermediate |
+| TOFU pinned | The client has previously retained this `K_publisher.pub` for the current site, origin, or publisher profile, and the PIP is unchanged | Intermediate |
 | First contact | The client has no existing retained identity or external verification for this `K_publisher.pub` in the current context | Low |
-| Changed / mismatch | The current site entry, origin, or publisher profile was previously associated with a different `K_publisher.pub` | Asserted breach |
+| Changed / mismatch | The current site, origin, or publisher profile was previously associated with a different `K_publisher.pub` | Asserted breach |
 
 The client must display the current state persistently in client-controlled UI, not as publisher-controlled document content.
 

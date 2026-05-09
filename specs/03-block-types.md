@@ -110,7 +110,7 @@ Text marks are a closed enumeration:
 
 The `marks` field is a JSON array. It MUST contain only values from this enumeration.
 
-Duplicate marks within the same `marks` array cause the inline element to be rejected.
+Duplicate marks within the same `marks` array cause the inline element to be rejected with `E_SCHEMA_DUPLICATE_ENTRY` (§11).
 
 Marks combine. An inline text element with `["bold", "italic"]` is rendered as bold italic. Mark order in the array is not significant.
 
@@ -395,7 +395,9 @@ No other media types are permitted in Entangled v1.
 
 `caption` is optional. When present, it is a UTF-8 string. It MUST NOT contain control characters in the range U+0000 through U+001F or U+007F. When absent, the field is omitted. An empty string is not permitted as a substitute.
 
-No other fields are permitted.
+`alt` MAY be the empty string for purely decorative images, where alternative text would not aid accessibility. This contrasts with `caption`, where the empty string is forbidden — `caption` is omitted entirely when no caption applies.
+
+All seven of `kind`, `src`, `sha256`, `media_type`, `width`, `height`, and `alt` are required. `caption` is optional. No other top-level fields are permitted.
 
 ### Image fetching and verification
 
@@ -720,7 +722,7 @@ All field kinds share three required fields:
 * begins with `[a-z0-9]`;
 * does not exceed 64 characters.
 
-Field names MUST be unique within a single form.
+Field names MUST be unique within a single form. A form containing duplicate field `name` values is rejected with `E_SCHEMA_DUPLICATE_ENTRY` (§11).
 
 `label` is a UTF-8 string of up to 200 bytes. It MUST NOT contain control characters.
 
@@ -799,7 +801,7 @@ Each option object has exactly two fields:
 
 `value` is an ASCII slug satisfying the same slug syntax as field `name`. It MUST NOT exceed 64 characters.
 
-Option values MUST be unique within a single `select` field.
+Option values MUST be unique within a single `select` field. A `select` field containing duplicate option `value` entries is rejected with `E_SCHEMA_DUPLICATE_ENTRY` (§11).
 
 `label` is a UTF-8 string of up to 200 bytes. It MUST NOT contain control characters.
 

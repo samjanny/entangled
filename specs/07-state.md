@@ -99,7 +99,7 @@ Each entry in `state_policy` describes exactly one `(namespace, key)` state item
 
 All six fields are required. No additional fields are permitted.
 
-A `state_policy` array MUST NOT contain two entries with the same combination of `namespace` and `key`. Duplicate entries cause the manifest to be rejected.
+A `state_policy` array MUST NOT contain two entries with the same combination of `namespace` and `key`. Duplicate entries cause the manifest to be rejected with `E_SCHEMA_DUPLICATE_ENTRY` (§11).
 
 The `state_policy` array MUST NOT contain more than 32 entries.
 

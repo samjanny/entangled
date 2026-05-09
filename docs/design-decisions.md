@@ -4,6 +4,8 @@ Decisions made during the rebuild of Entangled. This file tracks the
 agreed terminology, model choices, and rationale, before they propagate
 into normative spec text.
 
+**Note:** the vocabulary and trust-model summary below are pre-spec snapshots from the design phase. Authoritative definitions live in §01 (glossary) and §05 (keys and signing). When this document and the numbered specification differ, the numbered specification governs.
+
 ## Vocabulary
 
 | Term | Definition |

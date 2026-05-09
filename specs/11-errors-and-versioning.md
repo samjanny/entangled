@@ -153,10 +153,16 @@ The structured diagnostic format for `E_PARSE_DUPLICATE_KEY` SHOULD include in `
 | `E_SCHEMA_FIELD_RANGE`         | error    | any           | A numeric field is outside its permitted range                                                                                                            |
 | `E_SCHEMA_FIELD_SYNTAX`        | error    | any           | A string field violates its declared syntax: slug rules, base64url format, RFC 3339 form, path syntax, or similar                                         |
 | `E_SCHEMA_ENUM_VIOLATION`      | error    | any           | A field whose value is required to be one of an enumerated set carries a syntactically valid value not in that set. For example, a block `kind` slug not in the enumerated block kinds (§03), an unknown state-policy `mode`, or an unknown transaction `feedback` `variant`. |
+| `E_SCHEMA_DUPLICATE_ENTRY`     | error    | any           | An array contains duplicate entries where uniqueness is required by the field's schema (e.g. duplicate `(namespace, key)` in `state_policy`, duplicate field `name` in a `submit_form`, duplicate `value` in `select.options`, duplicate marks in inline `marks`). |
 | `E_SCHEMA_FIELD_LENGTH`        | error    | any           | A field exceeds its specific length limit                                                                                                                 |
 | `E_SCHEMA_NULL_VALUE`          | error    | any           | A `null` literal appears in the document; null values are not permitted                                                                                   |
 | `E_SCHEMA_NON_INTEGER`         | error    | any           | A numeric value is not a non-negative integer permitted by the schema                                                                                     |
 | `E_SCHEMA_MALFORMED_UNICODE`   | error    | any           | A string contains malformed Unicode escape sequences or isolated surrogates                                                                               |
+
+The structured diagnostic format for `E_SCHEMA_DUPLICATE_ENTRY` SHOULD include in `details`:
+
+* `field_path`: a JSON pointer or dot-path identifying the array containing the duplicate;
+* `duplicate_value`: the duplicated entry value, or for composite uniqueness keys (such as `(namespace, key)`), an object identifying the duplicated key components.
 
 ## Signature diagnostics (Stage 6)
 
@@ -168,7 +174,9 @@ The structured diagnostic format for `E_PARSE_DUPLICATE_KEY` SHOULD include in `
 
 For content and transaction documents, `E_SIG_INVALID_KEY` includes the case where no relevant verified manifest is available from which to obtain the authorized `runtime_pubkey`.
 
-## Trust state diagnostics (Stage 7)
+## Trust state diagnostics (Stage 6 manifest pre-check and Stage 7 resolution)
+
+`E_TRUST_MISMATCH` and `E_TRUST_USER_REJECTED` are detected during the Stage 6 manifest identity pre-check defined in §10. The structured diagnostic `stage` field for these codes is therefore `6`, and `E_TRUST_MISMATCH` takes precedence over `E_SIG_VERIFICATION` per §10. The remaining codes in this group are emitted as part of Stage 7 trust-state resolution (transitions for First contact, TOFU pinning, and external verification), and carry `stage: 7`.
 
 | Code                    | Severity | Document kind | Meaning                                                                                                           |
 | ----------------------- | -------- | ------------- | ----------------------------------------------------------------------------------------------------------------- |
@@ -237,11 +245,14 @@ A rejected state set operation does not necessarily invalidate the transaction d
 
 ## Historical content diagnostics
 
-| Code                            | Severity | Document kind | Meaning                                                                                                                |
-| ------------------------------- | -------- | ------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `E_HISTORICAL_NO_AUTHORIZATION` | error    | content       | The runtime key signing the historical content is not in the client's authorization history for this `K_publisher.pub` |
-| `E_HISTORICAL_TRUST_BLOCKED`    | error    | content       | Historical content cannot be rendered while the publisher identity is in Changed/mismatch state                        |
-| `W_HISTORICAL_RENDERED`         | warning  | content       | Historical content is being rendered with the historical-content marker                                                |
+| Code                              | Severity | Document kind | Meaning                                                                                                                                                                                                                            |
+| --------------------------------- | -------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `E_HISTORICAL_NO_AUTHORIZATION`   | error    | content       | The runtime key signing the historical content is not in the client's authorization history for this `K_publisher.pub`                                                                                                             |
+| `E_HISTORICAL_TRUST_BLOCKED`      | error    | content       | Historical content cannot be rendered while the publisher identity is in Changed/mismatch state                                                                                                                                    |
+| `W_HISTORICAL_RENDERED`           | warning  | content       | Historical content is being rendered with the historical-content marker                                                                                                                                                            |
+| `W_HISTORICAL_RUNTIME_AMBIGUOUS`  | warning  | content       | Historical content signature verifies under more than one distinct retained `K_runtime.pub` for the same `K_publisher.pub`; the document is rejected as a cryptographic anomaly indicating implementation bug or authorization-history corruption. |
+
+Severity for `W_HISTORICAL_RUNTIME_AMBIGUOUS` is `warning` rather than `error` because the affected document is rejected (per §10) but the condition does not invalidate other content for the same publisher. Clients SHOULD log the condition for offline analysis.
 
 ## Image resource diagnostics
 

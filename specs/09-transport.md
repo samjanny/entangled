@@ -143,7 +143,7 @@ The client MUST generate `request_id` using a cryptographically secure random so
 
 Collision avoidance.
 
-The 128-bit `request_id` space makes accidental collisions across submits astronomically unlikely. The client SHOULD nonetheless ensure that an in-flight submit's `request_id` is not reused for any other in-flight submit to the same publisher; in practice this is satisfied by drawing each `request_id` from a cryptographically secure random source.
+The 128-bit `request_id` space makes accidental collisions across submits astronomically unlikely. The client MUST NOT reuse a `request_id` across submits, including retries of a previously failed submit. Concurrent in-flight submits to the same publisher MUST NOT carry identical `request_id` values; in practice this is satisfied by drawing each `request_id` from a cryptographically secure random source.
 
 The publisher SHOULD treat a `request_id` seen in an active submit as unique to that submit; concurrent submits with identical `request_id` values are a malformed-client condition and MAY be rejected at the publisher's discretion.
 
@@ -186,7 +186,7 @@ Constraints:
 
 * the array MUST contain between 0 and 32 entries;
 * each `namespace` and `key` MUST satisfy the slug syntax defined in §07;
-* each `value` MUST be a UTF-8 string;
+* each `value` MUST be a UTF-8 string not exceeding 4096 bytes, the protocol's absolute state-value ceiling (§07). Publishers MAY reject submit bodies carrying a larger `value` as malformed;
 * entries reflect the state items the client is transmitting at submit time, scoped to the same `K_publisher.pub` that authorized the manifest currently in effect for this site.
 
 The `request_state` array MUST NOT contain duplicate `(namespace, key)` pairs. Each `(namespace, key)` appears at most once in a single submit body. Publishers MUST reject submit bodies containing duplicate `request_state` entries.
@@ -395,9 +395,9 @@ Entangled defines a closed whitelist of HTTP status codes. Each has defined sema
 | `429 Too Many Requests`   | Rate limit                      | Publisher rate-limiting the client                                                      |
 | `503 Service Unavailable` | Service temporarily unavailable | Publisher unable to serve, expected to recover                                          |
 
-Status codes outside this whitelist, including `1xx`, `2xx` other than `200`, `3xx`, and unlisted `4xx` or `5xx`, are treated by the client as transport or protocol errors.
+Status codes outside the whitelist — including `1xx`, `2xx` other than `200`, all `3xx`, and unlisted `4xx` or `5xx` codes (for example `204`, `304`, `418`) — are treated as transport or protocol errors; the client does not interpret HTTP semantics as Entangled semantics, except for `3xx` redirects which are explicitly rejected as defined under "Redirects" below.
 
-The client does not interpret their HTTP semantics as Entangled semantics. The error reported to the user reflects an unexpected transport response, not the literal HTTP status meaning, except for redirects as described below.
+The error reported to the user reflects an unexpected transport response, not the literal HTTP status meaning.
 
 The publisher SHOULD use only whitelisted status codes. A publisher returning non-whitelisted codes fails to communicate intent to the client.
 

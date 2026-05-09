@@ -81,7 +81,7 @@ This key is the publisher identity key for the site. It is the key from which th
 * a previous TOFU pin;
 * or a first-contact candidate identity being presented to the user.
 
-A manifest whose `publisher_pubkey` does not match the already established publisher identity for the current site entry or origin triggers the changed/mismatch trust state defined in §10.
+A manifest whose `publisher_pubkey` does not match the already established publisher identity for the current site or origin triggers the changed/mismatch trust state defined in §10.
 
 ## `origin`
 
@@ -231,14 +231,7 @@ No additional fields are permitted.
 * it MUST NOT exceed 100 bytes when encoded as UTF-8;
 * it MUST NOT contain control characters in the range U+0000 through U+001F or the value U+007F.
 
-`path` MUST satisfy the same path syntax as content document `path` values defined in §02:
-
-* begin with `/`;
-* contain only ASCII characters in the range `[A-Za-z0-9._~/-]`;
-* not contain consecutive `/` characters;
-* not contain `.` or `..` path segments;
-* not contain a query string, fragment, scheme, or host;
-* not exceed 256 ASCII characters.
+`path` MUST satisfy the path syntax defined in §02 for content document `path` values, including the reservation of `/manifest.json`.
 
 The label is rendered in the chrome navigation control. The path is a relative path within the same site. Cross-host, cross-origin, cross-carrier, and absolute URLs are forbidden in navigation entries.
 
