@@ -47,6 +47,20 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.11
+
+Date: 2026-05-09
+
+Changes since v1.0-rc.10:
+
+- §00 — Added a new v1.0 limitation entry, "Diagnostic stage selection is not constant-time." The validation pipeline in §10 emits diagnostics keyed to the first failing stage, and the structured diagnostic itself names that stage (§11). A natural sequential implementation therefore exhibits observable timing differences across rejection causes, and the diagnostic is itself an explicit channel. A passive observer with timing access, or any consumer of the structured diagnostic, may infer information about a document's failure mode. Entangled v1 does not require constant-time diagnostic emission and does not place this in the protocol's threat model. Whether a future protocol version should constrain this side channel is acknowledged as open and may be revisited.
+- Corpus — Added `publisher.pip` to `corpus/keys.json`: the 24-word Publisher Identity Phrase derived from `publisher.pub_b64u` per §05 (BIP-39 English wordlist over the raw 32-byte public key with an 8-bit SHA-256 checksum). An implementation deriving PIPs MUST produce the same string for this public key. The canonical BIP-39 English wordlist is bundled at `corpus/tools/bip39_english.txt` (sourced from `bitcoin/bips: bip-0039/english.txt`, SHA-256 `2f5eed53a4727b4bf8880d8f3f199efc90e58503646d9ff8eff3a2ed3b24dbda`); `compute_pip()` and `load_bip39_wordlist()` helpers are added to the generator. The expected PIP value was cross-verified byte-for-byte against an independent BIP-39 reference implementation.
+- Corpus — Added a normative paragraph to `corpus/README.md` describing how negative vectors are constructed: after all earlier stages pass cleanly, exactly one diagnostic-relevant violation is intended to be live at the first failing stage. This is the principle that drove the rc.9 fixes for vectors 132 and 142 and the rc.9 reclassification of 151; it is now stated explicitly as a corpus design rule so that future tranches preserve diagnostic determinism.
+- Corpus — Strengthened the docstring on `corpus/tools/generate.py`'s `jcs()` helper, which is currently a thin wrapper over Python's `json.dumps(sort_keys=True, separators=(",", ":"), ensure_ascii=False)`. The new note enumerates the specific edge cases — non-ASCII member names (UTF-16 vs codepoint sort order divergence), non-integer numerics (RFC 8785 §3.2.2.3 ECMA-262 number serialization), and Python-specific escaping divergences — that require replacing the helper with a verified RFC 8785 implementation before the corpus can grow to cover them. No current vector exercises any of those cases, so the bundled `jcs()` is sufficient for the rc.11 corpus.
+- `corpus/corpus.json` — `rc_target` bumped from `"1.0-rc.9"` to `"1.0-rc.11"` to reflect that the corpus is now consistent with both the rc.10 spec-text fixes and the rc.11 §00 limitation and PIP additions. The 28 input vectors and their expected verdicts are unchanged byte-for-byte from rc.9; the rc.11 spec changes since rc.9 are additive and do not affect any existing vector's outcome.
+
+This rc adds no new diagnostic codes, changes no existing diagnostic semantics, and makes no wire-format or signature-input changes. The wire-level `spec_version` remains `"1.0"`. The deferred rc.10 corpus follow-up — vectors exercising `E_SCHEMA_DUPLICATE_ENTRY` and `W_HISTORICAL_RUNTIME_AMBIGUOUS` — is still pending and is tracked separately from this rc.
+
 ### v1.0-rc.10
 
 Date: 2026-05-09

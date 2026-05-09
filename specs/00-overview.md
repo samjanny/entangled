@@ -159,6 +159,8 @@ Beyond the high-level non-goals above, Entangled v1.0 has specific limitations t
 
 - **Image decoding is a residual attack surface.** SHA-256 verification authenticates the bytes of an image resource against the signed document; it does not make image decoding safe. A publisher with a valid `K_runtime` can sign a document referencing an image whose bytes are intentionally crafted to exploit decoder bugs (§03).
 
+- **Diagnostic stage selection is not constant-time.** The validation pipeline in §10 is staged so that the first failing stage produces the rejection diagnostic, and the structured diagnostic itself names that stage (§11). A natural sequential implementation therefore exhibits observable timing differences across rejection causes, and the diagnostic is itself an explicit channel. A passive observer with timing access, or any consumer of the structured diagnostic, may infer information about a document's failure mode. Entangled v1 does not require constant-time diagnostic emission and does not place this in the protocol's threat model. Whether a future protocol version should constrain this side channel is acknowledged as open and may be revisited (§10, §11).
+
 These limitations are implementation-relevant: a v1.0 client and publisher SHOULD align user-facing security claims with what the protocol actually enforces.
 
 ## Structure of this specification

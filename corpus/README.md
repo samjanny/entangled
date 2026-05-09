@@ -45,9 +45,13 @@ Three roles are pre-derived: `publisher` (`K_publisher`), `runtime` (`K_runtime`
 
 For the `origin` keypair, the corresponding Tor v3 onion address is also recorded; it is derived from the public key by the rend-spec-v3 procedure and used for origin-binding in manifest vectors.
 
+The `publisher` entry in `keys.json` also carries `pip`: the 24-word Publisher Identity Phrase derived from `publisher.pub_b64u` per §05 (BIP-39 English wordlist over the raw 32-byte public key, with an 8-bit SHA-256 checksum). An implementation that derives PIPs MUST produce the same string for this public key. The wordlist used by `generate.py` is bundled at `tools/bip39_english.txt` and is the canonical BIP-39 English wordlist from the Bitcoin BIPs repository (`bitcoin/bips: bip-0039/english.txt`); its SHA-256 is `2f5eed53a4727b4bf8880d8f3f199efc90e58503646d9ff8eff3a2ed3b24dbda`. The `pip` field is omitted when the wordlist file is absent; presence of the field is therefore the indicator that the corpus was regenerated with a verified wordlist in place.
+
 ## Diagnostics
 
 Negative vectors carry the normative diagnostic code from §11 of the specification. Where multiple stages could in principle detect the violation, the diagnostic listed is the one the spec assigns (or, for parser-detectable cases, the one whose protocol-level meaning matches the violation regardless of detection stage).
+
+Negative vectors are constructed so that the diagnostic-relevant violation is the only violation in the document at the first failing pipeline stage. After all earlier stages pass cleanly, exactly one diagnostic-relevant violation is intended to be live; later-stage violations may exist in the same document only when they cannot be exercised in isolation (e.g., a placeholder `sig` for a vector whose diagnostic precedes signature verification). This isolation is what makes the expected diagnostic deterministic across conforming implementations: a vector that contains two competing stage-5 violations would permit two equally-conformant rejection codes, defeating the corpus's normative purpose.
 
 ## Running the corpus against an implementation
 
