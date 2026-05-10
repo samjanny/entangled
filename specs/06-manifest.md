@@ -29,7 +29,9 @@ The manifest is a flat JSON object whose fields are the signed payload, plus a t
 }
 ```
 
-All fields listed above are required. No other fields are permitted.
+All fields listed above are required. The optional top-level field `migration_pointer` MAY appear in addition to the required fields (see "`migration_pointer`" below). No other fields are permitted.
+
+Optional top-level fields are part of the closed schema: only fields explicitly listed by this section as required or optional may appear. A document containing any other top-level field is rejected.
 
 The signed payload is the manifest object with the `sig` field removed. The signature input is:
 
@@ -304,6 +306,75 @@ The client MUST NOT use `updated` as the primary freshness or anti-downgrade sig
 
 A manifest whose `updated` is more than the allowed clock-skew tolerance in the future relative to the client's clock is rejected. Clock-skew tolerance is defined in §10.
 
+## `migration_pointer`
+
+`migration_pointer` is the publisher's signed announcement that the site is being migrated to a new carrier endpoint under the same `K_publisher`.
+
+It addresses the case where a publisher rotates `K_origin`, replaces the carrier endpoint, or migrates between carrier endpoints, without losing identity continuity for clients that have only the old endpoint cached.
+
+### Optionality
+
+`migration_pointer` is an OPTIONAL top-level field. Following the "absent values are encoded by omitting the field" rule of §04, a manifest with no migration to announce omits the field entirely. The JSON literal `null` is not permitted as a value for `migration_pointer`, in keeping with the no-`null` rule of §04.
+
+### Value when present
+
+When a migration is announced, the field is present and contains exactly two members: `successor_origin` and `announced_at`. No other fields are permitted.
+
+```json
+"migration_pointer": {
+  "successor_origin": {
+    "carrier": "tor-v3",
+    "address": "<56-character-onion-address>.onion",
+    "origin_pubkey": "<base64url, 32 bytes>"
+  },
+  "announced_at": "2026-05-10T00:00:00Z"
+}
+```
+
+### `successor_origin`
+
+`successor_origin` declares the carrier endpoint to which the publisher is migrating.
+
+Its schema is identical to the manifest's top-level `origin` field, including the `carrier`, `address`, and `origin_pubkey` fields, the carrier-value rule (`"tor-v3"` only for v1.0 conformance), and the address-to-key binding rule.
+
+`successor_origin.carrier` MUST equal `origin.carrier`. Cross-carrier migration is not part of Entangled v1.0 because v1.0 fully specifies only the Tor v3 carrier profile; cross-carrier announcements would require destination-carrier binding rules that v1.0 does not define.
+
+`successor_origin.address` MUST differ from `origin.address`. A migration_pointer that points back to the announcing origin is ill-formed.
+
+For Tor v3, the client MUST verify, before treating the announcement as valid, that `successor_origin.address` decodes to a public key equal to `successor_origin.origin_pubkey` (the same binding rule as for `origin`, defined in §05).
+
+### `announced_at`
+
+`announced_at` is the UTC timestamp at which the publisher composed the announcement, in the same RFC 3339 form required for `updated`:
+
+```text
+YYYY-MM-DDTHH:MM:SSZ
+```
+
+Other RFC 3339 forms are not permitted, including numeric UTC offsets, fractional seconds, and leap-second values.
+
+`announced_at` MUST NOT be later than the manifest's `updated` field. The announcement cannot be newer than the manifest that carries it.
+
+`announced_at` MAY be earlier than `updated` when the publisher pre-composed an announcement before the final manifest signature. Successive manifests that carry the same migration announcement MAY repeat the same `announced_at` across refreshes.
+
+### Authority and binding
+
+The migration announcement is part of the manifest payload covered by the manifest signature. Because the manifest is signed by `K_publisher`, only the legitimate publisher can announce a successor origin. An attacker holding `K_origin_priv` for the announcing origin but not `K_publisher_priv` cannot forge a migration announcement.
+
+The successor origin is not validated by `K_publisher` directly; the announcement is. Confirmation that the successor origin is operated by the same publisher requires the client to fetch the successor's manifest and verify that its `publisher_pubkey` matches the announcing manifest's `publisher_pubkey`. Client behavior for this verification, and for the trust-state implications, is defined in §10.
+
+### Effect on the announcing manifest
+
+The presence of a `migration_pointer` does not invalidate the announcing manifest. Until the publisher stops publishing on the announcing origin, the announcing manifest remains current for that origin. The migration announcement is a hint plus a signed binding; it is not a self-decommissioning instruction.
+
+A publisher who wants the announcing origin to stop being current eventually stops refreshing the canary on it. The canary then expires (see §08), and clients' standard expiration behavior applies.
+
+### Multi-origin caveat
+
+`migration_pointer` does not authorize a publisher to operate multiple origins simultaneously. The single-origin rule in this section continues to apply to each manifest: the announcing manifest declares one origin, and the successor manifest declares one origin. The announcement is a directional pointer between two single-origin manifests, not a multi-origin declaration.
+
+Multi-origin operation under the same `K_publisher` is governed by the publisher-profile rules in §10 and the publication cadence rules above; `migration_pointer` is one mechanism for the publisher to bring clients of the old origin into a publisher-profile relationship with the new origin without out-of-band PIP exchange.
+
 ## `sig`
 
 `sig` is the Ed25519 signature over the manifest signature input as defined in §05.
@@ -416,7 +487,8 @@ The high-level lifecycle is:
    * `state_policy`;
    * `navigation`;
    * `min_refresh_interval`;
-   * current UTC `updated`.
+   * current UTC `updated`;
+   * `migration_pointer`, included only when announcing a migration to a successor origin; otherwise omitted.
 
 2. Treat the manifest object without `sig` as the signed payload. At this point, `sig` has not yet been added.
 

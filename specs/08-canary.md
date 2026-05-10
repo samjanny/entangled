@@ -124,6 +124,20 @@ The protocol does not validate the contents of `freshness_proof`. The client ren
 
 The field is optional in v1 because it is operationally heavier than the other canary fields and not all publishers will use it. Publishers who omit `freshness_proof` rely on `issued_at` alone as the temporal anchor of the canary.
 
+#### Client signaling on absence
+
+Because `freshness_proof` is the only protocol-level signal against canary backdating, its absence is itself relevant to the user's risk assessment.
+
+A client MUST signal in chrome, alongside the canary detail view, whether the current canary includes a `freshness_proof`. The signal MAY be implicit (the proof is shown when present, and a "no freshness proof" indicator is shown when absent) or explicit. A client MUST NOT silently treat a canary with `freshness_proof` and one without as equivalent in chrome.
+
+#### Strict freshness policy
+
+A client MAY operate in a strict freshness policy mode in which `freshness_proof` is treated as required: a manifest whose canary does not include `freshness_proof` is refused for rendering, with the same chrome treatment as Invalid canary state.
+
+Strict freshness policy is a client-side configuration, not a manifest declaration. The protocol does not require strict mode by default. Operators and high-threat users who depend on the temporal anchor MAY enable it; the client MUST document the option in user-accessible form.
+
+A publisher who anticipates being consumed by clients in strict freshness policy mode MUST include `freshness_proof` in every canary issuance. Operator practices for `freshness_proof` are documented in the operator playbook.
+
 ## Canary states
 
 The client computes a canary state from the canary's `issued_at` and `next_expected` and the current time. The states are mutually exclusive at any given time:

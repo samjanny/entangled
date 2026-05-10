@@ -315,6 +315,57 @@ When publisher profiles are supported:
 * migration to a new origin signed by the same `K_publisher.pub` MUST NOT trigger Changed/mismatch solely because the address differs;
 * migration to a new origin with a different `K_publisher.pub` triggers Changed/mismatch.
 
+## Origin migration
+
+A manifest's `migration_pointer` field, defined in §06, is the publisher's signed announcement of a successor carrier endpoint operated under the same `K_publisher`.
+
+A client supporting publisher profiles MUST process a present `migration_pointer` as follows.
+
+### Detection and chrome
+
+When the verified manifest for a site contains a present `migration_pointer`, the client MUST display a migration notice in chrome. The notice MUST identify, at minimum:
+
+* that the publisher has announced a migration;
+* the successor address declared by `migration_pointer.successor_origin.address`;
+* the announcement timestamp `migration_pointer.announced_at`.
+
+The notice is informational chrome, not publisher-controlled content, and is subject to the chrome separation rules below.
+
+### Successor verification
+
+Before treating the successor origin as authoritative for the publisher, the client MUST:
+
+1. fetch `/manifest.json` from `migration_pointer.successor_origin.address` over the carrier specified by `migration_pointer.successor_origin.carrier`;
+2. apply the full validation pipeline (Stages 1 through 9) to the fetched successor manifest;
+3. verify that `successor_manifest.publisher_pubkey` byte-equals the announcing manifest's `publisher_pubkey`;
+4. verify, for Tor v3, that `successor_manifest.origin.address` byte-equals `migration_pointer.successor_origin.address` and that `successor_manifest.origin.origin_pubkey` byte-equals `migration_pointer.successor_origin.origin_pubkey`.
+
+If any of these checks fails, the client MUST reject the migration announcement. The announcing manifest remains current at the announcing origin, but the successor is not adopted into the publisher profile. The diagnostic is `E_MIGRATION_MISMATCH` (§11).
+
+If all checks pass, the client adopts the successor origin into the publisher profile keyed by `K_publisher.pub`, and the successor manifest is treated as current for the successor origin under the standard caching rules.
+
+### User confirmation
+
+The client SHOULD obtain the user's confirmation before automatically navigating to the successor origin or before quietly migrating cached state from the announcing origin to the successor origin. The MUST is on verification; the MAY/SHOULD on the navigation flow is implementation-defined.
+
+A client MAY auto-fetch the successor manifest in the background to perform verification before prompting the user, provided that fetching does not occur before the announcing manifest has itself been verified through Stage 9, and provided that no publisher-controlled content from the successor origin is rendered before the user has confirmed the migration.
+
+### Anti-downgrade and anti-forgery interaction
+
+A migration announcement is signed under `K_publisher`. An attacker holding `K_origin_priv` for the announcing origin but not `K_publisher_priv` cannot forge a `migration_pointer` because they cannot produce a manifest signature.
+
+An attacker who controls the network path to the announced successor address but does not hold `K_publisher_priv` cannot serve a manifest with a matching `publisher_pubkey`; the client's successor verification will fail at step 3 above.
+
+If the announcing manifest is replaced by a newer manifest (later canary `issued_at`) that omits `migration_pointer`, the client MUST treat the migration as withdrawn. The successor origin previously adopted into the publisher profile remains adopted unless the user explicitly removes it through publisher-history controls; the announcement's withdrawal does not retroactively unbind a successfully verified successor.
+
+If the announcing manifest is replaced by a newer manifest with a different `migration_pointer` (different `successor_origin`), the client MUST treat the new announcement independently: re-run successor verification for the new successor, prompt the user, and adopt only on success. Multiple successive migrations are allowed.
+
+### Refusal scope
+
+A client that does not support publisher profiles MAY ignore `migration_pointer`. In that case, navigation to the successor origin presents as First contact, with all attendant re-verification requirements.
+
+A client that supports publisher profiles but is operating in a mode that disables in-band migration (for example, a high-threat mode) MAY ignore `migration_pointer` and require the user to navigate to the successor origin out of band. The client MUST display, in chrome, that an announcement was present and that automatic migration is disabled.
+
 ## Canary integration
 
 The canary state, as defined in §08, governs additional client behavior beyond the publisher trust state.

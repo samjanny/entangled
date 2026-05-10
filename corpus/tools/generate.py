@@ -78,6 +78,9 @@ def b64u_decode(s: str) -> bytes:
 # S signatures (S' = S + L) for the strict-profile S-canonicalization test.
 ED25519_L = 2**252 + 27742317777372353535851937790883648493
 
+# Prime defining the Ed25519 base field: p = 2^255 - 19 (RFC 8032).
+ED25519_P = 2**255 - 19
+
 
 def non_canonical_s(sig_bytes: bytes) -> bytes:
     """Given a valid 64-byte Ed25519 signature R||S, return R||(S + L).
@@ -92,6 +95,17 @@ def non_canonical_s(sig_bytes: bytes) -> bytes:
     S = int.from_bytes(sig_bytes[32:], "little")
     S_prime = S + ED25519_L
     return R + S_prime.to_bytes(32, "little")
+
+
+def non_canonical_r_encoding() -> bytes:
+    """Return a 32-byte non-canonical Ed25519 point encoding.
+
+    The y-coordinate portion (low 255 bits) is 2^255 - 1, which exceeds the
+    field prime p = 2^255 - 19. RFC 8032 requires y < p; the strict profile
+    rejects encodings with y >= p. The x-sign bit (top bit of byte 31) is
+    arbitrary; using 1 here keeps the encoding all-0xff for clarity.
+    """
+    return bytes([0xFF] * 32)
 
 
 # Small-order Ed25519 public key: the identity point. Compressed encoding is
@@ -870,6 +884,111 @@ def negative_vectors(keys) -> list[dict]:
         },
     ))
 
+    # ---- additional sig strictness: non-canonical R, non-canonical A ----
+    # Non-canonical R: replace R with an encoding whose y portion equals
+    # 2^255 - 1, which exceeds the Ed25519 prime p = 2^255 - 19. RFC 8032
+    # requires y < p; the strict profile rejects this encoding before the
+    # cryptographic verification equation is evaluated. S is left unchanged
+    # at the value from the original valid signature on m, but the R
+    # rejection takes precedence.
+    real_sig_bytes = b64u_decode(m["sig"])
+    nc_r_sig = non_canonical_r_encoding() + real_sig_bytes[32:]
+    m_nc_r = dict(m)
+    m_nc_r["sig"] = b64u(nc_r_sig)
+    out.append(vec(
+        "154-sig-non-canonical-r",
+        kind="manifest",
+        description="Manifest whose signature R has a non-canonical compressed point encoding (y >= p). The strict profile (§05) rejects non-canonical encodings of R independently of any verification equation. E_SIG_VERIFICATION.",
+        spec_refs=["§05"],
+        verdict="reject",
+        diagnostic="E_SIG_VERIFICATION",
+        body_obj=m_nc_r,
+        context={"fetched_origin_address": m_nc_r["origin"]["address"]},
+    ))
+
+    # Non-canonical A: replace publisher_pubkey with the same all-0xff
+    # encoding; the strict profile (§05) rejects A whose y portion exceeds
+    # the field prime, before any signature check. The sig field is left
+    # at the original valid value; the A rejection happens first.
+    m_nc_a = dict(m)
+    m_nc_a["publisher_pubkey"] = b64u(non_canonical_r_encoding())
+    out.append(vec(
+        "155-sig-non-canonical-a",
+        kind="manifest",
+        description="Manifest whose publisher_pubkey is a non-canonical Ed25519 point encoding (y >= p). The strict profile (§05) rejects non-canonical encodings of A before signature verification. E_SIG_VERIFICATION.",
+        spec_refs=["§05"],
+        verdict="reject",
+        diagnostic="E_SIG_VERIFICATION",
+        body_obj=m_nc_a,
+        context={"fetched_origin_address": m_nc_a["origin"]["address"]},
+    ))
+
+    # ---- canary: anti-downgrade on issued_at ----
+    # A manifest with strictly older issued_at than 001's (2026-05-07).
+    # The vector context references 001 as previously verified, so the
+    # client's anti-downgrade rule must reject this manifest as a downgrade.
+    m_old = make_manifest(
+        publisher_priv=pp, publisher_pub=pp_pub,
+        origin_pub=op_pub, runtime_pub=rp_pub,
+        issued_at="2026-04-01T00:00:00Z",
+        next_expected="2026-05-01T00:00:00Z",
+        updated="2026-04-01T00:00:00Z",
+    )
+    out.append(vec(
+        "181-canary-issued-at-downgrade",
+        kind="manifest",
+        description="Manifest with canary.issued_at strictly older than the issued_at of a previously verified manifest (001) for the same K_publisher.pub. The client's anti-downgrade rule (§08) rejects with E_CANARY_DOWNGRADE.",
+        spec_refs=["§08"],
+        verdict="reject",
+        diagnostic="E_CANARY_DOWNGRADE",
+        body_obj=m_old,
+        context={
+            "fetched_origin_address": m_old["origin"]["address"],
+            "previously_verified": "vectors/001-manifest-valid-minimal/input.json",
+        },
+    ))
+
+    # ---- Unicode normalization: NFD canary.statement ----
+    # The publisher must encode user-visible strings in NFC (§04). A
+    # canary.statement using decomposed combining marks (NFD) instead of
+    # precomposed characters (NFC) is rejected at schema validation. The
+    # statement "Café" in NFD is "Cafe" + U+0301 (combining acute).
+    nfd_statement = "Cafe\u0301"  # NFD form of "Café"
+    # Build a manifest with this statement directly. We sign it (the JCS bytes
+    # over the NFD payload differ from the NFC equivalent), so the signature
+    # itself is valid; the rejection is at schema validation, before sig check.
+    m_nfd_payload = {
+        "spec_version": "1.0",
+        "kind": "manifest",
+        "publisher_pubkey": b64u(pp_pub),
+        "origin": {
+            "carrier": "tor-v3",
+            "address": onion_address(op_pub),
+            "origin_pubkey": b64u(op_pub),
+        },
+        "canary": {
+            "runtime_pubkey": b64u(rp_pub),
+            "issued_at": "2026-05-07T00:00:00Z",
+            "next_expected": "2026-06-06T00:00:00Z",
+            "statement": nfd_statement,
+        },
+        "state_policy": [],
+        "navigation": [],
+        "min_refresh_interval": 3600,
+        "updated": "2026-05-07T00:00:00Z",
+    }
+    m_nfd_payload["sig"] = sign(pp, CTX_MANIFEST, m_nfd_payload)
+    out.append(vec(
+        "190-unicode-nfd-statement",
+        kind="manifest",
+        description="Manifest whose canary.statement contains a decomposed combining mark (NFD) rather than the precomposed NFC form. Per §04, user-visible strings must be in NFC. Rejected at schema validation with E_SCHEMA_FIELD_SYNTAX before signature verification.",
+        spec_refs=["§04", "§08"],
+        verdict="reject",
+        diagnostic="E_SCHEMA_FIELD_SYNTAX",
+        body_obj=m_nfd_payload,
+        context={"fetched_origin_address": m_nfd_payload["origin"]["address"]},
+    ))
+
     return out
 
 
@@ -935,7 +1054,7 @@ def main() -> int:
     corpus = {
         "_comment": "Generated by corpus/tools/generate.py. Do not hand-edit.",
         "spec_version_target": "1.0",
-        "rc_target": "1.0-rc.12",
+        "rc_target": "1.0-rc.13",
         "keys": "keys.json",
         "clock_now": "2026-05-07T00:01:00Z",
         "vectors": vectors,

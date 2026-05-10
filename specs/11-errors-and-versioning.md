@@ -213,11 +213,20 @@ The structured diagnostic format for `E_CANARY_CONFLICT` SHOULD include in `deta
 | `E_BIND_REQUEST_ID`    | error    | transaction   | The `request_id` field of the transaction document does not match the `request_id` the client included in the submit body                                |
 | `E_BIND_REQUEST_HASH`  | error    | transaction   | The `request_hash` field of the transaction document does not match the locally computed JCS-hash of the submit body the client sent                     |
 | `E_BIND_ORIGIN`        | error    | manifest      | The carrier origin from which the manifest was fetched does not match `origin`, including Tor v3 address-to-key derivation failure                       |
+| `E_MIGRATION_MISMATCH` | error    | manifest      | A `migration_pointer` announcement was present, but the successor manifest fetched from the announced address fails a binding check (publisher key, origin address, or origin pubkey) |
+| `E_MIGRATION_INVALID`  | error    | manifest      | The `migration_pointer` value is structurally valid JSON but fails semantic checks (successor address equals announcing address, `announced_at` later than manifest `updated`, or carrier mismatch)                                  |
 
 The structured diagnostic format for `E_BIND_REQUEST_ID` and `E_BIND_REQUEST_HASH` SHOULD include in `details`:
 
 * `expected`: the value the client computed (the `request_id` generated for the submit, or the SHA-256 hash of the JCS-canonical submit body);
 * `received`: the value the publisher returned in the corresponding transaction field.
+
+The structured diagnostic format for `E_MIGRATION_MISMATCH` SHOULD include in `details`:
+
+* `announced_successor_address`: the address declared by `migration_pointer.successor_origin.address`;
+* `successor_publisher_pubkey`: the `publisher_pubkey` observed in the fetched successor manifest;
+* `announcing_publisher_pubkey`: the `publisher_pubkey` of the announcing manifest;
+* `mismatch_field`: which check failed (`publisher_pubkey`, `address`, or `origin_pubkey`).
 
 ## State diagnostics
 

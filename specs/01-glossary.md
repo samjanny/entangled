@@ -136,7 +136,10 @@ The operational signing key. An Ed25519 keypair used to sign content and transac
 A navigational element referring to a destination. Links appear inline within block content as inline `link` elements, or as standalone `link` blocks. Four target kinds are permitted: same-site, entangled, carrier, citation. Defined in §03. Related: same-site link, entangled link, carrier link, citation link, inline element.
 
 **Manifest**  
-The signed document by which a publisher declares the current authorization state of an Entangled site. Signed directly by `K_publisher`. Contains `publisher_pubkey`, `origin`, `canary`, `state_policy`, `navigation`, `min_refresh_interval`, and `updated`. Fetched at the canonical path `/manifest.json`. Defined in §06. Related: K_publisher, K_origin, K_runtime, canary, document.
+The signed document by which a publisher declares the current authorization state of an Entangled site. Signed directly by `K_publisher`. Contains `publisher_pubkey`, `origin`, `canary`, `state_policy`, `navigation`, `min_refresh_interval`, `updated`, and `migration_pointer`. Fetched at the canonical path `/manifest.json`. Defined in §06. Related: K_publisher, K_origin, K_runtime, canary, document, migration pointer.
+
+**Migration pointer**  
+The signed announcement, carried in a manifest's optional `migration_pointer` field, that the publisher is migrating to a new carrier endpoint under the same `K_publisher`. Absent in the manifest when no migration is announced; present as an object containing `successor_origin` and `announced_at` when announced. Allows clients with publisher-profile support to migrate trust continuity in-band, without out-of-band PIP exchange, after independently verifying the successor manifest. Defined in §06 and §10. Related: manifest, origin, publisher profile, K_publisher.
 
 **Onion service**  
 A service in the Tor network reachable through a `.onion` address. In Tor v3, an onion service is identified by a 56-character base32-encoded address derived from the onion service public key. In Entangled, the Tor v3 onion service key is `K_origin`. The authoritative definition is the Tor rendezvous specification. Defined in §05 and §09. Related: Tor v3, carrier, K_origin.

@@ -21,10 +21,13 @@ Context strings, signing keys, and verification rules are defined in §05.
 All Entangled v1 documents follow closed-schema discipline:
 
 * All required fields MUST be present.
-* No additional top-level fields are permitted.
+* Optional fields MAY be present; they are listed alongside required fields in the section that owns the document kind. A field is optional only if explicitly designated optional by the owning section.
+* No additional top-level fields are permitted. Only fields explicitly listed (required or optional) by the owning section may appear.
 * Each field MUST satisfy the type and value constraints declared in this section or in the section that owns the field.
 * Nested objects MUST contain exactly the fields defined for them.
 * Arrays MUST satisfy declared length and element-schema constraints.
+
+Absent values are represented by omitting the field, never by the JSON literal `null` (§04). A field whose schema does not designate it optional MUST be present.
 
 A document that fails any of these checks is rejected. Error codes are defined in §11. Validation order is defined in §10.
 

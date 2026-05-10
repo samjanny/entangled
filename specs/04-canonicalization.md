@@ -137,6 +137,30 @@ For example, line feed `U+000A` is permitted in `canary.statement`, as defined i
 
 JCS produces deterministic output for valid Unicode strings. Entangled rejects malformed Unicode material during validation, before canonicalization is performed.
 
+## Unicode normalization for user-visible strings
+
+JCS canonicalizes UTF-8 byte sequences without applying Unicode normalization. Two visually equivalent strings such as `café` (`63 61 66 C3 A9`, U+0063 U+0061 U+0066 U+00E9) and `café` (`63 61 66 65 CC 81`, U+0063 U+0061 U+0066 U+0065 U+0301) produce distinct JCS outputs and therefore distinct signatures. Without a normalization requirement at the input layer, two publishers' tools or two clients' renderers could produce equivalent-looking content that differs at the byte level, frustrating cross-implementation reproducibility and enabling subtle homograph-style attacks where a publisher's signed statement displays as one thing and signs as another.
+
+To eliminate this ambiguity, every JSON string field whose value Entangled requires the client to display to the user as text MUST be encoded in Unicode Normalization Form C (NFC) as defined by Unicode Standard Annex #15.
+
+The fields subject to this rule are, non-exhaustively:
+
+* `canary.statement` (§08);
+* `meta.title` of content documents (§02);
+* `navigation` entry `label` fields in the manifest (§06);
+* `state_policy` entry `purpose` fields (§07);
+* every block text content span and every block string field that the client renders to the user, including in particular `paragraph` runs, `heading` runs, `quote` content, `list` item runs, `link.label`, `image.alt`, `code_block.content`, `feedback.statement`, `note.statement`, `submit_form` form-level labels, and `submit_form.fields[*].label` and `submit_form.fields[*].options[*].label` (§03).
+
+The rule applies to any future field whose semantics include "displayed to the user as text" by a conforming client. A field is subject to NFC if the client is required to render its value as user-visible text; whether a particular field meets this test is determined by the schema section that owns the field.
+
+Fields whose grammar is ASCII-only or whose semantics are non-textual are not subject to NFC. This includes `path` (ASCII), `spec_version`, `kind`, `sig`, all base64url-encoded keys and digests, RFC 3339 timestamp fields, and any field whose value is a structured identifier rather than displayable text.
+
+NFC, not NFD or NFKC or NFKD, is the required form. NFKC and NFKD apply compatibility decomposition that folds characters whose meanings differ (such as `²` and `2`, or `ﬁ` and `fi`), changing the publisher's authored content. NFD requires more bytes than NFC for the same logical content. NFC composes precomposed characters where possible, without case folding, diacritic removal, or compatibility folding; it preserves the publisher's authorial intent while eliminating combining-mark ambiguity.
+
+A document containing a field subject to NFC whose value is not in NFC is rejected with `E_SCHEMA_FIELD_SYNTAX` (§11). The check is performed at schema validation, before signature verification, consistent with the pipeline ordering in §10.
+
+Implementations MUST validate NFC at parse time. They MUST NOT silently re-normalize a non-NFC value to NFC during parsing or canonicalization, because re-normalization would alter the JCS canonical bytes and invalidate the publisher's signature on the unmodified original. Re-normalization at composition time, before the publisher signs, is permitted and is the recommended way for publisher tooling to ensure NFC.
+
 ## Strict base64url decoding
 
 Several Entangled fields are base64url-encoded byte strings: signatures (`sig`), public keys (`publisher_pubkey`, `origin_pubkey`, `runtime_pubkey`, `expected_publisher_pubkey`), submit request identifiers (`request_id`), and SHA-256 digest payloads in `image.sha256` and `transaction.request_hash`. Each such field declares its expected decoded length and the corresponding exact ASCII length on the wire (32 bytes / 43 chars, 64 bytes / 86 chars, 16 bytes / 22 chars).
