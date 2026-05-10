@@ -89,17 +89,18 @@ A manifest whose `publisher_pubkey` does not match the already established publi
 
 `origin` declares the carrier endpoint for which this manifest is authoritative.
 
-It is a JSON object with exactly three fields:
+It is a JSON object with three required fields and one optional field:
 
 ```json
 {
   "carrier": "tor-v3",
   "address": "<56-character-onion-address>.onion",
-  "origin_pubkey": "<base64url, 32 bytes>"
+  "origin_pubkey": "<base64url, 32 bytes>",
+  "not_after": "2027-05-10T00:00:00Z"
 }
 ```
 
-No additional fields are permitted.
+`carrier`, `address`, and `origin_pubkey` are required. `not_after` is optional. No other fields are permitted.
 
 ### `origin.carrier`
 
@@ -146,6 +147,40 @@ The exact Tor v3 address validation and key binding rules are defined in §05.
 For `tor-v3`, it is encoded as 43 ASCII characters of base64url representing 32 bytes, with no padding.
 
 The client MUST verify that `origin.origin_pubkey` matches the public key encoded by the Tor v3 onion address in `origin.address`, using the Tor v3 binding rules defined in §05.
+
+### `origin.not_after`
+
+`origin.not_after` is an OPTIONAL field declaring the UTC instant after which the publisher commits that this carrier endpoint is no longer authoritative for the site under `K_publisher`.
+
+When present, it is encoded in the same RFC 3339 UTC form required for `updated`:
+
+```text
+YYYY-MM-DDTHH:MM:SSZ
+```
+
+Other RFC 3339 forms are not permitted, including numeric UTC offsets, fractional seconds, and leap-second values.
+
+When absent, the field is omitted from the JSON object. The JSON literal `null` is not permitted, per §04 no-`null` discipline. An absent `not_after` declares no publisher-side expiration of the origin binding; the origin remains authoritative as long as it satisfies the manifest's canary and anti-downgrade rules.
+
+Constraints when present:
+
+* `origin.not_after` MUST be strictly later than `canary.issued_at`. An expiration at or before issuance is ill-formed.
+* `origin.not_after` SHOULD be strictly later than `canary.next_expected`. An expiration that falls within or before the committed canary window narrows the origin's usable lifetime below the canary cycle and signals an imminent retirement; this is permitted but discouraged.
+* `origin.not_after` MUST NOT be more than 5 years (157680000 seconds) after `canary.issued_at`. The 5-year ceiling bounds the maximum window during which a compromised `K_origin` can serve cached clients of an unrotated origin; it does not bound publisher-driven rotation, which remains the publisher's discretion within that ceiling.
+
+A manifest carrying `origin.not_after` outside these constraints is rejected as `E_ORIGIN_INVALID` (§11).
+
+#### Client behavior
+
+When `origin.not_after` is present and the client's clock (subject to the clock-skew tolerance in §10) is strictly later than the declared instant, the manifest is treated as origin-expired:
+
+* the manifest MUST NOT be accepted as current. The client refuses to render publisher-controlled content under this manifest.
+* the diagnostic is `E_ORIGIN_EXPIRED` (§11).
+* anti-downgrade still applies: the expired manifest does not become a downgrade target for newer manifests, and a newer manifest from the same `K_publisher.pub` (whether at the same address or via a verified `migration_pointer`) supersedes it under the standard anti-downgrade rule.
+
+An origin-expired manifest does not invalidate cryptographically valid signatures over historical content authorized under that origin's prior publication cycles, subject to the historical-content rules in §10.
+
+`origin.not_after` is a publisher-declared commitment, not a substitute for `K_origin` rotation. A publisher who wishes to retire an origin MUST publish a new manifest with a different `K_origin` (typically alongside a `migration_pointer` from the old origin to the new) and SHOULD do so before the declared `not_after` instant. After the instant, clients with no successor knowledge fall back to out-of-band recovery, as for any origin loss without prior `migration_pointer`.
 
 ### Single-origin rule
 
@@ -335,7 +370,7 @@ When a migration is announced, the field is present and contains exactly two mem
 
 `successor_origin` declares the carrier endpoint to which the publisher is migrating.
 
-Its schema is identical to the manifest's top-level `origin` field, including the `carrier`, `address`, and `origin_pubkey` fields, the carrier-value rule (`"tor-v3"` only for v1.0 conformance), and the address-to-key binding rule.
+It has exactly three fields: `carrier`, `address`, and `origin_pubkey`. These three fields share the schema, validation rules, and carrier-value constraints of the manifest's top-level `origin.carrier`, `origin.address`, and `origin.origin_pubkey` defined above, including the address-to-key binding rule. The optional `origin.not_after` field is not part of `successor_origin`: a migration announcement is a pointer to a successor whose own manifest, fetched and verified at Stage 9, carries that successor's own `origin.not_after` declaration if any. No other fields are permitted in `successor_origin`.
 
 `successor_origin.carrier` MUST equal `origin.carrier`. Cross-carrier migration is not part of Entangled v1.0 because v1.0 fully specifies only the Tor v3 carrier profile; cross-carrier announcements would require destination-carrier binding rules that v1.0 does not define.
 

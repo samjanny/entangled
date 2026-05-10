@@ -128,7 +128,13 @@ The field is optional in v1 because it is operationally heavier than the other c
 
 Because `freshness_proof` is the only protocol-level signal against canary backdating, its absence is itself relevant to the user's risk assessment.
 
-A client MUST signal in chrome, alongside the canary detail view, whether the current canary includes a `freshness_proof`. The signal MAY be implicit (the proof is shown when present, and a "no freshness proof" indicator is shown when absent) or explicit. A client MUST NOT silently treat a canary with `freshness_proof` and one without as equivalent in chrome.
+A client MUST signal in chrome whether the current canary includes a `freshness_proof`. The signal MUST be visible in the canary's summary surface — the surface that exposes the canary state (Fresh, Near-expiration, Expired, Invalid, Unavailable) without requiring the user to expand a detail view, drawer, or other collapsed UI affordance. A client MUST NOT hide the presence-or-absence signal exclusively behind an expandable detail surface that is collapsed by default.
+
+The signal MAY be implicit (the proof is shown when present, and a "no freshness proof" indicator is shown when absent) or explicit (a labelled indicator that is always visible). In either form, the summary surface MUST distinguish present from absent at a glance.
+
+The contents of `freshness_proof` itself, when present, MAY remain in the expandable detail surface; only the presence-or-absence indicator is required in the summary.
+
+A client MUST NOT silently treat a canary with `freshness_proof` and one without as equivalent in chrome.
 
 #### Strict freshness policy
 
@@ -214,7 +220,12 @@ A canary conflict is evidence of a publisher protocol violation. Because both co
 
 The client MUST NOT pick a "winner" between the conflicting manifests by lexicographic comparison of the JCS payload, by payload size, by `runtime_pubkey` value, or by any other deterministic tiebreaker over manifest content. A deterministic tiebreaker would be gameable by an attacker holding `K_publisher_priv` — they could grind irrelevant fields until their forged manifest wins the comparison — and would mask the underlying fault behind a false sense of resolution.
 
-The retained manifest accepted before the conflict was observed remains in place for current rendering and anti-downgrade. The later conflicting manifest is rejected. The client MUST surface the conflict as a prominent, not-easily-dismissible chrome warning, analogous to the Changed/mismatch warning defined in §10, and MUST offer the user the option to abandon the retained publisher identity entirely. The warning persists until the user explicitly resolves it; a subsequent successful fetch of a non-conflicting newer manifest does not by itself clear the warning, because the conflict is a historical fault on the publisher identity, not a transient state of the current manifest.
+The retained manifest accepted before the conflict was observed remains in place for current rendering and anti-downgrade. The later conflicting manifest is rejected. The client MUST surface the conflict as a prominent, not-easily-dismissible chrome warning, analogous to the Changed/mismatch warning defined in §10, and MUST present an explicit user-accessible resolution control as part of that chrome warning. The resolution control MUST offer at least two distinct user actions:
+
+1. **Keep the retained identity.** The user explicitly acknowledges the conflict without abandoning the publisher identity. The chrome warning is cleared from the always-visible position; the conflict is recorded in publisher history and remains visible in the publisher-history detail surface.
+2. **Abandon the retained publisher identity.** The user explicitly chooses to stop trusting the publisher identity that produced the conflicting manifests. The effect on retained state is defined in §10 under "Abandoning a retained publisher identity".
+
+A passive event — content rendering, navigation away from the site, dismissal of an unrelated chrome notice, or any other event not bound to the resolution control — MUST NOT clear the canary-conflict warning. A subsequent successful fetch of a non-conflicting newer manifest does not by itself clear the warning, because the conflict is a historical fault on the publisher identity, not a transient state of the current manifest. The warning persists until the user invokes the resolution control.
 
 This rule does not affect refetching the same manifest. A subsequent fetch returning a manifest with the same JCS-canonical signed payload as the previously verified one is not a conflict, regardless of wire-level JSON formatting differences that JCS normalizes away. Ed25519 signing under the same private key over identical signature inputs is deterministic (RFC 8032), so a same-payload refetch necessarily carries an identical `sig`; the protocol-level criterion is the JCS-canonical signed payload, not the wire bytes or the `sig` value.
 

@@ -38,6 +38,8 @@ Entangled uses three Ed25519 keypairs, each with a distinct role and exposure pr
 
 The legitimate publisher recovers from `K_origin` compromise by generating a new `K_origin`, deploying it to a new carrier endpoint, and publishing a new manifest signed by `K_publisher` authorizing the new endpoint. For Tor v3, this means a new `.onion` address.
 
+`K_origin` recovery has no in-band crypto-level revocation in Entangled v1. The optional `origin.not_after` field defined in §06 lets the publisher declare a maximum lifetime for an origin binding; when present, it bounds the time window during which an attacker holding the compromised `K_origin_priv` can continue to serve cached clients of the abandoned origin. After `origin.not_after`, clients refuse the expired-origin manifest as current and fall back to publisher-history continuation, including any successor adopted via `migration_pointer`. Where `origin.not_after` is omitted, the recovery window is unbounded at the protocol level: a cached client that never observes the new manifest or its migration pointer continues to treat the compromised origin as authoritative until publisher history is rebuilt out of band. Publishers SHOULD declare `origin.not_after` in manifests whose origin keys are deployed in environments where compromise recovery time is a meaningful operational concern.
+
 ### `K_runtime`
 
 `K_runtime` is the operational signing key.

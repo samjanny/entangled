@@ -213,8 +213,10 @@ The structured diagnostic format for `E_CANARY_CONFLICT` SHOULD include in `deta
 | `E_BIND_REQUEST_ID`    | error    | transaction   | The `request_id` field of the transaction document does not match the `request_id` the client included in the submit body                                |
 | `E_BIND_REQUEST_HASH`  | error    | transaction   | The `request_hash` field of the transaction document does not match the locally computed JCS-hash of the submit body the client sent                     |
 | `E_BIND_ORIGIN`        | error    | manifest      | The carrier origin from which the manifest was fetched does not match `origin`, including Tor v3 address-to-key derivation failure                       |
+| `E_ORIGIN_EXPIRED`     | error    | manifest      | `origin.not_after` is present and the client's clock (within clock-skew tolerance) is at or after the declared instant; the manifest is not accepted as current |
+| `E_ORIGIN_INVALID`     | error    | manifest      | `origin.not_after` is present but violates a semantic constraint (`not_after` not strictly later than `canary.issued_at`, or more than 5 years after `canary.issued_at`)            |
 | `E_MIGRATION_MISMATCH` | error    | manifest      | A `migration_pointer` announcement was present, but the successor manifest fetched from the announced address fails a binding check (publisher key, origin address, or origin pubkey) |
-| `E_MIGRATION_INVALID`  | error    | manifest      | The `migration_pointer` value is structurally valid JSON but fails semantic checks (successor address equals announcing address, `announced_at` later than manifest `updated`, or carrier mismatch)                                  |
+| `E_MIGRATION_INVALID`  | error    | manifest      | The `migration_pointer` value is structurally valid JSON but fails semantic checks (successor address equals announcing address, `announced_at` later than manifest `updated`, carrier mismatch, or — for clients enforcing the chain-depth rule — chain depth exceeded)                                  |
 
 The structured diagnostic format for `E_BIND_REQUEST_ID` and `E_BIND_REQUEST_HASH` SHOULD include in `details`:
 
@@ -227,6 +229,17 @@ The structured diagnostic format for `E_MIGRATION_MISMATCH` SHOULD include in `d
 * `successor_publisher_pubkey`: the `publisher_pubkey` observed in the fetched successor manifest;
 * `announcing_publisher_pubkey`: the `publisher_pubkey` of the announcing manifest;
 * `mismatch_field`: which check failed (`publisher_pubkey`, `address`, or `origin_pubkey`).
+
+The structured diagnostic format for `E_ORIGIN_EXPIRED` SHOULD include in `details`:
+
+* `not_after`: the declared `origin.not_after` value;
+* `now`: the client's clock value used for the comparison.
+
+The structured diagnostic format for `E_ORIGIN_INVALID` SHOULD include in `details`:
+
+* `reason`: a short identifier of which constraint was violated, drawn from `not_after_not_after_issued_at` (the declared `not_after` is not strictly later than `canary.issued_at`) and `not_after_beyond_5y` (the declared `not_after` is more than 5 years after `canary.issued_at`);
+* `not_after`: the declared `origin.not_after` value;
+* `issued_at`: the declared `canary.issued_at` value.
 
 ## State diagnostics
 

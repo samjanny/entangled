@@ -287,9 +287,12 @@ In particular, the client MUST NOT send:
 * `Referer`, `Origin`, or any other origin-leakage header;
 * `Cache-Control`, `Pragma`, or other cache-directive headers;
 * `Connection: keep-alive`;
+* `Range`, `If-Range`, or any other range-request header;
 * any custom `X-` headers.
 
 Identity is anchored in the protocol's signed documents and consented request state, not in HTTP-level headers.
+
+The `Range` and `If-Range` prohibition is normative: an Entangled document is signed as a whole and is verified, hashed for the byte cap (§02, §06, §10), and digested for image binding (§03) against its complete byte sequence. A partial-content fetch would deliver bytes that do not correspond to any signed object and would defeat the protocol's stage-1 byte cap and stage-3 signature verification. A publisher MUST treat any request carrying a `Range` or `If-Range` header as malformed; the publisher MAY respond `400 Bad Request` or close the connection. The publisher MUST NOT emit `206 Partial Content`; clients reject `206` and any other unlisted `2xx` status as a transport error under "Status codes" below.
 
 ### Response headers
 

@@ -139,16 +139,19 @@ A navigational element referring to a destination. Links appear inline within bl
 The signed document by which a publisher declares the current authorization state of an Entangled site. Signed directly by `K_publisher`. Contains `publisher_pubkey`, `origin`, `canary`, `state_policy`, `navigation`, `min_refresh_interval`, `updated`, and `migration_pointer`. Fetched at the canonical path `/manifest.json`. Defined in §06. Related: K_publisher, K_origin, K_runtime, canary, document, migration pointer.
 
 **Migration pointer**  
-The signed announcement, carried in a manifest's optional `migration_pointer` field, that the publisher is migrating to a new carrier endpoint under the same `K_publisher`. Absent in the manifest when no migration is announced; present as an object containing `successor_origin` and `announced_at` when announced. Allows clients with publisher-profile support to migrate trust continuity in-band, without out-of-band PIP exchange, after independently verifying the successor manifest. Defined in §06 and §10. Related: manifest, origin, publisher profile, K_publisher.
+The signed announcement, carried in a manifest's optional `migration_pointer` field, that the publisher is migrating to a new carrier endpoint under the same `K_publisher`. Absent in the manifest when no migration is announced; present as an object containing `successor_origin` and `announced_at` when announced. Allows clients with publisher-profile support to migrate trust continuity in-band, without out-of-band PIP exchange, after independently verifying the successor manifest. Clients enforce a chain-depth limit and a per-flow visited-origin cycle check when following successive migration pointers (§10). Defined in §06 and §10. Related: manifest, origin, publisher profile, K_publisher.
 
 **Onion service**  
 A service in the Tor network reachable through a `.onion` address. In Tor v3, an onion service is identified by a 56-character base32-encoded address derived from the onion service public key. In Entangled, the Tor v3 onion service key is `K_origin`. The authoritative definition is the Tor rendezvous specification. Defined in §05 and §09. Related: Tor v3, carrier, K_origin.
 
 **Origin**  
-In the manifest, the JSON object declaring the carrier endpoint at which the site is reachable: `carrier`, `address`, and `origin_pubkey`. Distinct from the HTTP-style "origin" concept; this term refers to the carrier-level reachability declaration. Defined in §06. Related: manifest, carrier endpoint, K_origin, origin binding.
+In the manifest, the JSON object declaring the carrier endpoint at which the site is reachable: `carrier`, `address`, `origin_pubkey`, and the optional `not_after`. Distinct from the HTTP-style "origin" concept; this term refers to the carrier-level reachability declaration. Defined in §06. Related: manifest, carrier endpoint, K_origin, origin binding, origin not-after.
 
 **Origin binding**  
 The verification rule that the carrier endpoint from which a manifest was fetched matches the `origin` declared in the manifest, with carrier-specific key derivation (for Tor v3, the `.onion` address derived from `origin_pubkey`). Origin binding is enforced at Stage 9 of the validation pipeline; failure is reported as `E_BIND_ORIGIN`. Defined in §05 and §06. Related: origin, K_origin, manifest, validation pipeline.
+
+**Origin not-after**  
+The optional `origin.not_after` field on a manifest, declaring the UTC instant after which the publisher commits that this carrier endpoint is no longer authoritative for the site under `K_publisher`. When present and reached, the manifest is rejected as `E_ORIGIN_EXPIRED` at Stage 9. Bounds the time window during which an attacker holding a compromised `K_origin_priv` can continue to serve cached clients of an abandoned origin. Defined in §06 and §10. Related: origin, K_origin, manifest, migration pointer.
 
 **Path binding**  
 The verification rule that a content document's `path` field, or a transaction document's `in_response_to` field, must match byte-exactly the path from which the document was fetched or to which the submit was sent. Prevents path-substitution attacks. Defined in §02 and §10. Related: content document, transaction document, validation pipeline.

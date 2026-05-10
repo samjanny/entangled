@@ -98,6 +98,12 @@ Stage 8.  Canary and anti-downgrade resolution
 
 Stage 9.  Path and origin binding
             - for manifest: carrier origin binding, such as Tor v3 address derivation
+            - for manifest, when `origin.not_after` is present: reject if the
+              client's clock (within clock-skew tolerance) is at or after the
+              declared instant
+            - for manifest, when `migration_pointer` is present and the client
+              supports publisher profiles: successor verification and chain-
+              depth check
             - for content: byte-exact comparison of `path` field against fetched path
             - for transaction:
               - byte-exact comparison of `in_response_to` against submit path
@@ -155,6 +161,10 @@ For manifest documents, the manifest-specific identity pre-check above has alrea
 **Stage 8: canary and anti-downgrade resolution** produces one of the five canary states defined in §08 and applies anti-downgrade rules based on publisher history.
 
 **Stage 9: path and origin binding** prevents path-substitution and origin-substitution attacks.
+
+For manifests, Stage 9 also evaluates the optional `origin.not_after` field defined in §06. When present, a manifest whose declared `not_after` is at or before the client's clock (subject to the clock-skew tolerance defined under "Clock and tolerance" below) is rejected as `E_ORIGIN_EXPIRED`. This check runs after carrier origin binding succeeds and uses only fields already validated at Stage 5. A manifest carrying an `origin.not_after` whose value violates the semantic constraints in §06 (`not_after` not strictly later than `canary.issued_at`, or more than 5 years after `canary.issued_at`) is rejected at Stage 5 as `E_ORIGIN_INVALID`.
+
+For manifests carrying a present `migration_pointer`, Stage 9 additionally performs the successor-verification and chain-depth checks specified under "Origin migration" below.
 
 **Stage 10: render or report** is where the client either commits the document to rendering/processing or surfaces an error to the user.
 
@@ -303,6 +313,25 @@ If the user confirms the new identity, the client:
 
 The client MUST NOT offer an option that would automatically resolve future Changed/mismatch events.
 
+## Abandoning a retained publisher identity
+
+Several resolution flows in this section and in §08 offer the user an "abandon retained publisher identity" action: the canary-conflict resolution control (§08), the Changed/mismatch "abandon the site, preserving the existing retained identity" action (above), and the high-threat-mode equivalents that may be exposed by a client.
+
+The phrase "abandon the site, preserving the existing retained identity" in the Changed/mismatch resolution above refers to a narrower action that abandons the *current navigation* without altering the retained identity record. "Abandon retained publisher identity" is the broader action that severs the trust relationship itself. The two are distinct user actions and MUST be presented in chrome as distinct choices.
+
+When the user invokes "abandon retained publisher identity" for the publisher keyed by `K_publisher.pub = P`, the client MUST:
+
+1. delete the active trust-state record for `P`, including any TOFU-pinned or Externally verified state. After this step, the client no longer holds a retained identity for `P`;
+2. record the abandonment in publisher history as a terminal event for that identity record. The history entry MUST preserve `P`, the timestamps and origins of the abandoned record, and the reason class (canary conflict, Changed/mismatch resolution, or user-initiated abandonment outside a resolution flow);
+3. dissociate from `P` any authorized origins, including successor origins previously adopted under the publisher profile (§10 "Origin migration"). Those origins are no longer authorized origins for the publisher profile of `P`;
+4. retain the authorization-history entries for any `K_runtime.pub` that was previously authorized under `P` only insofar as they remain useful for evaluating historical content under publisher-history rules in this section. The client MUST NOT use them to verify any new content fetched after the abandonment as if it were current publication for `P`.
+
+After abandonment, a subsequent navigation to any origin that presents a manifest with `publisher_pubkey == P` is treated as First contact. The pinning prompt defined under "First contact → TOFU pinned" applies; passive transitions are forbidden. The user is responsible for deciding whether to re-establish a retained relationship with `P` and SHOULD be reminded, in the First contact prompt, that the same identity was previously abandoned. The client MUST surface, at the First contact prompt or in an adjacent always-visible chrome element on that navigation, that an abandonment record exists for the presented `K_publisher.pub`.
+
+Abandonment is not retraction of historical content. Documents already rendered and stored locally as historical artefacts are not removed by abandonment. The act of abandonment changes the client's future-facing trust state, not the cryptographic validity of past observations.
+
+A client MUST NOT silently re-establish a retained identity for an abandoned `K_publisher.pub`. Re-establishment requires the explicit affirmative First contact pinning sequence above; an externally verified PIP confirmation also satisfies the affirmative-action requirement and transitions the new record directly to Externally verified.
+
 ## Multiple origins per publisher
 
 A client that retains trust state across sessions MUST support publisher profiles: a single publisher identity record keyed by `K_publisher.pub`, recognized across all authorized origins for that publisher. Cross-session retention without publisher-profile support fragments the user's identity model, because the same publisher reached at a new authorized origin appears as First contact and requires re-verification at every migration. A cross-session client that does not maintain publisher-profile records is not conformant.
@@ -346,9 +375,16 @@ If all checks pass, the client adopts the successor origin into the publisher pr
 
 ### User confirmation
 
-The client SHOULD obtain the user's confirmation before automatically navigating to the successor origin or before quietly migrating cached state from the announcing origin to the successor origin. The MUST is on verification; the MAY/SHOULD on the navigation flow is implementation-defined.
+The strength of the user-confirmation requirement before automatically navigating to the successor origin, or before quietly migrating cached state from the announcing origin to the successor origin, depends on the trust state of the publisher identity at the announcing origin:
 
-A client MAY auto-fetch the successor manifest in the background to perform verification before prompting the user, provided that fetching does not occur before the announcing manifest has itself been verified through Stage 9, and provided that no publisher-controlled content from the successor origin is rendered before the user has confirmed the migration.
+* if the announcing publisher's trust state is **Externally verified** or **TOFU pinned**, the client MUST obtain the user's affirmative confirmation before navigating to the successor origin and before migrating any cached state to it. The MUST is on both verification (defined above) and the user-confirmation step in the navigation flow; neither may be skipped, deferred, or assumed by passive event;
+* if the announcing publisher's trust state is **First contact**, the client SHOULD obtain the user's confirmation. A First contact identity has not yet been pinned or externally verified, and the migration-confirmation dialog is informational rather than a continuity-preservation step; a client that omits the dialog for First contact MUST still display the migration notice in chrome.
+
+The confirmation dialog for Externally verified and TOFU-pinned states MUST present both the announcing origin's address and the successor origin's address, the complete 24-word PIP of the publisher identity that signed the announcement, and the announcement timestamp `migration_pointer.announced_at`. The dialog MUST allow the user to accept the migration, decline the migration without changing the existing publisher profile, or open the publisher-history detail surface for context. A client MUST NOT default the dialog to a destructive choice; the user's affirmative action is required.
+
+A client that has obtained the user's confirmation for a specific `(announcing_origin, successor_origin)` pair MAY proceed without re-prompting on subsequent navigations involving the same pair during the same trust-state lifetime. A new prompt is required if the announcing manifest is replaced by a newer manifest with a different `migration_pointer.successor_origin` (see "Anti-downgrade and anti-forgery interaction" below) or if the publisher's trust state transitions in a way that revisits identity continuity.
+
+A client MAY auto-fetch the successor manifest in the background to perform verification before prompting the user, provided that fetching does not occur before the announcing manifest has itself been verified through Stage 9, and provided that no publisher-controlled content from the successor origin is rendered before the user has confirmed the migration. The user-confirmation requirement above is on the navigation and cached-state migration; it does not forbid the background verification fetch.
 
 ### Anti-downgrade and anti-forgery interaction
 
@@ -359,6 +395,23 @@ An attacker who controls the network path to the announced successor address but
 If the announcing manifest is replaced by a newer manifest (later canary `issued_at`) that omits `migration_pointer`, the client MUST treat the migration as withdrawn. The successor origin previously adopted into the publisher profile remains adopted unless the user explicitly removes it through publisher-history controls; the announcement's withdrawal does not retroactively unbind a successfully verified successor.
 
 If the announcing manifest is replaced by a newer manifest with a different `migration_pointer` (different `successor_origin`), the client MUST treat the new announcement independently: re-run successor verification for the new successor, prompt the user, and adopt only on success. Multiple successive migrations are allowed.
+
+### Chain depth and cycle prevention
+
+A `migration_pointer` chain is the sequence of origins reached by following the `migration_pointer` field across successive manifests within a single navigation. Without limits, a publisher could chain announcements `A → B → C → …`, and a client following them automatically would incur the full validation pipeline at every hop while obscuring from the user how many origins were traversed.
+
+A client supporting publisher profiles MUST enforce both of the following rules per navigation:
+
+1. **Automatic chain-depth limit.** A client MAY automatically adopt at most one `migration_pointer` hop without re-prompting the user when the announcing publisher's trust state requires user confirmation under "User confirmation" above. After one automatic adoption from announcer `A` to successor `B`, a further `migration_pointer` present on `B`'s manifest pointing to `C` MUST NOT be adopted in the same navigation flow without a new user-confirmation step, evaluated under the trust state of the publisher identity at `B` (which, since `B` adopted under the same `K_publisher.pub`, is the same publisher profile as `A`).
+2. **Visited-origin cycle rejection.** The client MUST maintain, for the duration of a single migration-resolution flow, a set `visited_origins` containing the address of every origin visited in that flow, beginning with the announcing origin. Before adopting a successor announced by `migration_pointer.successor_origin.address`, the client MUST check that the address is not already present in `visited_origins`. A successor address already in `visited_origins` is a chain cycle and MUST be rejected as `E_MIGRATION_INVALID` with `details.reason = "chain_cycle"`.
+
+The `visited_origins` set is per-navigation and per-publisher-profile. It is reset when the migration-resolution flow ends (whether by successful adoption, user decline, or rejection at any pipeline stage). It is not persisted across sessions and does not interact with publisher history.
+
+The chain-depth limit applies to *automatic* hops only. A user who, after the chain-depth limit is reached, explicitly confirms the next hop under the user-confirmation rules above resets the automatic chain-depth counter to zero for that confirmed hop's flow. A client MAY expose a high-threat mode in which the automatic chain-depth limit is zero, requiring user confirmation for every hop regardless of trust state.
+
+When the chain-depth limit is reached without user confirmation, the client treats the deeper successor as "pending user action": the announcement is displayed in chrome (per "Detection and chrome" above), but the client MUST NOT automatically navigate, MUST NOT fetch publisher-controlled content from the deeper successor, and MUST NOT migrate cached state to it. The migration remains pending until the user invokes the confirmation control or the announcing manifest's chain changes (replacement, withdrawal, or replacement of the deeper announcement).
+
+A `migration_pointer` whose `successor_origin.address` equals `origin.address` is already ill-formed at the manifest layer (§06) and is rejected at Stage 5 as part of `migration_pointer` validation; it does not reach the chain check.
 
 ### Refusal scope
 

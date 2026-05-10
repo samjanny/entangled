@@ -31,6 +31,8 @@ Absent values are represented by omitting the field, never by the JSON literal `
 
 A document that fails any of these checks is rejected. Error codes are defined in §11. Validation order is defined in §10.
 
+Implementations MUST eagerly validate every top-level field of a document against the closed schema. A parser that examines only the fields it intends to use, and ignores or defers fields it does not recognize or does not currently consume, is non-conformant: silently tolerating an unknown or schema-violating top-level field defeats the closed-schema discipline. Schema validation is a whole-document check at Stage 5 of the pipeline (§10); it MUST inspect every key present in the top-level object and every key present in every nested object whose schema is defined by the owning section, regardless of which fields a particular execution path reads.
+
 The closed-schema discipline applies to all document kinds. Lenient acceptance of unknown fields is non-conformant.
 
 ## Document kinds

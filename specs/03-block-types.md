@@ -422,6 +422,14 @@ The verification order is:
 
 Failure at any step from 2 to 9 rejects the image resource; the image is rendered as missing or unavailable, and the corresponding diagnostic is reported. None of these failures invalidate the containing `content` or `transaction` document.
 
+### No retry on image verification failure
+
+After a failure at any of steps 2–9 above, the client MUST NOT re-fetch the same `src` for the same `image` block within the same document rendering session. The verification failure is a property of the bound triple `(src, sha256, media_type)` declared by the signed document: refetching the same `src` cannot change the signed expectation, and a retry loop adds no information while wasting traffic and exposing the user's browsing pattern to additional observation on the carrier.
+
+A separate user-initiated reload of the containing document, including any document fetched anew under a refreshed manifest, MAY re-issue the image fetch under the verification pipeline above; that is a new rendering session, not a retry within the failed one. A different `image` block referencing a different `src` is not affected by the no-retry rule.
+
+This rule applies uniformly to transport failures (`W_IMAGE_FETCH_FAILED`), Content-Type or media-type mismatches (`W_IMAGE_CONTENT_TYPE`), oversize responses (`W_IMAGE_OVERSIZE`), hash mismatches (`W_IMAGE_HASH_MISMATCH`), decode failures (`W_IMAGE_DECODE_FAILED`), dimension mismatches (`W_IMAGE_DIMENSIONS`), and pixel-budget violations (`W_IMAGE_BUDGET`).
+
 ### Inline image data is forbidden
 
 Image content MUST NOT be inlined as a data URI, base64 blob, or any other in-document byte encoding.
