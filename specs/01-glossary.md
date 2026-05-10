@@ -172,7 +172,7 @@ Client-side storage of observed publisher identities, keyed by `K_publisher.pub`
 The cryptographic identity of a publisher, anchored at `K_publisher.pub` and represented to users as the PIP. Distinct from the carrier address, which is a reachability endpoint and may change. Survives `K_origin` rotation, server replacement, and carrier migration, assuming `K_publisher` remains uncompromised. Defined in Pillar B and §05. Related: K_publisher, PIP, publisher.
 
 **Publisher profile**  
-A client capability that recognizes the same `K_publisher.pub` across multiple authorized origins. When supported, migration to a new origin signed by the same `K_publisher` does not trigger Changed/mismatch solely because the address differs. Defined in §10. Related: K_publisher, trust state, changed/mismatch.
+A client capability that recognizes the same `K_publisher.pub` across multiple authorized origins. When supported, migration to a new origin signed by the same `K_publisher` does not trigger Changed/mismatch solely because the address differs. Required for clients that retain trust state across sessions; stateless clients are exempt. Defined in §10. Related: K_publisher, trust state, changed/mismatch.
 
 **Request state**  
 A state mode in which a state item is stored by the client and may be attached automatically to submit requests after explicit user consent. Used for session tokens, authenticated form tokens, and similar user-action context. Never attached to manifest fetches or content fetches. Defined in §07. Related: state, client-only state, state policy, consent, submit.

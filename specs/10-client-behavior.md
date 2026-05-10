@@ -30,6 +30,18 @@ Every Entangled document passes through a defined validation pipeline before it 
 
 The pipeline applies to manifest documents, content documents, and transaction documents. Stages that depend on an already verified manifest are skipped or adapted for manifest documents themselves, as noted.
 
+## Render dependence on manifest verification
+
+The client MUST NOT render any document, any block, or any image or other resource referenced by a document, from a site, until a manifest signed by `K_publisher` for that site has been fully verified through the pipeline stages applicable to manifests: signature verification (Stage 6), publisher identity and trust-state resolution (Stage 7), canary validation and anti-downgrade (Stage 8), and carrier origin binding (Stage 9).
+
+Rendering publisher-controlled content prior to manifest verification — even transiently, even as a "preview", even in response to explicit user navigation — is not conformant.
+
+This rule is the load-bearing invariant of the Entangled trust model. The publisher trust state, the canary attestation, and the carrier origin binding all anchor on the manifest signature; rendering content without that anchor exposes the user to indistinguishable forged content. The MUST in §05 that "the verifier MUST have a valid manifest for the relevant site before verifying a content document" addresses the verification side of the same invariant; this rule extends it explicitly to the rendering side.
+
+The rule applies symmetrically to content rendering, transaction-response processing for user-visible effect, image fetching, and any other action that turns publisher-controlled bytes into user-perceivable output. Image fetching is further constrained by §03: an image is fetched only after the containing content document has itself been verified.
+
+The rule does not restrict chrome. Chrome elements — origin address, trust-state indicators, "loading" or transport-error reports, the manifest verification progress itself — are client-controlled and may be displayed at any time. The rule covers publisher-controlled content rendering, not chrome.
+
 ## Pipeline order
 
 ```text
@@ -241,13 +253,23 @@ The client MUST display the First contact state in chrome and MUST display the P
 
 ### First contact → TOFU pinned
 
-The client SHOULD transition from First contact to TOFU pinned after the user explicitly chooses to continue to the site or after the first successful render of content from the site. The transition MAY also occur in response to other events such as dismissal of the first-contact notice. A client SHOULD document, in user-accessible form, the trigger it uses.
+The client MUST NOT transition from First contact to TOFU pinned without an explicit affirmative response from the user to a pinning prompt presented by the client. Successful manifest verification, content rendering, dismissal of the first-contact notice, navigation away from the site, or any other passive event MUST NOT by itself cause the transition. Silent or render-triggered pinning is not conformant.
 
-The transition MUST be visible to the user. The client MUST notify the user that the publisher identity has been retained for future mismatch detection.
+The client MAY render the first-contact content before presenting the prompt. Rendering the content does not constitute pinning. The prompt MAY be presented before, alongside, or after content rendering, at the client's discretion.
+
+The pinning prompt MUST convey:
+
+* that the publisher is being seen for the first time and has not been externally verified;
+* that retention will cause the client to alert the user on future identity changes for this publisher;
+* the action required to affirm retention and the action required to decline.
+
+The default action of the prompt is implementation-defined. A client MAY default to "remember" in environments where TOFU continuity is the user's expected outcome, or default to "do not remember" in conservative or stateless environments. The protocol does not pin a default; the prompt itself is normative.
+
+The transition MUST be visible to the user. After the user affirms retention, the client MUST notify the user that the publisher identity has been retained for future mismatch detection.
 
 The notification is informational, not a request for external trust. TOFU pinning records continuity of observation; it does not elevate the publisher to Externally verified.
 
-A client in stateless mode MAY retain the observation only for the current session. In that case, TOFU pinning is session-scoped and MUST be presented as such.
+A client in stateless mode MAY retain the observation only for the current session. In that case, TOFU pinning is session-scoped, MUST be presented as such, and the explicit pinning prompt MAY be omitted in favor of a chrome indicator that the client did not retain the identity.
 
 ### First contact or TOFU pinned → Externally verified
 
@@ -283,15 +305,15 @@ The client MUST NOT offer an option that would automatically resolve future Chan
 
 ## Multiple origins per publisher
 
-A client MAY support publisher profiles that recognize the same `K_publisher.pub` across multiple authorized origins.
+A client that retains trust state across sessions MUST support publisher profiles: a single publisher identity record keyed by `K_publisher.pub`, recognized across all authorized origins for that publisher. Cross-session retention without publisher-profile support fragments the user's identity model, because the same publisher reached at a new authorized origin appears as First contact and requires re-verification at every migration. A cross-session client that does not maintain publisher-profile records is not conformant.
 
-When supported:
+A stateless client — one that retains no trust state across sessions, by user choice or by design — is exempt from publisher-profile support. A stateless client MUST present its statelessness clearly in chrome and treats each navigation as First contact regardless of carrier address.
+
+When publisher profiles are supported:
 
 * the client maintains a single publisher identity record keyed by `K_publisher.pub`;
 * migration to a new origin signed by the same `K_publisher.pub` MUST NOT trigger Changed/mismatch solely because the address differs;
 * migration to a new origin with a different `K_publisher.pub` triggers Changed/mismatch.
-
-If publisher profiles are not supported, the client treats each origin as an independent site for trust-state purposes. Cross-origin migration by the same publisher is then treated as First contact at the new origin, unless the user externally verifies the PIP.
 
 ## Canary integration
 
@@ -425,11 +447,22 @@ This rule prevents users from confusing the PIP with cryptocurrency wallet seeds
 
 Localized translations of the label are permitted and encouraged. The labeling rule applies in spirit to translations: the chosen translation MUST convey "public identity" semantics, not "secret" or "recovery" semantics.
 
+## PIP display requirements
+
+When the client displays the PIP for user verification — at First contact, during Changed/mismatch resolution, in expandable detail surfaces, or anywhere a user is being asked to compare publisher identity against an out-of-band reference — the client MUST display the complete 24-word phrase.
+
+The client MUST NOT display only a prefix, only a suffix, only selected words, or any "first-N + last-M" pattern as a substitute for the full PIP. Truncated or partial PIP displays are not conformant. A 24-word BIP-39 PIP encodes the full 256-bit `K_publisher.pub` plus an 8-bit checksum; any display short of the full phrase reduces the work an attacker must do to grind a `K_publisher` whose PIP collides with the displayed prefix or suffix.
+
+The client MAY format the 24 words across multiple lines, in a numbered grid, with grouping separators, or with other layout treatments that aid legibility. The MUST is on completeness and legibility, not on a specific layout.
+
+The client MAY collapse the PIP behind a user-action affordance (such as an "expand" control) in surfaces where space is limited, but the user-action expansion MUST reveal the full 24 words without further truncation. A collapsed PIP MUST NOT be the only representation shown when the user is being asked to perform identity verification or mismatch resolution.
+
 ## Conditional always-visible warnings
 
 The client MUST display, prominently and not easily dismissibly, when present:
 
 * Changed/mismatch trust state warning;
+* canary conflict warning, after `E_CANARY_CONFLICT` (§08) has been observed for the publisher and not yet resolved by the user;
 * Expired canary warning;
 * Invalid canary warning;
 * canary gap notification, after a gap has been observed and not yet dismissed by the user;
