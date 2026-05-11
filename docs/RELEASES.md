@@ -47,9 +47,11 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
-### v1.0-rc.18
+### v1.0-rc.18 (planned — soak on rc.17 in progress)
 
-Date: 2026-05-11
+This section describes the changes that will land in v1.0-rc.18 when the tag is created. The commit carrying these changes is on `main` ahead of the v1.0-rc.17 tag; rc.18 will be tagged on that commit (or a successor including any soak-period fixes) once the rc.17 soak window concludes without blockers. Until then, this section is forward-looking, not a published release.
+
+Date: TBD (target shortly after rc.17 soak completes)
 
 Changes since v1.0-rc.17 (which equals rc.16 plus the Lotto 6 playbook update and the README updates committed under `docs:` after the rc.16 retag):
 
