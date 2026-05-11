@@ -75,6 +75,10 @@ Stage 5.  Closed-schema validation
             - no additional fields
             - per-field type, range, syntax, and length checks
             - nested object and array schema checks
+            - cross-field semantic checks declared by the owning
+              section, including temporal-relation constraints
+              between two fields (for example, the `origin.not_after`
+              constraints in §06 against `canary.issued_at`)
 
 Stage 6.  Signature verification (manifest: identity pre-check then
             Ed25519 verify; content/transaction: Ed25519 verify under
@@ -162,7 +166,7 @@ For manifest documents, the manifest-specific identity pre-check above has alrea
 
 **Stage 9: path and origin binding** prevents path-substitution and origin-substitution attacks.
 
-For manifests, Stage 9 also evaluates the optional `origin.not_after` field defined in §06. When present, a manifest whose declared `not_after` is at or before the client's clock (subject to the clock-skew tolerance defined under "Clock and tolerance" below) is rejected as `E_ORIGIN_EXPIRED`. This check runs after carrier origin binding succeeds and uses only fields already validated at Stage 5. A manifest carrying an `origin.not_after` whose value violates the semantic constraints in §06 (`not_after` not strictly later than `canary.issued_at`, or more than 5 years after `canary.issued_at`) is rejected at Stage 5 as `E_ORIGIN_INVALID`.
+For manifests, Stage 9 also evaluates the optional `origin.not_after` field defined in §06. When present, a manifest whose declared `not_after` is at or before the client's clock (subject to the clock-skew tolerance defined under "Clock skew tolerance" below) is rejected as `E_ORIGIN_EXPIRED`. This check runs after carrier origin binding succeeds and uses only fields already validated at Stage 5. A manifest carrying an `origin.not_after` whose value violates the semantic constraints in §06 (`not_after` not strictly later than `canary.issued_at`, or more than 5 years after `canary.issued_at`) is rejected at Stage 5 as `E_ORIGIN_INVALID`; these are cross-field semantic checks per the Stage 5 definition above.
 
 For manifests carrying a present `migration_pointer`, Stage 9 additionally performs the successor-verification and chain-depth checks specified under "Origin migration" below.
 
@@ -369,7 +373,7 @@ Before treating the successor origin as authoritative for the publisher, the cli
 3. verify that `successor_manifest.publisher_pubkey` byte-equals the announcing manifest's `publisher_pubkey`;
 4. verify, for Tor v3, that `successor_manifest.origin.address` byte-equals `migration_pointer.successor_origin.address` and that `successor_manifest.origin.origin_pubkey` byte-equals `migration_pointer.successor_origin.origin_pubkey`.
 
-If any of these checks fails, the client MUST reject the migration announcement. The announcing manifest remains current at the announcing origin, but the successor is not adopted into the publisher profile. The diagnostic is `E_MIGRATION_MISMATCH` (§11).
+If any of these checks fails, the client MUST reject the migration announcement. The announcing manifest remains current at the announcing origin, but the successor is not adopted into the publisher profile. The diagnostic is `E_MIGRATION_MISMATCH` (§11). When the failure originates from the Stage 1 through 9 pipeline applied to the successor manifest itself (check 2 above) rather than from the migration-binding fields (checks 3 and 4), `details.mismatch_field` is set to `successor_stage9_failure` and `details.underlying_diagnostic` SHOULD carry the diagnostic that the successor manifest's pipeline would have reported in isolation, to preserve debuggability for publisher operators (§11).
 
 If all checks pass, the client adopts the successor origin into the publisher profile keyed by `K_publisher.pub`, and the successor manifest is treated as current for the successor origin under the standard caching rules.
 
@@ -670,7 +674,21 @@ It does not apply to:
 
 The 300-second tolerance is normative. A client using a different value is non-conformant.
 
-When rejecting a timestamp because it exceeds the clock-skew tolerance, the client SHOULD indicate to the user that the local clock may be incorrect, since clock-skew failures are a likely cause of false positives on devices with unsynchronized clocks. The protocol-level diagnostic remains the one specified for the failing field (`E_CANARY_INVALID` for canary `issued_at`, `E_SCHEMA_FIELD_SYNTAX` for `manifest.updated`); the local-clock advisory is a user-presentation hint, not a separate diagnostic code.
+The same 300-second tolerance applies symmetrically to past-bound checks, where the timestamp is a publisher-declared expiration and the protocol concern is whether the present moment has passed it.
+
+A timestamp is rejected as past the declared instant when:
+
+```text
+current_time > timestamp + 300 seconds
+```
+
+This applies to:
+
+* `origin.not_after` (§06).
+
+The symmetric tolerance gives the publisher a margin to publish a successor manifest near the declared instant without producing a brief window during which clients with slightly fast clocks reject the still-current manifest. Beyond the tolerance window, the rejection is hard: the manifest is treated as origin-expired per §06 and §10 Stage 9.
+
+When rejecting a timestamp because it exceeds the clock-skew tolerance (in either direction), the client SHOULD indicate to the user that the local clock may be incorrect, since clock-skew failures are a likely cause of false positives on devices with unsynchronized clocks. The protocol-level diagnostic remains the one specified for the failing field (`E_CANARY_INVALID` for canary `issued_at`, `E_SCHEMA_FIELD_SYNTAX` for `manifest.updated`, `E_ORIGIN_EXPIRED` for `origin.not_after`); the local-clock advisory is a user-presentation hint, not a separate diagnostic code.
 
 For `manifest.updated` future-skew rejection specifically, the `details` field of the structured `E_SCHEMA_FIELD_SYNTAX` diagnostic SHOULD include `reason: "future_beyond_skew_tolerance"` and the offending timestamp, to distinguish this temporal-domain failure from lexical RFC 3339 violations.
 

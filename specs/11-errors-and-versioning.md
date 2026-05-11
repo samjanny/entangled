@@ -226,9 +226,10 @@ The structured diagnostic format for `E_BIND_REQUEST_ID` and `E_BIND_REQUEST_HAS
 The structured diagnostic format for `E_MIGRATION_MISMATCH` SHOULD include in `details`:
 
 * `announced_successor_address`: the address declared by `migration_pointer.successor_origin.address`;
-* `successor_publisher_pubkey`: the `publisher_pubkey` observed in the fetched successor manifest;
+* `successor_publisher_pubkey`: the `publisher_pubkey` observed in the fetched successor manifest, when the successor's own Stage 5 schema validation succeeded; otherwise omitted;
 * `announcing_publisher_pubkey`: the `publisher_pubkey` of the announcing manifest;
-* `mismatch_field`: which check failed (`publisher_pubkey`, `address`, or `origin_pubkey`).
+* `mismatch_field`: which check failed (`publisher_pubkey`, `address`, `origin_pubkey`, or `successor_stage9_failure` when the successor manifest fails any Stage 1 through 9 check independently of the migration-binding fields);
+* `underlying_diagnostic` (only when `mismatch_field` is `successor_stage9_failure`): the structured diagnostic code that the successor manifest's pipeline would have reported in isolation (for example, `E_ORIGIN_EXPIRED`, `E_SIG_VERIFICATION`, `E_TRUST_MISMATCH`). This field is informational only; the migration is rejected under `E_MIGRATION_MISMATCH` regardless of the underlying cause.
 
 The structured diagnostic format for `E_ORIGIN_EXPIRED` SHOULD include in `details`:
 
