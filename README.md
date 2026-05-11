@@ -143,6 +143,8 @@ Because the trust chain terminates at `K_publisher` and not at the address, a pu
 - rotate `K_runtime` periodically, with the rotation authorized by the manifest and announced through the canary;
 - migrate across carrier networks by issuing a new manifest authorizing a new `K_origin` for the new carrier.
 
+Origin rotation can be announced in-band through the manifest's optional `migration_pointer` field, which signs a successor carrier endpoint under the same `K_publisher`. Clients with publisher-profile support migrate trust continuity across origins after independently verifying the successor manifest, with chain-depth limits and per-flow cycle prevention enforced by the client.
+
 Users with the publisher's PIP can recognize the same publisher across these changes.
 
 Users without an out-of-band PIP can only use first-contact trust. The client may remember the first `K_publisher.pub` it sees for a site, but the first contact is not externally authenticated.
@@ -427,9 +429,9 @@ Entangled v1 defines exactly one document protocol version: `"1.0"`.
 
 There is no `"1.0.1"` or `"1.1"` document version.
 
-Because Entangled v1 uses closed schemas, any change to the accepted wire format, including additive fields, is a breaking protocol change and requires a new protocol version.
+During the pre-release rc cycle (`1.0-rc.<N>`), the closed schema MAY be extended additively with optional fields without bumping `spec_version`; documents valid under an earlier rc remain valid under a later rc. Examples include `migration_pointer` (added at rc.13) and `origin.not_after` (added at rc.14): both are optional top-level or nested fields, and both leave `spec_version` at `"1.0"`. Once v1.0 is tagged final, the closed schema is frozen: any subsequent change to the accepted wire format, including additive optional fields, is a breaking protocol change and requires a new protocol version.
 
-Specification releases such as `1.0.1` may clarify or correct the text of the specification, but they do not change wire-format behavior.
+Specification releases such as `1.0.1` may clarify or correct the text of the specification post-final, but they do not change wire-format behavior.
 
 Implementation versions are independent.
 

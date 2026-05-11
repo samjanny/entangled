@@ -25,15 +25,16 @@ corpus/
 
 `corpus.json` is the entry point. Every vector is described by:
 
-- `id` — stable identifier, prefixed with a numeric category (000-049 reserved, 050-099 positive, 100-199 negative);
-- `kind` — `manifest`, `content`, or `transaction`;
+- `id` — stable identifier, prefixed with a numeric category (000-049 reserved, 050-099 positive, 100-199 single-document negative diagnostics organized by pipeline stage, 200-299 multi-document scenarios such as migration);
+- `kind` — `manifest`, `content`, or `transaction` (the kind of the primary input document; multi-document scenarios may carry additional documents in `extra_files`);
 - `description` — what the vector exercises;
 - `spec_refs` — the spec sections the vector tests;
-- `input` — relative path to the input bytes;
-- `expected.verdict` — `accept` or `reject`;
+- `input` — relative path to the input bytes of the primary document;
+- `expected.verdict` — `accept` or `reject` (for multi-document scenarios such as migration vectors, the verdict refers to the scenario outcome — e.g., the migration adoption — not necessarily the in-isolation validity of the primary document);
 - `expected.diagnostic` — for rejections, the normative §11 diagnostic code;
-- `context` — optional fields needed to apply the vector (fetched path, fetched origin address, prerequisites such as a previously verified manifest, the corresponding submit body for transactions, etc.);
-- `extra_files` — additional files in the vector directory.
+- `expected.diagnostic_details` — for rejections whose §11 diagnostic carries structured `details` (e.g., `E_MIGRATION_MISMATCH` with `mismatch_field` and `underlying_diagnostic_code`), the expected `details` object the implementation should produce;
+- `context` — optional fields needed to apply the vector (fetched path, fetched origin address, prerequisites such as a previously verified manifest, the corresponding submit body for transactions, the address and on-disk path of a successor manifest for migration scenarios, etc.);
+- `extra_files` — additional files in the vector directory (e.g., `submit_body.json` for transactions, `successor_manifest.json` for migration scenarios).
 
 The corpus index also carries a top-level `clock_now` field, in RFC 3339 form. Harnesses MUST mock the implementation's wall clock to this value for the duration of the test run. This is required because canary diagnostics depend on `now` and the corpus uses fixed `issued_at` timestamps; without clock mocking, time-dependent vectors are not reproducible.
 
@@ -41,9 +42,9 @@ The corpus index also carries a top-level `clock_now` field, in RFC 3339 form. H
 
 `keys.json` records the test-only Ed25519 keypairs derived from fixed 32-byte seeds. The seeds are public ASCII strings (e.g., `b"ENTANGLED-v1.0-publisher-test01\x00"`); the corresponding private keys are NOT secret. They MUST NOT be used for any deployment.
 
-Three roles are pre-derived: `publisher` (`K_publisher`), `runtime` (`K_runtime`), `origin` (`K_origin`). A second runtime keypair (`runtime_2`) is provided for tests that need a distinct `K_runtime.pub` (e.g., the equal-`issued_at` conflict vector).
+Three roles are pre-derived: `publisher` (`K_publisher`), `runtime` (`K_runtime`), `origin` (`K_origin`). A second runtime keypair (`runtime_2`) is provided for tests that need a distinct `K_runtime.pub` (e.g., the equal-`issued_at` conflict vector). A second origin keypair (`origin_2`) is provided for migration scenarios where the announcing and successor manifests bind to different `K_origin` keys; its Tor v3 onion address is also recorded.
 
-For the `origin` keypair, the corresponding Tor v3 onion address is also recorded; it is derived from the public key by the rend-spec-v3 procedure and used for origin-binding in manifest vectors.
+For the `origin` and `origin_2` keypairs, the corresponding Tor v3 onion address is recorded alongside the public key; each address is derived from its public key by the rend-spec-v3 procedure and used for origin-binding in the relevant manifest vectors.
 
 The `publisher` entry in `keys.json` also carries `pip`: the 24-word Publisher Identity Phrase derived from `publisher.pub_b64u` per §05 (BIP-39 English wordlist over the raw 32-byte public key, with an 8-bit SHA-256 checksum). An implementation that derives PIPs MUST produce the same string for this public key. The wordlist used by `generate.py` is bundled at `tools/bip39_english.txt` and is the canonical BIP-39 English wordlist from the Bitcoin BIPs repository (`bitcoin/bips: bip-0039/english.txt`); its SHA-256 is `2f5eed53a4727b4bf8880d8f3f199efc90e58503646d9ff8eff3a2ed3b24dbda`. The `pip` field is omitted when the wordlist file is absent; presence of the field is therefore the indicator that the corpus was regenerated with a verified wordlist in place.
 
@@ -89,7 +90,9 @@ Requires Python 3.10+ and the `cryptography` package (for raw Ed25519 RFC 8032 s
 | 160–169 | Strict base64url (padding, alphabet, whitespace) |
 | 170–179 | Stage 9 binding (path mismatch, reserved path, request_hash) |
 | 180–189 | Canary (equal `issued_at` conflict) |
+| 190–199 | Unicode and canonicalization (NFD vs NFC) |
+| 200–209 | Migration scenarios (multi-document; successor manifest in `extra_files`) |
 
-Future tranches will extend the corpus with additional cases: image hash mismatch, image content-type mismatch, oversized images, state-policy violations, anti-downgrade across origins, transaction state_updates rejection, chrome-separation requirements (out of pipeline scope), and JCS edge cases (Unicode property ordering, large but valid integer strings, etc.).
+Future tranches will extend the corpus with additional cases: image hash mismatch, image content-type mismatch, oversized images, state-policy violations, anti-downgrade across origins, transaction state_updates rejection, chrome-separation requirements (out of pipeline scope), JCS edge cases (Unicode property ordering, large but valid integer strings, etc.), and additional migration-scenario failure modes beyond the rc.16 successor-origin-expired case (e.g., successor signature failure, chain-depth limit triggering, cross-session migration history checks).
 
 Coverage relative to the §11 diagnostic code catalog is intentionally partial in this initial corpus. The categories above exercise representative codes per pipeline stage; future tranches will fill out the remaining codes.
