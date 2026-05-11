@@ -1101,6 +1101,442 @@ def negative_vectors(keys) -> list[dict]:
         },
     ))
 
+    # =====================================================================
+    # rc.18 Phase-1 additions: pipeline coverage within the existing
+    # vector schema. These vectors target §11 diagnostic codes that had
+    # zero coverage in the rc.17 corpus. Each is constructed so that
+    # the diagnostic-relevant violation is the only live violation at the
+    # first failing pipeline stage (corpus isolation rule, see README).
+    # =====================================================================
+
+    # ---- 102-input-byte-cap (Stage 2, E_INPUT_BYTE_CAP) ----
+    # Manifest-shaped body padded past the 64 KiB Stage 2 byte cap.
+    # Stage 2 fires before Stage 3 JSON parsing, so the JSON well-formedness
+    # below the cap is irrelevant.
+    out.append(vec(
+        "102-input-byte-cap",
+        kind="manifest",
+        description=(
+            "Manifest-shaped body padded past the 64 KiB byte cap for "
+            "manifests (§02). Stage 2 input check fires before Stage 3 JSON "
+            "parsing; well-formedness of the JSON below the cap is therefore "
+            "irrelevant. E_INPUT_BYTE_CAP."
+        ),
+        spec_refs=["§02", "§04"],
+        verdict="reject",
+        diagnostic="E_INPUT_BYTE_CAP",
+        body=(
+            b'{"spec_version":"1.0","kind":"manifest","_pad":"'
+            + (b"A" * 70000)
+            + b'"}'
+        ),
+    ))
+
+    # ---- 111-parse-nesting-depth (Stage 3, E_PARSE_NESTING_DEPTH) ----
+    # Nested JSON array of depth 20 exceeds the 16-level Stage 3 cap.
+    out.append(vec(
+        "111-parse-nesting-depth",
+        kind="manifest",
+        description=(
+            "Manifest body containing a 20-level-deep nested array, "
+            "exceeding the 16-level Stage 3 nesting cap (§04). The field "
+            "below the cap is irrelevant; Stage 3 fires before Stage 5. "
+            "E_PARSE_NESTING_DEPTH."
+        ),
+        spec_refs=["§04"],
+        verdict="reject",
+        diagnostic="E_PARSE_NESTING_DEPTH",
+        body=(
+            b'{"spec_version":"1.0","kind":"manifest","_nest":'
+            + b"[" * 20 + b"0" + b"]" * 20
+            + b',"sig":"' + (b"A" * 86) + b'"}'
+        ),
+    ))
+
+    # ---- 112-parse-string-length (Stage 3, E_PARSE_STRING_LENGTH) ----
+    # Content document containing a code_block whose content is a string
+    # one byte above the 100 KiB Stage 3 string cap. Body sits well under
+    # the 1 MiB content byte cap so Stage 2 passes.
+    long_str = b"x" * (100 * 1024 + 1)  # 102401 bytes
+    out.append(vec(
+        "112-parse-string-length",
+        kind="content",
+        description=(
+            "Content document containing a single string of 102401 ASCII "
+            "bytes, one byte above the 100 KiB Stage 3 string cap (§04). "
+            "Body remains under the 1 MiB content byte cap so Stage 2 "
+            "passes and Stage 3 fires. E_PARSE_STRING_LENGTH."
+        ),
+        spec_refs=["§04"],
+        verdict="reject",
+        diagnostic="E_PARSE_STRING_LENGTH",
+        body=(
+            b'{"spec_version":"1.0","kind":"content","path":"/x","meta":'
+            b'{"title":"t","published_at":"2026-05-07T00:00:00Z"},'
+            b'"blocks":[{"kind":"code_block","language":"text","content":"'
+            + long_str + b'"}],"sig":"' + (b"A" * 86) + b'"}'
+        ),
+    ))
+
+    # ---- 113-parse-array-length (Stage 3, E_PARSE_ARRAY_LENGTH) ----
+    # Content document whose blocks array contains 10001 entries, one above
+    # the 10000-element Stage 3 array cap. Element shapes are irrelevant;
+    # Stage 3 fires before Stage 5 schema validation.
+    out.append(vec(
+        "113-parse-array-length",
+        kind="content",
+        description=(
+            "Content document whose blocks array contains 10001 entries, "
+            "one above the 10000-element Stage 3 array cap (§04). Element "
+            "shapes are irrelevant; Stage 3 fires before Stage 5. "
+            "E_PARSE_ARRAY_LENGTH."
+        ),
+        spec_refs=["§04"],
+        verdict="reject",
+        diagnostic="E_PARSE_ARRAY_LENGTH",
+        body=(
+            b'{"spec_version":"1.0","kind":"content","path":"/x","meta":'
+            b'{"title":"t","published_at":"2026-05-07T00:00:00Z"},'
+            b'"blocks":[' + b"{}," * 10000 + b"{}]"
+            + b',"sig":"' + (b"A" * 86) + b'"}'
+        ),
+    ))
+
+    # ---- 114-parse-object-keys (Stage 3, E_PARSE_OBJECT_KEYS) ----
+    # Content document whose meta object contains 257 members, one above
+    # the 256-key Stage 3 object cap. Member names beyond the meta schema
+    # are irrelevant; Stage 3 fires before Stage 5.
+    extra_keys = b",".join(b'"k%d":0' % i for i in range(255))
+    out.append(vec(
+        "114-parse-object-keys",
+        kind="content",
+        description=(
+            "Content document whose meta object contains 257 members, one "
+            "above the 256-key Stage 3 object cap (§04). Member names "
+            "beyond the meta schema are irrelevant; Stage 3 fires before "
+            "Stage 5. E_PARSE_OBJECT_KEYS."
+        ),
+        spec_refs=["§04"],
+        verdict="reject",
+        diagnostic="E_PARSE_OBJECT_KEYS",
+        body=(
+            b'{"spec_version":"1.0","kind":"content","path":"/x","meta":'
+            b'{"title":"t","published_at":"2026-05-07T00:00:00Z",'
+            + extra_keys
+            + b'},"blocks":[{"kind":"divider"}],"sig":"'
+            + (b"A" * 86) + b'"}'
+        ),
+    ))
+
+    # ---- 115-parse-json-malformed (Stage 3, E_PARSE_JSON) ----
+    # Body containing a trailing comma followed by a missing value; not
+    # parseable as JSON.
+    out.append(vec(
+        "115-parse-json-malformed",
+        kind="manifest",
+        description=(
+            "Body is not parseable as JSON: trailing comma followed by a "
+            "missing value at \"sig\". Stage 3 JSON parsing rejects with "
+            "E_PARSE_JSON."
+        ),
+        spec_refs=["§04"],
+        verdict="reject",
+        diagnostic="E_PARSE_JSON",
+        body=b'{"spec_version":"1.0","kind":"manifest","sig":,}',
+    ))
+
+    # ---- 122-kind-missing-fields (Stage 4, E_KIND_MISSING_FIELDS) ----
+    # Document with the top-level sig field omitted. spec_version and kind
+    # are present and well-formed, but sig — one of the three top-level
+    # required fields per §02 — is absent. Stage 4 detects this before
+    # Stage 5 schema would also flag it.
+    out.append(vec(
+        "122-kind-missing-fields",
+        kind="manifest",
+        description=(
+            "Document with the top-level sig field omitted. spec_version "
+            "and kind are present and well-formed, but sig — one of the "
+            "three top-level required fields per §02 — is absent. Stage 4 "
+            "kind discrimination fires E_KIND_MISSING_FIELDS."
+        ),
+        spec_refs=["§02", "§11"],
+        verdict="reject",
+        diagnostic="E_KIND_MISSING_FIELDS",
+        body=b'{"spec_version":"1.0","kind":"manifest"}',
+    ))
+
+    # ---- 134-schema-field-type (Stage 5, E_SCHEMA_FIELD_TYPE) ----
+    # Manifest where min_refresh_interval is the string "3600" instead of
+    # a non-negative integer. Stage 5 fires before Stage 6 signature
+    # verification, so the residual signature is irrelevant.
+    m_field_type = dict(m)
+    m_field_type["min_refresh_interval"] = "3600"
+    out.append(vec(
+        "134-schema-field-type",
+        kind="manifest",
+        description=(
+            "Manifest where min_refresh_interval is the string \"3600\" "
+            "instead of a non-negative integer. Stage 5 closed-schema "
+            "validation fires before Stage 6 signature verification "
+            "(§10 first-failing-stage). E_SCHEMA_FIELD_TYPE."
+        ),
+        spec_refs=["§06", "§11"],
+        verdict="reject",
+        diagnostic="E_SCHEMA_FIELD_TYPE",
+        body_obj=m_field_type,
+        context={"fetched_origin_address": m_field_type["origin"]["address"]},
+    ))
+
+    # ---- 135-schema-field-range (Stage 5, E_SCHEMA_FIELD_RANGE) ----
+    # Content document with a heading block whose level is 7, outside the
+    # [1..6] range required by §03.
+    c_bad_range = make_content(
+        runtime_priv=rp,
+        path="/articles/bad-range",
+        title="Bad range",
+        blocks=[{
+            "kind": "heading",
+            "level": 7,
+            "content": [
+                {"kind": "text", "value": "Too deep", "marks": []},
+            ],
+        }],
+    )
+    out.append(vec(
+        "135-schema-field-range",
+        kind="content",
+        description=(
+            "Content document containing a heading block whose level is "
+            "7, outside the [1..6] range required by §03. Stage 5 schema "
+            "rejects with E_SCHEMA_FIELD_RANGE before Stage 6 signature "
+            "verification."
+        ),
+        spec_refs=["§03", "§11"],
+        verdict="reject",
+        diagnostic="E_SCHEMA_FIELD_RANGE",
+        body_obj=c_bad_range,
+        context={
+            "fetched_path": c_bad_range["path"],
+            "expected_runtime_pubkey": b64u(rp_pub),
+        },
+    ))
+
+    # ---- 136-schema-block-not-permitted (Stage 5, E_SCHEMA_BLOCK_NOT_PERMITTED) ----
+    # Transaction document whose blocks contains a submit_form block.
+    # submit_form is permitted only in content documents per §03's
+    # "Block usage by document kind" table.
+    sb_136 = {
+        "fields": {},
+        "request_state": [],
+        "request_id": "AAECAwQFBgcICQoLDA0ODw",
+    }
+    t_136, _ = make_transaction(
+        runtime_priv=rp,
+        submit_body=sb_136,
+        blocks=[{
+            "kind": "submit_form",
+            "action": "/contact",
+            "fields": [
+                {
+                    "name": "message",
+                    "kind": "textarea",
+                    "label": "Message",
+                    "max_length": 1000,
+                    "required": True,
+                }
+            ],
+            "submit_label": "Send",
+        }],
+    )
+    out.append(vec(
+        "136-schema-block-not-permitted",
+        kind="transaction",
+        description=(
+            "Transaction document whose blocks array contains a "
+            "submit_form block. submit_form is permitted only in content "
+            "documents per §03 \"Block usage by document kind\". Stage 5 "
+            "schema rejects with E_SCHEMA_BLOCK_NOT_PERMITTED."
+        ),
+        spec_refs=["§02", "§03"],
+        verdict="reject",
+        diagnostic="E_SCHEMA_BLOCK_NOT_PERMITTED",
+        body_obj=t_136,
+        context={
+            "submit_path": t_136["in_response_to"],
+            "expected_runtime_pubkey": b64u(rp_pub),
+            "submit_body_path": "vectors/136-schema-block-not-permitted/submit_body.json",
+        },
+        extra_files={
+            "submit_body.json": json.dumps(
+                sb_136, separators=(",", ":"), ensure_ascii=False
+            ).encode("utf-8"),
+        },
+    ))
+
+    # ---- 137-schema-duplicate-entry (Stage 5, E_SCHEMA_DUPLICATE_ENTRY) ----
+    # Manifest whose state_policy declares two entries with identical
+    # (namespace, key). §06 requires (namespace, key) uniqueness across
+    # state_policy entries.
+    m_dup_policy = make_manifest(
+        publisher_priv=pp, publisher_pub=pp_pub,
+        origin_pub=op_pub, runtime_pub=rp_pub,
+        state_policy=[
+            {
+                "namespace": "session",
+                "key": "auth",
+                "mode": "request",
+                "max_size": 512,
+                "max_lifetime": 86400,
+                "purpose": "First entry.",
+            },
+            {
+                "namespace": "session",
+                "key": "auth",
+                "mode": "client_only",
+                "max_size": 256,
+                "max_lifetime": 7776000,
+                "purpose": "Duplicate (namespace, key).",
+            },
+        ],
+    )
+    out.append(vec(
+        "137-schema-duplicate-entry",
+        kind="manifest",
+        description=(
+            "Manifest whose state_policy contains two entries with "
+            "identical (namespace, key) = (\"session\", \"auth\"). §06 "
+            "requires (namespace, key) uniqueness across state_policy "
+            "entries. Stage 5 schema rejects with E_SCHEMA_DUPLICATE_ENTRY."
+        ),
+        spec_refs=["§06", "§07", "§11"],
+        verdict="reject",
+        diagnostic="E_SCHEMA_DUPLICATE_ENTRY",
+        body_obj=m_dup_policy,
+        context={"fetched_origin_address": m_dup_policy["origin"]["address"]},
+    ))
+
+    # ---- 138-schema-malformed-unicode (Stage 5, E_SCHEMA_MALFORMED_UNICODE) ----
+    # Manifest whose canary.statement contains the JSON escape sequence
+    # \uD800 — a lone high surrogate with no paired low surrogate. RFC 8259
+    # admits the escape syntactically; §04 rejects the resulting isolated
+    # surrogate code point at schema validation. Raw bytes are used so the
+    # surrogate appears literally in the wire form (Python's UTF-8 encoder
+    # would otherwise refuse to emit it).
+    out.append(vec(
+        "138-schema-malformed-unicode",
+        kind="manifest",
+        description=(
+            "Manifest whose canary.statement contains the JSON escape "
+            "sequence \\uD800 — a lone high surrogate with no paired low "
+            "surrogate. After JSON parsing this yields a string with an "
+            "isolated surrogate code point, which §04 rejects as malformed "
+            "Unicode at Stage 5 schema validation (before Stage 6 signature "
+            "verification). Conforming parsers accept the JSON escape per "
+            "RFC 8259 §7; rejection is at the schema layer. "
+            "E_SCHEMA_MALFORMED_UNICODE."
+        ),
+        spec_refs=["§04", "§11"],
+        verdict="reject",
+        diagnostic="E_SCHEMA_MALFORMED_UNICODE",
+        body=(
+            b'{"spec_version":"1.0","kind":"manifest","publisher_pubkey":"'
+            + b64u(pp_pub).encode("ascii")
+            + b'","origin":{"carrier":"tor-v3","address":"'
+            + onion_address(op_pub).encode("ascii")
+            + b'","origin_pubkey":"'
+            + b64u(op_pub).encode("ascii")
+            + b'"},"canary":{"runtime_pubkey":"'
+            + b64u(rp_pub).encode("ascii")
+            + b'","issued_at":"2026-05-07T00:00:00Z",'
+            b'"next_expected":"2026-06-06T00:00:00Z",'
+            b'"statement":"Lone surrogate: \\uD800."},'
+            b'"state_policy":[],"navigation":[],'
+            b'"min_refresh_interval":3600,'
+            b'"updated":"2026-05-07T00:00:00Z","sig":"'
+            + (b"A" * 86) + b'"}'
+        ),
+    ))
+
+    # ---- 175-bind-origin (Stage 9, E_BIND_ORIGIN) ----
+    # Otherwise-valid manifest binding origin to K_origin (op_pub), but
+    # fetched from the address derived from K_origin_2 (op_pub_2). Stage 9
+    # Tor v3 address-to-key derivation fires the binding error.
+    m_175 = make_manifest(
+        publisher_priv=pp, publisher_pub=pp_pub,
+        origin_pub=op_pub, runtime_pub=rp_pub,
+    )
+    wrong_origin_address = onion_address(keys["origin_pub_2"])
+    out.append(vec(
+        "175-bind-origin",
+        kind="manifest",
+        description=(
+            "Otherwise-valid manifest whose origin binds to K_origin (test "
+            "fixture), fetched from the onion address derived from K_origin_2. "
+            "Stage 9 Tor v3 address-to-key derivation produces an "
+            "origin_pubkey that does not match manifest.origin.origin_pubkey. "
+            "E_BIND_ORIGIN."
+        ),
+        spec_refs=["§05", "§09", "§10"],
+        verdict="reject",
+        diagnostic="E_BIND_ORIGIN",
+        body_obj=m_175,
+        context={"fetched_origin_address": wrong_origin_address},
+    ))
+
+    # ---- 176-origin-invalid (E_ORIGIN_INVALID) ----
+    # Manifest whose origin.not_after equals canary.issued_at. §06 requires
+    # not_after to be strictly later than canary.issued_at; equal violates
+    # the MUST.
+    m_176 = make_manifest(
+        publisher_priv=pp, publisher_pub=pp_pub,
+        origin_pub=op_pub, runtime_pub=rp_pub,
+        not_after="2026-05-07T00:00:00Z",  # equal to canary.issued_at
+    )
+    out.append(vec(
+        "176-origin-invalid",
+        kind="manifest",
+        description=(
+            "Manifest whose origin.not_after equals canary.issued_at "
+            "(2026-05-07T00:00:00Z). §06 requires not_after strictly later "
+            "than canary.issued_at; equality violates the MUST. The "
+            "manifest is signed correctly and otherwise valid. "
+            "E_ORIGIN_INVALID."
+        ),
+        spec_refs=["§06", "§11"],
+        verdict="reject",
+        diagnostic="E_ORIGIN_INVALID",
+        body_obj=m_176,
+        context={"fetched_origin_address": m_176["origin"]["address"]},
+    ))
+
+    # ---- 182-canary-invalid (Stage 8, E_CANARY_INVALID) ----
+    # Canary interval (next_expected - issued_at) is 6 days, below the
+    # 7-day minimum required by §08. All other fields are valid and the
+    # manifest is signed correctly. Canary is fresh at clock_now.
+    m_182 = make_manifest(
+        publisher_priv=pp, publisher_pub=pp_pub,
+        origin_pub=op_pub, runtime_pub=rp_pub,
+        issued_at="2026-05-06T00:00:00Z",
+        next_expected="2026-05-12T00:00:00Z",  # 6 days, below 7-day floor
+        updated="2026-05-06T00:00:00Z",
+    )
+    out.append(vec(
+        "182-canary-invalid",
+        kind="manifest",
+        description=(
+            "Manifest whose canary interval (next_expected - issued_at) is "
+            "6 days, below the 7-day minimum required by §08. The manifest "
+            "is otherwise well-formed and signed correctly; canary is fresh "
+            "at clock_now (2026-05-07). Stage 8 canary validation fires "
+            "E_CANARY_INVALID."
+        ),
+        spec_refs=["§08", "§11"],
+        verdict="reject",
+        diagnostic="E_CANARY_INVALID",
+        body_obj=m_182,
+        context={"fetched_origin_address": m_182["origin"]["address"]},
+    ))
+
     return out
 
 

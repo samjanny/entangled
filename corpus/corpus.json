@@ -562,6 +562,240 @@
       "extra_files": [
         "successor_manifest.json"
       ]
+    },
+    {
+      "id": "102-input-byte-cap",
+      "kind": "manifest",
+      "description": "Manifest-shaped body padded past the 64 KiB byte cap for manifests (§02). Stage 2 input check fires before Stage 3 JSON parsing; well-formedness of the JSON below the cap is therefore irrelevant. E_INPUT_BYTE_CAP.",
+      "spec_refs": [
+        "§02",
+        "§04"
+      ],
+      "input": "vectors/102-input-byte-cap/input.json",
+      "expected": {
+        "verdict": "reject",
+        "diagnostic": "E_INPUT_BYTE_CAP"
+      }
+    },
+    {
+      "id": "111-parse-nesting-depth",
+      "kind": "manifest",
+      "description": "Manifest body containing a 20-level-deep nested array, exceeding the 16-level Stage 3 nesting cap (§04). The field below the cap is irrelevant; Stage 3 fires before Stage 5. E_PARSE_NESTING_DEPTH.",
+      "spec_refs": [
+        "§04"
+      ],
+      "input": "vectors/111-parse-nesting-depth/input.json",
+      "expected": {
+        "verdict": "reject",
+        "diagnostic": "E_PARSE_NESTING_DEPTH"
+      }
+    },
+    {
+      "id": "112-parse-string-length",
+      "kind": "content",
+      "description": "Content document containing a single string of 102401 ASCII bytes, one byte above the 100 KiB Stage 3 string cap (§04). Body remains under the 1 MiB content byte cap so Stage 2 passes and Stage 3 fires. E_PARSE_STRING_LENGTH.",
+      "spec_refs": [
+        "§04"
+      ],
+      "input": "vectors/112-parse-string-length/input.json",
+      "expected": {
+        "verdict": "reject",
+        "diagnostic": "E_PARSE_STRING_LENGTH"
+      }
+    },
+    {
+      "id": "113-parse-array-length",
+      "kind": "content",
+      "description": "Content document whose blocks array contains 10001 entries, one above the 10000-element Stage 3 array cap (§04). Element shapes are irrelevant; Stage 3 fires before Stage 5. E_PARSE_ARRAY_LENGTH.",
+      "spec_refs": [
+        "§04"
+      ],
+      "input": "vectors/113-parse-array-length/input.json",
+      "expected": {
+        "verdict": "reject",
+        "diagnostic": "E_PARSE_ARRAY_LENGTH"
+      }
+    },
+    {
+      "id": "114-parse-object-keys",
+      "kind": "content",
+      "description": "Content document whose meta object contains 257 members, one above the 256-key Stage 3 object cap (§04). Member names beyond the meta schema are irrelevant; Stage 3 fires before Stage 5. E_PARSE_OBJECT_KEYS.",
+      "spec_refs": [
+        "§04"
+      ],
+      "input": "vectors/114-parse-object-keys/input.json",
+      "expected": {
+        "verdict": "reject",
+        "diagnostic": "E_PARSE_OBJECT_KEYS"
+      }
+    },
+    {
+      "id": "115-parse-json-malformed",
+      "kind": "manifest",
+      "description": "Body is not parseable as JSON: trailing comma followed by a missing value at \"sig\". Stage 3 JSON parsing rejects with E_PARSE_JSON.",
+      "spec_refs": [
+        "§04"
+      ],
+      "input": "vectors/115-parse-json-malformed/input.json",
+      "expected": {
+        "verdict": "reject",
+        "diagnostic": "E_PARSE_JSON"
+      }
+    },
+    {
+      "id": "122-kind-missing-fields",
+      "kind": "manifest",
+      "description": "Document with the top-level sig field omitted. spec_version and kind are present and well-formed, but sig — one of the three top-level required fields per §02 — is absent. Stage 4 kind discrimination fires E_KIND_MISSING_FIELDS.",
+      "spec_refs": [
+        "§02",
+        "§11"
+      ],
+      "input": "vectors/122-kind-missing-fields/input.json",
+      "expected": {
+        "verdict": "reject",
+        "diagnostic": "E_KIND_MISSING_FIELDS"
+      }
+    },
+    {
+      "id": "134-schema-field-type",
+      "kind": "manifest",
+      "description": "Manifest where min_refresh_interval is the string \"3600\" instead of a non-negative integer. Stage 5 closed-schema validation fires before Stage 6 signature verification (§10 first-failing-stage). E_SCHEMA_FIELD_TYPE.",
+      "spec_refs": [
+        "§06",
+        "§11"
+      ],
+      "input": "vectors/134-schema-field-type/input.json",
+      "expected": {
+        "verdict": "reject",
+        "diagnostic": "E_SCHEMA_FIELD_TYPE"
+      },
+      "context": {
+        "fetched_origin_address": "dkptfyethnbfsj7qsxscia4w6lg4yssjca2gdrqlk457qav2lkna4xqd.onion"
+      }
+    },
+    {
+      "id": "135-schema-field-range",
+      "kind": "content",
+      "description": "Content document containing a heading block whose level is 7, outside the [1..6] range required by §03. Stage 5 schema rejects with E_SCHEMA_FIELD_RANGE before Stage 6 signature verification.",
+      "spec_refs": [
+        "§03",
+        "§11"
+      ],
+      "input": "vectors/135-schema-field-range/input.json",
+      "expected": {
+        "verdict": "reject",
+        "diagnostic": "E_SCHEMA_FIELD_RANGE"
+      },
+      "context": {
+        "fetched_path": "/articles/bad-range",
+        "expected_runtime_pubkey": "jzFtziEJkbIdjI15I4u3ni3bBa6IFElyyjEmMVSGF7o"
+      }
+    },
+    {
+      "id": "136-schema-block-not-permitted",
+      "kind": "transaction",
+      "description": "Transaction document whose blocks array contains a submit_form block. submit_form is permitted only in content documents per §03 \"Block usage by document kind\". Stage 5 schema rejects with E_SCHEMA_BLOCK_NOT_PERMITTED.",
+      "spec_refs": [
+        "§02",
+        "§03"
+      ],
+      "input": "vectors/136-schema-block-not-permitted/input.json",
+      "expected": {
+        "verdict": "reject",
+        "diagnostic": "E_SCHEMA_BLOCK_NOT_PERMITTED"
+      },
+      "context": {
+        "submit_path": "/contact",
+        "expected_runtime_pubkey": "jzFtziEJkbIdjI15I4u3ni3bBa6IFElyyjEmMVSGF7o",
+        "submit_body_path": "vectors/136-schema-block-not-permitted/submit_body.json"
+      },
+      "extra_files": [
+        "submit_body.json"
+      ]
+    },
+    {
+      "id": "137-schema-duplicate-entry",
+      "kind": "manifest",
+      "description": "Manifest whose state_policy contains two entries with identical (namespace, key) = (\"session\", \"auth\"). §06 requires (namespace, key) uniqueness across state_policy entries. Stage 5 schema rejects with E_SCHEMA_DUPLICATE_ENTRY.",
+      "spec_refs": [
+        "§06",
+        "§07",
+        "§11"
+      ],
+      "input": "vectors/137-schema-duplicate-entry/input.json",
+      "expected": {
+        "verdict": "reject",
+        "diagnostic": "E_SCHEMA_DUPLICATE_ENTRY"
+      },
+      "context": {
+        "fetched_origin_address": "dkptfyethnbfsj7qsxscia4w6lg4yssjca2gdrqlk457qav2lkna4xqd.onion"
+      }
+    },
+    {
+      "id": "138-schema-malformed-unicode",
+      "kind": "manifest",
+      "description": "Manifest whose canary.statement contains the JSON escape sequence \\uD800 — a lone high surrogate with no paired low surrogate. After JSON parsing this yields a string with an isolated surrogate code point, which §04 rejects as malformed Unicode at Stage 5 schema validation (before Stage 6 signature verification). Conforming parsers accept the JSON escape per RFC 8259 §7; rejection is at the schema layer. E_SCHEMA_MALFORMED_UNICODE.",
+      "spec_refs": [
+        "§04",
+        "§11"
+      ],
+      "input": "vectors/138-schema-malformed-unicode/input.json",
+      "expected": {
+        "verdict": "reject",
+        "diagnostic": "E_SCHEMA_MALFORMED_UNICODE"
+      }
+    },
+    {
+      "id": "175-bind-origin",
+      "kind": "manifest",
+      "description": "Otherwise-valid manifest whose origin binds to K_origin (test fixture), fetched from the onion address derived from K_origin_2. Stage 9 Tor v3 address-to-key derivation produces an origin_pubkey that does not match manifest.origin.origin_pubkey. E_BIND_ORIGIN.",
+      "spec_refs": [
+        "§05",
+        "§09",
+        "§10"
+      ],
+      "input": "vectors/175-bind-origin/input.json",
+      "expected": {
+        "verdict": "reject",
+        "diagnostic": "E_BIND_ORIGIN"
+      },
+      "context": {
+        "fetched_origin_address": "fkhd5flqvbfahfdt7wb3oydc6tltevzfbxogmiaqumezea6qww7rjhid.onion"
+      }
+    },
+    {
+      "id": "176-origin-invalid",
+      "kind": "manifest",
+      "description": "Manifest whose origin.not_after equals canary.issued_at (2026-05-07T00:00:00Z). §06 requires not_after strictly later than canary.issued_at; equality violates the MUST. The manifest is signed correctly and otherwise valid. E_ORIGIN_INVALID.",
+      "spec_refs": [
+        "§06",
+        "§11"
+      ],
+      "input": "vectors/176-origin-invalid/input.json",
+      "expected": {
+        "verdict": "reject",
+        "diagnostic": "E_ORIGIN_INVALID"
+      },
+      "context": {
+        "fetched_origin_address": "dkptfyethnbfsj7qsxscia4w6lg4yssjca2gdrqlk457qav2lkna4xqd.onion"
+      }
+    },
+    {
+      "id": "182-canary-invalid",
+      "kind": "manifest",
+      "description": "Manifest whose canary interval (next_expected - issued_at) is 6 days, below the 7-day minimum required by §08. The manifest is otherwise well-formed and signed correctly; canary is fresh at clock_now (2026-05-07). Stage 8 canary validation fires E_CANARY_INVALID.",
+      "spec_refs": [
+        "§08",
+        "§11"
+      ],
+      "input": "vectors/182-canary-invalid/input.json",
+      "expected": {
+        "verdict": "reject",
+        "diagnostic": "E_CANARY_INVALID"
+      },
+      "context": {
+        "fetched_origin_address": "dkptfyethnbfsj7qsxscia4w6lg4yssjca2gdrqlk457qav2lkna4xqd.onion"
+      }
     }
   ]
 }

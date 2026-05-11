@@ -76,23 +76,33 @@ python3 corpus/tools/generate.py
 
 Requires Python 3.10+ and the `cryptography` package (for raw Ed25519 RFC 8032 signing). The generator is fully deterministic; output bytes match across runs and across machines.
 
-## Categories of vectors in this initial release
+## Categories of vectors
 
 | Range | Category |
 |---|---|
 | 001–099 | Positive (must be accepted) |
-| 100–109 | Stage 2 input checks (BOM, UTF-8) |
-| 110–119 | Stage 3 JSON parsing (duplicate keys) |
-| 120–129 | Stage 4 kind / spec_version |
-| 130–139 | Stage 5 schema (unknown field, missing required, null, block-kind) |
+| 100–109 | Stage 2 input checks (BOM, UTF-8, byte cap) |
+| 110–119 | Stage 3 JSON parsing (duplicate keys, nesting depth, string length, array length, object keys, malformed JSON) |
+| 120–129 | Stage 4 kind discrimination (spec_version, unknown kind, missing required top-level field) |
+| 130–139 | Stage 5 schema (unknown field, missing required, null literal, unknown block kind, field type, field range, block not permitted in document kind, duplicate uniqueness-required entry, malformed Unicode) |
 | 140–149 | Numeric grammar (float, exponent, overflow) |
-| 150–159 | Stage 6 signature (modified payload, malformed length, non-canonical S, small-order A) |
+| 150–159 | Stage 6 signature (modified payload, malformed length, non-canonical S, small-order A, non-canonical R, non-canonical A) |
 | 160–169 | Strict base64url (padding, alphabet, whitespace) |
-| 170–179 | Stage 9 binding (path mismatch, reserved path, request_hash) |
-| 180–189 | Canary (equal `issued_at` conflict) |
+| 170–179 | Stage 9 binding (path mismatch, reserved path, request_hash, origin binding, origin not_after semantic constraints) |
+| 180–189 | Canary (equal `issued_at` conflict, anti-downgrade, interval-bounds violation) |
 | 190–199 | Unicode and canonicalization (NFD vs NFC) |
 | 200–209 | Migration scenarios (multi-document; successor manifest in `extra_files`) |
 
-Future tranches will extend the corpus with additional cases: image hash mismatch, image content-type mismatch, oversized images, state-policy violations, anti-downgrade across origins, transaction state_updates rejection, chrome-separation requirements (out of pipeline scope), JCS edge cases (Unicode property ordering, large but valid integer strings, etc.), and additional migration-scenario failure modes beyond the rc.16 successor-origin-expired case (e.g., successor signature failure, chain-depth limit triggering, cross-session migration history checks).
+Coverage relative to the §11 diagnostic code catalog remains partial. Codes not yet covered in this corpus fall into the following groups:
 
-Coverage relative to the §11 diagnostic code catalog is intentionally partial in this initial corpus. The categories above exercise representative codes per pipeline stage; future tranches will fill out the remaining codes.
+- **Stage 1 transport** (`E_TRANSPORT_*`, all 13 codes): require an extension of the vector schema to carry expected HTTP response metadata (status code, headers) alongside the body bytes. The pipeline-isolation rule applies normally; only the schema extension is open.
+- **Stage 7 trust** (`E_TRUST_MISMATCH`, `E_TRUST_USER_REJECTED`): require multi-manifest scenarios that establish a prior pin and present a different `K_publisher.pub`.
+- **Stage 9 binding** sub-codes whose isolation is currently ambiguous: `E_BIND_RESPONSE_PATH`, `E_BIND_REQUEST_ID` (the latter cannot be exercised in isolation from `E_BIND_REQUEST_HASH` because `request_id` is part of the hashed submit body; §10 does not normatively order Stage-9 sub-checks).
+- **Stage 9 origin lifecycle**: `E_ORIGIN_EXPIRED` requires either a SHOULD-only violation between `not_after` and `next_expected` or co-emission with `W_CANARY_EXPIRED`.
+- **Warning-class diagnostics** (`W_CANARY_NEAR_EXPIRATION`, `W_CANARY_EXPIRED`, `W_CANARY_GAP`, `W_CANARY_UNAVAILABLE`, all `W_IMAGE_*`, `W_HISTORICAL_*`): require an `expected.warnings` extension to the vector schema, since warnings coexist with an `accept` verdict.
+- **Image** (`W_IMAGE_*`, all 7 codes): require image bytes in `extra_files` and an `image_response.json` describing the fetched-content type/length; vector schema extension.
+- **State** (`E_STATE_*`, all 6 codes): mostly publisher-side; require submit-flow vector schema.
+- **Historical content** (`E_HISTORICAL_*`, `W_HISTORICAL_*`): require multi-manifest authorization-history scenarios.
+- **Migration** (`E_MIGRATION_INVALID`): structurally-valid migration_pointer with semantic-check failures other than `successor_stage9_failure`.
+
+Vector-schema extensions (transport metadata, image responses, expected-warnings array, multi-manifest histories) are deferred to a future tranche. The current corpus exercises every diagnostic code reachable within the existing schema.
