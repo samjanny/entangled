@@ -25,7 +25,7 @@ corpus/
 
 `corpus.json` is the entry point. Every vector is described by:
 
-- `id` — stable identifier, prefixed with a numeric category (000-049 reserved, 050-099 positive, 100-199 single-document negative diagnostics organized by pipeline stage, 200-299 multi-document scenarios such as migration);
+- `id` — stable identifier, prefixed with a numeric category (001-099 positive, 100-199 single-document negative diagnostics organized by pipeline stage, 200-299 multi-document scenarios such as migration; the full per-stage breakdown is in the "Categories of vectors" table below);
 - `kind` — `manifest`, `content`, or `transaction` (the kind of the primary input document; multi-document scenarios may carry additional documents in `extra_files`);
 - `description` — what the vector exercises;
 - `spec_refs` — the spec sections the vector tests;
