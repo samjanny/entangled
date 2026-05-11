@@ -1335,14 +1335,17 @@ def negative_vectors(keys) -> list[dict]:
         submit_body=sb_136,
         blocks=[{
             "kind": "submit_form",
-            "action": "/contact",
+            "label": [
+                {"kind": "text", "value": "Send a message", "marks": []},
+            ],
+            "submit_to": "/contact",
             "fields": [
                 {
-                    "name": "message",
                     "kind": "textarea",
+                    "name": "message",
                     "label": "Message",
-                    "max_length": 1000,
                     "required": True,
+                    "max_length": 1000,
                 }
             ],
             "submit_label": "Send",
