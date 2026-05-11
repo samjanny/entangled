@@ -83,6 +83,37 @@ This rc lands a textual errata tranche identified as Lotto 7: ten low-severity c
 
 **Corpus.** `corpus/corpus.json` — `rc_target` bumped from `"1.0-rc.16"` to `"1.0-rc.18"` (rc.17 was content-identical to rc.16; no separate corpus snapshot is needed for rc.17). Total vectors unchanged at 34; the 34 existing vectors are byte-for-byte identical between rc.16 and rc.18 corpora since rc.18 introduces no new vectors and changes no existing diagnostic codes or schema.
 
+### v1.0-rc.17
+
+Date: 2026-05-11
+
+Changes since v1.0-rc.16:
+
+This rc adds no normative protocol changes. It bundles the post-rc.16 documentation tranches (Lotto 6 operator-playbook operationalization of W2, plus the README updates that brought the high-level docs into alignment with rc.13–rc.16 wire-format additions) into a single tagged snapshot suitable as a v1.0 release candidate. The wire format, schemas, diagnostic catalog, and corpus are byte-for-byte identical to rc.16; an implementation conforming to rc.16 conforms to rc.17 without modification.
+
+**Lotto 6 — operationalization of W2 in the operator playbook (`docs/operator-playbook.md`)** — The first-pass audit identified W2 as a structural ALTA limitation: Entangled v1 has no in-band cryptographic revocation of `K_runtime`, so a compromised runtime key authorizes content forgery for the duration of the canary window plus the post-rotation residual. The protocol-level closure of W2 is deferred to a future major (v1.1 or v2) where a `runtime_revocation` mechanism with clock-anchor semantics can be designed cleanly. In the meantime, the playbook is extended in three places to make the residual exposure concrete and the response procedure actionable:
+
+* §3.3 "K_runtime" — quantifies the maximum compromise window: canary interval (≤90 days per §08) plus the §10 300-second clock-skew tolerance.
+* §7 "Canary and runtime rotation ceremony" — adds a new "Choosing canary interval" subsection with cadence floors per threat profile: high-threat (journalism with sensitive sources, financial services) 7 days; medium-threat 14–30 days; low-threat 30–60 days; 60–90 days discouraged because the canary stops being a meaningful security signal.
+* §16 "Runtime key compromise response" — substantially expanded from a flat 8-step procedure to: a "Compromise window" subsection decomposing the exposure into three temporal phases (pre-discovery, pre-rotation, post-rotation residual) each with quantitative bounds; expanded steps that prescribe immediate-rotation cadence (`next_expected = 7 days` even on deployments normally using longer intervals); a new "Out-of-band announcement" subsection with a complete announcement template covering publisher PIP, compromised and replacement `K_runtime.pub`, compromise window in UTC, affected canary `issued_at`, reader instructions, and incident description; a new "Reader guidance" subsection with explicit safe/suspect/action/non-action items; and an expanded "Limitation" subsection listing the concrete consequences of the missing in-band revocation and pointing to the v1.1+ roadmap.
+
+The playbook is non-normative; these changes do not affect protocol conformance. They do shift the operator's posture from "rotate when you remember" to "rotate by threat profile, with prepared offline ceremony state and PIP-confirmed out-of-band channels actively maintained".
+
+**README updates** — The post-rc.16 README pass corrected drift accumulated during the additive rc cycle.
+
+* `README.md` versioning section: the prior text "any change to the accepted wire format, including additive fields, is a breaking protocol change and requires a new protocol version" was contradicted by what we actually did in rc.13 (added `migration_pointer`) and rc.14 (added `origin.not_after`) without bumping `spec_version`. The text is reformulated to clarify that during the pre-release rc cycle, the closed schema MAY be extended additively with optional fields without bumping `spec_version`; documents valid under an earlier rc remain valid under a later rc. The freeze rule applies once v1.0 is tagged final.
+* `README.md` "Identity continuity": adds a paragraph citing `migration_pointer` as the in-band mechanism for origin rotation, with reference to chain-depth and per-flow cycle prevention. The high-level overview now mentions the rc.13–rc.14 mechanisms explicitly.
+* `corpus/README.md` vector ID category: extended from "100-199 negative" to "100-199 single-document negative diagnostics, 200-299 multi-document scenarios such as migration", to accommodate vector 200 (the migration successor-origin-expired vector added at rc.16).
+* `corpus/README.md` vector schema: documents `expected.diagnostic_details` (added at rc.16 for `E_MIGRATION_MISMATCH` with structured `details`) and clarifies that for multi-document scenarios the verdict refers to the scenario outcome, not necessarily the in-isolation validity of the primary document.
+* `corpus/README.md` test keys: documents `origin_2` (the second origin keypair added at rc.16 for migration scenarios), alongside the existing `runtime_2`.
+* `corpus/README.md` categories table: adds rows for `190-199` (Unicode/canonicalization, where vector 190 had been emitted since rc.13 but unindexed) and `200-209` (migration scenarios). "Future tranches" list cleaned up to reflect what is now covered.
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. All rc.16 documents validate identically under rc.17. The corpus index `rc_target` was not bumped at the rc.17 commit because the corpus is content-identical to rc.16; the next bump occurs at rc.18 where the Lotto 7 errata land.
+
+**Behavioral compatibility.** rc.17 introduces no new requirements on clients or publishers. rc.16 conformance implies rc.17 conformance.
+
+**Tag.** `v1.0-rc.17` was placed at the commit that landed the README updates (`62956f9`), one commit above `2a2fbea` (Lotto 6 playbook). Both commits are included in the tag's tree.
+
 ### v1.0-rc.16
 
 Date: 2026-05-11
