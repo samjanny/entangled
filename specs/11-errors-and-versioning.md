@@ -331,6 +331,8 @@ There is no `"1.0.1"` and no `"1.1"` at the document protocol-version level.
 
 The reason is structural. Entangled v1 uses closed schemas at every document layer. Adding a new field to a closed schema causes parsers conforming to the previous schema to reject the document with `E_SCHEMA_UNKNOWN_FIELD`. Therefore any change to the accepted wire format, including additive fields, is a breaking change at the protocol level. There is no middle ground for additive minor revisions within v1.
 
+This rule defines the wire-format stability guarantee that holds from v1.0 final onward. During the pre-release rc cycle (tags of the form `v1.0-rc.<N>`), the closed schema MAY be extended additively with optional fields without bumping `spec_version`; documents valid under an earlier rc remain valid under a later rc. Examples include `migration_pointer` (added at rc.13) and `origin.not_after` (added at rc.14): both are optional fields, and both leave `spec_version` at `"1.0"`. This pre-freeze relaxation is the release engineering convention documented in `docs/RELEASES.md` and is not part of the v1.0 conformance profile: a conforming v1.0 implementation is one that conforms to the spec at v1.0 final, not to an intermediate rc. Once `v1.0` is tagged final, the closed schema is frozen and the rule above applies without exception.
+
 A future protocol version will use a different `spec_version` value, for example `"2.0"`, and a different family of signing context strings, for example `ENTANGLED-v2 manifest`. Documents from different protocol versions are not interchangeable.
 
 ## Spec release
