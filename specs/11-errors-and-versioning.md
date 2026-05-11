@@ -234,7 +234,7 @@ The structured diagnostic format for `E_MIGRATION_MISMATCH` SHOULD include in `d
 The structured diagnostic format for `E_ORIGIN_EXPIRED` SHOULD include in `details`:
 
 * `not_after`: the declared `origin.not_after` value;
-* `now`: the client's clock value used for the comparison.
+* `now`: the client's clock value used for the comparison, rounded down to minute precision (UTC, RFC 3339 form `YYYY-MM-DDTHH:MM:00Z`). The minute-precision rounding limits the precision of any clock-skew leak when the diagnostic is logged or transmitted to third parties (crash reports, support channels) without compromising the diagnostic's usefulness for clock-skew troubleshooting, where minute-level resolution is sufficient.
 
 The structured diagnostic format for `E_ORIGIN_INVALID` SHOULD include in `details`:
 

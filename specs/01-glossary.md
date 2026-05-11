@@ -183,6 +183,9 @@ The cryptographic identity of a publisher, anchored at `K_publisher.pub` and rep
 **Publisher profile**  
 A client capability that recognizes the same `K_publisher.pub` across multiple authorized origins. When supported, migration to a new origin signed by the same `K_publisher` does not trigger Changed/mismatch solely because the address differs. Required for clients that retain trust state across sessions; stateless clients are exempt. Defined in §10. Related: K_publisher, trust state, changed/mismatch.
 
+**Rendering session**  
+The lifetime of a single client commitment to render a specific document instance. A rendering session begins when the client commits to rendering a document after Stages 6 through 9 have succeeded, and ends on user-initiated reload, navigation away from the document, or replacement of the underlying manifest by a newer manifest whose content supersedes the rendered document. In-flight retry attempts during the same render share the same rendering session. Defined operationally in §03 (no-retry rule for image verification failure) and §10. Related: image, rendering, validation pipeline.
+
 **Request state**  
 A state mode in which a state item is stored by the client and may be attached automatically to submit requests after explicit user consent. Used for session tokens, authenticated form tokens, and similar user-action context. Never attached to manifest fetches or content fetches. Defined in §07. Related: state, client-only state, state policy, consent, submit.
 

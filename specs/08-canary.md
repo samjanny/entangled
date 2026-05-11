@@ -128,7 +128,7 @@ The field is optional in v1 because it is operationally heavier than the other c
 
 Because `freshness_proof` is the only protocol-level signal against canary backdating, its absence is itself relevant to the user's risk assessment.
 
-A client MUST signal in chrome whether the current canary includes a `freshness_proof`. The signal MUST be visible in the canary's summary surface — the surface that exposes the canary state (Fresh, Near-expiration, Expired, Invalid, Unavailable) without requiring the user to expand a detail view, drawer, or other collapsed UI affordance. A client MUST NOT hide the presence-or-absence signal exclusively behind an expandable detail surface that is collapsed by default.
+A client MUST signal in chrome whether the current canary includes a `freshness_proof`. The signal MUST be visible in the canary's summary surface — the surface that exposes the canary state (Fresh, Near-expiration, Expired, Invalid, Unavailable) without requiring the user to expand a detail view, drawer, or other collapsed UI affordance. The "summary surface" in this section is the canary-specific instance of the always-visible compact indicator surface defined in §10 "Always-visible compact indicators"; the contents of `freshness_proof` itself, when present, MAY remain in the corresponding "expandable detail surface" (§10). A client MUST NOT hide the presence-or-absence signal exclusively behind an expandable detail surface that is collapsed by default.
 
 The signal MAY be implicit (the proof is shown when present, and a "no freshness proof" indicator is shown when absent) or explicit (a labelled indicator that is always visible). In either form, the summary surface MUST distinguish present from absent at a glance.
 
