@@ -207,6 +207,19 @@ The publisher MAY reject submits exceeding this size with `413 Payload Too Large
 
 The client SHOULD validate body size before transmission and refuse to submit oversize bodies.
 
+### Submit validation timing
+
+A publisher SHOULD NOT early-exit submit validation on the first failing stage. The natural sequential validation path — JSON parse, JCS canonicalization, schema check, `request_state` policy check, `request_hash` computation — exposes the rejecting stage as a server-side timing signal that an attacker probing with crafted submit bodies can sample without authentication. The signal is small per-request but accumulates across probes and can be sufficient to infer publisher-side state (declared `state_policy`, `(namespace, key)` activity, backend availability) that the wire response does not expose.
+
+Conforming publisher implementations SHOULD adopt one of the following disciplines for the submit response path:
+
+* run all validation stages to completion regardless of earlier failures, accumulating any rejection reason for the final response without short-circuiting on the first failure; or
+* apply a randomized response-delay floor between 50 ms and 200 ms, drawn from a uniform distribution per request, before returning the submit response (`200 OK` or `400 Bad Request`), independent of the validation outcome.
+
+Either approach removes the rejection-stage signal from the wire timing channel. The choice between them is implementation-defined and may trade computational overhead (complete-validation path) against added latency (randomized-delay path). A publisher MAY combine the two.
+
+This rule is SHOULD-level because the publisher infrastructure is operator-controlled and the protocol cannot enforce timing properties on remote endpoints. Operators of high-threat deployments SHOULD verify their stack against this discipline; the operator playbook documents test procedures. The corresponding client-side side-channel concern (the validation pipeline ordering observable through diagnostic stage emission) is acknowledged separately in §00 "v1.0 limitations" and is not addressed by this rule.
+
 ## Image resource fetches
 
 An image resource referenced by an `image` block (§03) is not itself an Entangled document. It is a binary image file fetched separately and bound to the containing signed document by SHA-256 digest.

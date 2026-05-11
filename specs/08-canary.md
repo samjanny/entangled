@@ -78,14 +78,14 @@ Other RFC 3339 forms are not permitted, including numeric UTC offsets, fractiona
 The interval between `issued_at` and `next_expected` MUST be:
 
 * at least 7 days (604800 seconds);
-* at most 90 days (7776000 seconds).
+* at most 30 days (2592000 seconds).
 
 These bounds prevent two pathological cases:
 
 * intervals shorter than 7 days impose excessive ceremony burden on the publisher and offer diminishing operational returns;
-* intervals longer than 90 days defeat the purpose of the warrant canary by allowing prolonged silence to pass without signal.
+* intervals longer than 30 days defeat the purpose of the warrant canary by allowing prolonged silence to pass without signal.
 
-The publisher chooses the interval based on operational practice. Higher-threat publishers may choose intervals close to 7 days. Lower-threat publishers may choose intervals close to 30 days. Intervals up to 90 days are permitted but discouraged for sites that rely on the canary as a security signal.
+The publisher chooses the interval based on operational practice. Higher-threat publishers SHOULD choose intervals close to 7 days. Lower-threat publishers MAY choose intervals up to the 30-day ceiling.
 
 A client receiving a manifest with `next_expected - issued_at` outside the permitted bounds rejects the manifest.
 
@@ -151,7 +151,7 @@ The client computes a canary state from the canary's `issued_at` and `next_expec
 * **Fresh.** Current time is between `issued_at` and `next_expected`, with substantial margin remaining before `next_expected`.
 * **Near-expiration.** Current time is approaching `next_expected`. The publisher has not yet issued a fresh canary, but the deadline has not passed.
 * **Expired.** Current time is at or after `next_expected`. The publisher has not issued a fresh canary by the committed deadline.
-* **Invalid.** The manifest signature is otherwise valid, but the canary fails structural or semantic validation independently of timing. Examples include: malformed canary fields; invalid timestamp syntax; `issued_at` more than the allowed clock-skew tolerance in the future; `next_expected` not strictly later than `issued_at`; `next_expected - issued_at` outside the 7-to-90-day bounds; other canary-specific validation failures defined in this section. Manifest signature failure is not a canary Invalid condition: it is reported under the manifest signature failure class defined in §05 and §11.
+* **Invalid.** The manifest signature is otherwise valid, but the canary fails structural or semantic validation independently of timing. Examples include: malformed canary fields; invalid timestamp syntax; `issued_at` more than the allowed clock-skew tolerance in the future; `next_expected` not strictly later than `issued_at`; `next_expected - issued_at` outside the 7-to-30-day bounds; other canary-specific validation failures defined in this section. Manifest signature failure is not a canary Invalid condition: it is reported under the manifest signature failure class defined in §05 and §11.
 * **Unavailable.** The client could not fetch a manifest, and therefore could not obtain a canary, for reasons of carrier reachability or transport failure.
 
 The exact thresholds defining "near-expiration" are implementation-defined. The client SHOULD treat the canary as near-expiration when the current time is within the last 10% of the `issued_at` to `next_expected` interval, or within 24 hours of `next_expected`, whichever is longer. The client MUST document the threshold it uses, in user-accessible form.

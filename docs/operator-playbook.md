@@ -141,7 +141,7 @@ An attacker with the current `K_runtime_priv` can sign valid current content and
 
 Canary expiration does not cryptographically revoke `K_runtime`. It changes the client presentation state to a warning. Operators who suspect `K_runtime_priv` compromise must perform an out-of-cycle runtime rotation.
 
-The maximum compromise window is bounded by the time elapsed between the compromise and the moment cached clients have observed and accepted a manifest authorizing a replacement runtime key. The protocol's hard upper bound on this window is the canary interval `next_expected - issued_at`, capped at 90 days by §08, plus the §10 clock-skew tolerance of 300 seconds. In practice, operators reduce this window further by choosing shorter canary intervals (see §7 "Choosing canary interval") and by rotating immediately upon discovery (see §16). This window is the rationale for the operational `K_runtime_priv` discipline above and for the §16 incident-response procedure.
+The maximum compromise window is bounded by the time elapsed between the compromise and the moment cached clients have observed and accepted a manifest authorizing a replacement runtime key. The protocol's hard upper bound on this window is the canary interval `next_expected - issued_at`, capped at 30 days by §08, plus the §10 clock-skew tolerance of 300 seconds. In practice, operators reduce this window further by choosing shorter canary intervals (see §7 "Choosing canary interval") and by rotating immediately upon discovery (see §16). This window is the rationale for the operational `K_runtime_priv` discipline above and for the §16 incident-response procedure.
 
 ## 4. Publisher identity setup ceremony
 
@@ -279,14 +279,12 @@ It requires `K_publisher_priv`, so it must occur in the offline ceremony environ
 
 ### Choosing canary interval
 
-The canary interval `next_expected - issued_at` (§08) bounds the maximum time during which a compromised `K_runtime_priv` can be used to forge content before the publisher is required to rotate. The protocol cap is 90 days; the operational floor depends on the deployment's threat profile.
+The canary interval `next_expected - issued_at` (§08) bounds the maximum time during which a compromised `K_runtime_priv` can be used to forge content before the publisher is required to rotate. The protocol cap is 30 days; the operational floor depends on the deployment's threat profile.
 
 Recommended floors by threat profile:
 
 * **High-threat** — journalism with sensitive sources, financial services, sites whose readers face physical or legal risk: **7 days**. Aligns with the most aggressive end of the §08-permitted range. Lower bound for operators willing to invest in weekly ceremonies. The 7-day floor keeps the worst-case post-rotation residual exposure (§16 "The compromise window") to approximately one week.
-* **Medium-threat** — most editorial sites, advocacy, professional communications: **14 to 30 days**. Balances ceremony overhead against exposure window. The 30-day upper end of this band matches the §08:88 informal recommendation.
-* **Low-threat** — personal publications, low-value content where forgery in the exposure window is operationally tolerable: **30 to 60 days**.
-* **Discouraged** — **60 to 90 days**: permitted by §08 but the upper end disables the canary as a meaningful security signal because the gap between expected refreshes is too long for absence-of-refresh to be informative.
+* **Standard** — all other deployments (most editorial sites, advocacy, professional communications, personal publications): **14 to 30 days**. Balances ceremony overhead against exposure window. The 30-day upper end matches the §08:81 MUST ceiling; intervals longer than 30 days are no longer permitted by §08.
 
 A publisher whose content has unequal threat across cycles MAY use shorter intervals during high-risk periods (for example, during active reporting on a sensitive subject) and longer intervals during quieter periods, provided each interval is independently within the §08 bounds and the rotation cadence remains consistent enough that readers do not perceive the canary as broken.
 
@@ -597,7 +595,7 @@ A `K_runtime` compromise has a bounded effective window even without explicit in
 
 1. **Pre-discovery exposure** (`t_compromise` → `t_discovery`): the attacker has the key. The publisher does not know. Forged content signed during this phase verifies against the current manifest and is accepted as current publication. Duration is unbounded by the protocol; in practice it is bounded by the publisher's monitoring (§14) and by external indicators of compromise.
 2. **Pre-rotation exposure** (`t_discovery` → `t_rotation_deployed`): the publisher knows but has not yet deployed the rotation manifest. Forged content continues to verify until the new manifest is accepted by each client. The publisher controls this phase by responding quickly; the §7 ceremony can complete within hours given prepared offline ceremony state.
-3. **Post-rotation residual** (`t_rotation_deployed` → ∀ clients have observed the new manifest): the new manifest authorizes a new `K_runtime`, but cached clients that have not refreshed may still accept content signed by the old `K_runtime` as current. This phase is bounded by `min_refresh_interval` (§06) plus the client refresh policy (§10), in the worst case by the previously declared `next_expected` for the old canary (capped at 90 days by §08), plus the §10 300-second clock-skew tolerance.
+3. **Post-rotation residual** (`t_rotation_deployed` → ∀ clients have observed the new manifest): the new manifest authorizes a new `K_runtime`, but cached clients that have not refreshed may still accept content signed by the old `K_runtime` as current. This phase is bounded by `min_refresh_interval` (§06) plus the client refresh policy (§10), in the worst case by the previously declared `next_expected` for the old canary (capped at 30 days by §08), plus the §10 300-second clock-skew tolerance.
 
 The post-rotation residual is the protocol-level upper bound. For a publisher with a 30-day canary interval, the worst-case residual is approximately 30 days; for a 7-day interval, approximately 7 days. This is the operational rationale for the cadence floors in §7 "Choosing canary interval".
 
