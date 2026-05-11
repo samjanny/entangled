@@ -103,8 +103,9 @@ Stage 8.  Canary and anti-downgrade resolution
 Stage 9.  Path and origin binding
             - for manifest: carrier origin binding, such as Tor v3 address derivation
             - for manifest, when `origin.not_after` is present: reject if the
-              client's clock (within clock-skew tolerance) is at or after the
-              declared instant
+              client's clock (within clock-skew tolerance) is strictly later
+              than the declared instant, per the past-bound tolerance formula
+              in "Clock skew tolerance" below
             - for manifest, when `migration_pointer` is present and the client
               supports publisher profiles: successor verification and chain-
               depth check
@@ -166,7 +167,7 @@ For manifest documents, the manifest-specific identity pre-check above has alrea
 
 **Stage 9: path and origin binding** prevents path-substitution and origin-substitution attacks.
 
-For manifests, Stage 9 also evaluates the optional `origin.not_after` field defined in §06. When present, a manifest whose declared `not_after` is at or before the client's clock (subject to the clock-skew tolerance defined under "Clock skew tolerance" below) is rejected as `E_ORIGIN_EXPIRED`. This check runs after carrier origin binding succeeds and uses only fields already validated at Stage 5. A manifest carrying an `origin.not_after` whose value violates the semantic constraints in §06 (`not_after` not strictly later than `canary.issued_at`, or more than 5 years after `canary.issued_at`) is rejected at Stage 5 as `E_ORIGIN_INVALID`; these are cross-field semantic checks per the Stage 5 definition above.
+For manifests, Stage 9 also evaluates the optional `origin.not_after` field defined in §06. When present, a manifest whose declared `not_after` is strictly earlier than the client's clock (subject to the clock-skew tolerance defined under "Clock skew tolerance" below; the rejection formula is `current_time > not_after + 300 seconds`, strict) is rejected as `E_ORIGIN_EXPIRED`. This check runs after carrier origin binding succeeds and uses only fields already validated at Stage 5. A manifest carrying an `origin.not_after` whose value violates the semantic constraints in §06 (`not_after` not strictly later than `canary.issued_at`, or more than 5 years after `canary.issued_at`) is rejected at Stage 5 as `E_ORIGIN_INVALID`; these are cross-field semantic checks per the Stage 5 definition above.
 
 For manifests carrying a present `migration_pointer`, Stage 9 additionally performs the successor-verification and chain-depth checks specified under "Origin migration" below.
 
@@ -610,6 +611,27 @@ The client MUST display, in chrome, when a publisher has at least one stored req
 This indicator is conditional and present only when applicable.
 
 The indicator MUST be visually distinguishable from the indicator for client-only state. The user MUST be able to identify, at a glance, whether the publisher has request state active for the current session.
+
+## Publisher-supplied labels in chrome
+
+Most of the chrome region is client-generated: trust state, canary state, warnings, and other status indicators that the client itself asserts. A small set of publisher-supplied fields are nevertheless rendered in chrome:
+
+* `manifest.navigation.label` (§06), rendered in the chrome navigation control;
+* `meta.title` (§02), rendered in chrome elements that reference a document, when context calls for it.
+
+These are publisher-controlled strings whose length and character class are constrained by their owning sections. The protocol does not validate their accuracy.
+
+When a publisher-supplied label appears in chrome, the client MUST:
+
+* display the label only after the owning document has passed the validation pipeline through Stage 9;
+* visually distinguish the label from client-asserted status. The visual treatment MUST be such that the user cannot confuse a publisher-supplied label with client-generated trust state, canary state, warnings, or other client-asserted status indicators;
+* treat the label as opaque text. The chrome renderer MUST NOT interpret in-band markup, terminal control sequences (ANSI, VT, OSC, CSI), or any other escape mechanism in publisher-supplied labels. Schema-level character-class restrictions defined in the field's owning section are necessary but not sufficient.
+
+Other publisher-supplied fields displayed in chrome — `state.purpose` and proposed state values (§07), `canary.statement` and `canary.freshness_proof` (§08) — are governed by the safe-display and presentation rules in their owning sections, which apply the same opacity and distinguishability principles.
+
+The chrome separation rule below applies in conjunction with this section: publisher-supplied labels are permitted in chrome but MUST remain visually distinguishable from client-asserted status, and they MUST NOT be allowed to impersonate it.
+
+No additional publisher-supplied field may be rendered in chrome beyond those enumerated here or in the owning sections referenced above. A future protocol version may extend this enumeration.
 
 ## Chrome separation
 

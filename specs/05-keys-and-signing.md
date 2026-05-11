@@ -171,6 +171,8 @@ A signature is valid only if all of the following hold:
 
 A signature whose base64url-decoded length is not exactly 64 bytes is rejected with `E_SIG_MALFORMED` (§11). A signature failing any cryptographic check is rejected with `E_SIG_VERIFICATION` (§11).
 
+The small-order rejection defined under "Public key (`A`) validation" above applies only to verification public keys. The protocol does not reject a signature whose `R` component decodes to a small-order point on the Ed25519 curve: a signature with a small-order `R` is accepted if it passes the canonical-encoding check on `R`, the `S < L` check, and the cofactorless verification equation `[S]B = R + [k]A`. This matches the `verify_strict` mode in `ed25519-dalek`, which does not apply small-order rejection to `R`.
+
 ### Library guidance
 
 The strict profile corresponds to the verification mode named `verify_strict` in `ed25519-dalek` (Rust). Implementations MUST select the strict mode where their library distinguishes strict from cofactored or "permissive" verification. Implementations MUST NOT use cofactored verification (`[8S]B = [8]R + [8][k]A`) for Entangled signature checks.

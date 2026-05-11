@@ -317,7 +317,16 @@ The client MUST obtain explicit user consent before committing any state set ope
 
 A set operation in a transaction document is a request, not a command. The client MAY perform other actions in response to the transaction, including rendering the response blocks, before, during, or after consent is decided.
 
-Rejecting a state update does not reject the transaction document. The transaction may still be valid and renderable even if the client refuses the requested state change.
+Rejecting a state update on consent or storage grounds does not reject the transaction document. The transaction may still be valid and renderable even if the client refuses the requested state change.
+
+This rule is distinct from rejection of the transaction document itself on schema or policy grounds. The failure taxonomy for state updates is:
+
+* **Schema failure.** A `state_updates` entry that violates the operation schema defined in this section — wrong field set, malformed value, unknown `op` — rejects the entire transaction document during Stage 5 of the validation pipeline (§10).
+* **Policy failure.** A set operation referencing a `(namespace, key)` combination not declared in the current manifest's `state_policy` (see "namespace and key" above) rejects the entire transaction document. The same applies to a set operation whose `value` exceeds the policy's `max_size` or whose `ttl` exceeds the policy's `max_lifetime`.
+* **Consent failure.** The user declines the consent prompt for a set operation, or remembered-consent state does not authorize the operation. The state operation is rejected; the transaction document remains valid and renderable.
+* **Storage failure.** The client cannot commit the state operation because the per-publisher storage cap (see "Storage limits" above) would be exceeded, or a local write fails. The state operation is rejected; the transaction document remains valid and renderable.
+
+Schema and policy failures are hard-fail on the document; consent and storage failures are soft-fail on the individual state operation. The protocol enforces this distinction so that a publisher cannot prevent the rendering of a transaction response by requesting state the client refuses to store, and conversely so that a malformed or out-of-policy state update is not silently dropped.
 
 ## Consent presentation
 
