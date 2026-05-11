@@ -53,11 +53,13 @@ PUBLISHER_SEED = b"ENTANGLED-v1.0-publisher-test01\x00"
 RUNTIME_SEED = b"ENTANGLED-v1.0-runtime-test0001\x00"
 ORIGIN_SEED = b"ENTANGLED-v1.0-origin-test00001\x00"
 RUNTIME_SEED_2 = b"ENTANGLED-v1.0-runtime-test0002\x00"
+ORIGIN_SEED_2 = b"ENTANGLED-v1.0-origin-test00002\x00"
 
 assert len(PUBLISHER_SEED) == 32
 assert len(RUNTIME_SEED) == 32
 assert len(ORIGIN_SEED) == 32
 assert len(RUNTIME_SEED_2) == 32
+assert len(ORIGIN_SEED_2) == 32
 
 
 # ---------------------------------------------------------------------------
@@ -231,19 +233,29 @@ def make_manifest(*, publisher_priv, publisher_pub, origin_pub, runtime_pub,
                   issued_at="2026-05-07T00:00:00Z",
                   next_expected="2026-06-06T00:00:00Z",
                   updated="2026-05-07T00:00:00Z",
-                  state_policy=None) -> dict:
-    """Build and sign a minimal valid manifest."""
+                  state_policy=None,
+                  not_after: str | None = None,
+                  migration_pointer: dict | None = None) -> dict:
+    """Build and sign a minimal valid manifest.
+
+    Optional `not_after`: when provided, added as `origin.not_after` (§06).
+    Optional `migration_pointer`: when provided, added as the top-level
+    `migration_pointer` field (§06).
+    """
     if state_policy is None:
         state_policy = []
-    payload = {
+    origin: dict = {
+        "carrier": "tor-v3",
+        "address": onion_address(origin_pub),
+        "origin_pubkey": b64u(origin_pub),
+    }
+    if not_after is not None:
+        origin["not_after"] = not_after
+    payload: dict = {
         "spec_version": "1.0",
         "kind": "manifest",
         "publisher_pubkey": b64u(publisher_pub),
-        "origin": {
-            "carrier": "tor-v3",
-            "address": onion_address(origin_pub),
-            "origin_pubkey": b64u(origin_pub),
-        },
+        "origin": origin,
         "canary": {
             "runtime_pubkey": b64u(runtime_pub),
             "issued_at": issued_at,
@@ -255,6 +267,8 @@ def make_manifest(*, publisher_priv, publisher_pub, origin_pub, runtime_pub,
         "min_refresh_interval": 3600,
         "updated": updated,
     }
+    if migration_pointer is not None:
+        payload["migration_pointer"] = migration_pointer
     payload["sig"] = sign(publisher_priv, CTX_MANIFEST, payload)
     return payload
 
@@ -343,6 +357,7 @@ def write_vector(vid: str, body: bytes, *, filename: str = "input.json") -> str:
 def vec(vid: str, kind: str, description: str, spec_refs: list[str],
         verdict: str, *, body: bytes | None = None,
         body_obj: dict | None = None, diagnostic: str | None = None,
+        diagnostic_details: dict | None = None,
         context: dict | None = None,
         extra_files: dict[str, bytes] | None = None) -> dict:
     """Build a corpus vector entry and write its files."""
@@ -355,6 +370,8 @@ def vec(vid: str, kind: str, description: str, spec_refs: list[str],
     expected: dict = {"verdict": verdict}
     if diagnostic is not None:
         expected["diagnostic"] = diagnostic
+    if diagnostic_details is not None:
+        expected["diagnostic_details"] = diagnostic_details
     entry = {
         "id": vid,
         "kind": kind,
@@ -505,6 +522,29 @@ def positive_vectors(keys) -> list[dict]:
                 sb, separators=(",", ":"), ensure_ascii=False
             ).encode("utf-8"),
         },
+    ))
+
+    # 006: valid manifest with origin.not_after declared
+    m6 = make_manifest(
+        publisher_priv=pp, publisher_pub=pp_pub,
+        origin_pub=op_pub, runtime_pub=rp_pub,
+        not_after="2027-05-07T00:00:00Z",
+    )
+    out.append(vec(
+        "006-manifest-valid-not-after",
+        kind="manifest",
+        description=(
+            "Valid manifest declaring origin.not_after = 2027-05-07T00:00:00Z, one year "
+            "after canary.issued_at and well within the 5-year ceiling. At clock_now "
+            "(2026-05-07) the manifest is not yet origin-expired. Exercises the rc.14 "
+            "origin-not-after schema acceptance and Stage 5 cross-field semantic checks "
+            "(strictly later than canary.issued_at; not more than 5 years after; SHOULD "
+            "later than canary.next_expected — satisfied here)."
+        ),
+        spec_refs=["§06", "§10"],
+        verdict="accept",
+        body_obj=m6,
+        context={"fetched_origin_address": m6["origin"]["address"]},
     ))
 
     return out
@@ -989,6 +1029,78 @@ def negative_vectors(keys) -> list[dict]:
         context={"fetched_origin_address": m_nfd_payload["origin"]["address"]},
     ))
 
+    # ---- 200: migration scenario, successor manifest origin-expired ----
+    #
+    # Announcing manifest at the original origin (op_pub) carries a
+    # migration_pointer to a successor origin (op_pub_2). The successor
+    # manifest is signed correctly by the same K_publisher and binds correctly
+    # to the successor address, but its own origin.not_after has already
+    # passed at clock_now (2026-05-07). The successor therefore fails Stage 9
+    # in isolation with E_ORIGIN_EXPIRED. Per §10 "Successor verification" and
+    # §11, the migration is rejected under E_MIGRATION_MISMATCH with
+    # mismatch_field="successor_stage9_failure" and underlying_diagnostic_code
+    # ="E_ORIGIN_EXPIRED". The announcing manifest is itself accepted at its
+    # origin (verdict reject here refers to the migration adoption outcome).
+    op_pub_2 = keys["origin_pub_2"]
+    successor_address = onion_address(op_pub_2)
+    successor = make_manifest(
+        publisher_priv=pp, publisher_pub=pp_pub,
+        origin_pub=op_pub_2, runtime_pub=rp_pub,
+        issued_at="2026-04-01T00:00:00Z",
+        next_expected="2026-05-01T00:00:00Z",
+        updated="2026-04-01T00:00:00Z",
+        not_after="2026-05-01T00:00:00Z",  # past relative to clock_now
+    )
+    successor_bytes = json.dumps(
+        successor, separators=(",", ":"), ensure_ascii=False
+    ).encode("utf-8")
+    announcing = make_manifest(
+        publisher_priv=pp, publisher_pub=pp_pub,
+        origin_pub=op_pub, runtime_pub=rp_pub,
+        migration_pointer={
+            "successor_origin": {
+                "carrier": "tor-v3",
+                "address": successor_address,
+                "origin_pubkey": b64u(op_pub_2),
+            },
+            "announced_at": "2026-05-07T00:00:00Z",
+        },
+    )
+    out.append(vec(
+        "200-migration-successor-origin-expired",
+        kind="manifest",
+        description=(
+            "Migration scenario exercising the rc.15 successor_stage9_failure path. "
+            "The announcing manifest at the original origin is itself valid and accepted "
+            "in isolation; it carries a migration_pointer to a successor origin. The "
+            "successor manifest (in extra_files/successor_manifest.json) is signed "
+            "correctly by the same K_publisher and binds to the successor address per "
+            "the Tor v3 derivation rule, but its own origin.not_after has already "
+            "passed at clock_now (2026-05-07). The successor fails Stage 9 in isolation "
+            "with E_ORIGIN_EXPIRED. Per §10 'Successor verification', the migration "
+            "is rejected under E_MIGRATION_MISMATCH; per §11, details.mismatch_field "
+            "= 'successor_stage9_failure' and details.underlying_diagnostic_code = "
+            "'E_ORIGIN_EXPIRED'. The reject verdict here refers to the migration "
+            "adoption outcome, not to the announcing manifest itself."
+        ),
+        spec_refs=["§06", "§10", "§11"],
+        verdict="reject",
+        diagnostic="E_MIGRATION_MISMATCH",
+        diagnostic_details={
+            "mismatch_field": "successor_stage9_failure",
+            "underlying_diagnostic_code": "E_ORIGIN_EXPIRED",
+        },
+        body_obj=announcing,
+        context={
+            "fetched_origin_address": announcing["origin"]["address"],
+            "successor_origin_address": successor_address,
+            "successor_manifest_path": "vectors/200-migration-successor-origin-expired/successor_manifest.json",
+        },
+        extra_files={
+            "successor_manifest.json": successor_bytes,
+        },
+    ))
+
     return out
 
 
@@ -1005,6 +1117,7 @@ def main() -> int:
     runtime_priv, runtime_pub = keypair(RUNTIME_SEED)
     origin_priv, origin_pub = keypair(ORIGIN_SEED)
     runtime_priv_2, runtime_pub_2 = keypair(RUNTIME_SEED_2)
+    origin_priv_2, origin_pub_2 = keypair(ORIGIN_SEED_2)
 
     keys = {
         "publisher_priv": publisher_priv,
@@ -1015,6 +1128,8 @@ def main() -> int:
         "origin_pub": origin_pub,
         "runtime_priv_2": runtime_priv_2,
         "runtime_pub_2": runtime_pub_2,
+        "origin_priv_2": origin_priv_2,
+        "origin_pub_2": origin_pub_2,
     }
 
     wordlist = load_bip39_wordlist()
@@ -1041,6 +1156,11 @@ def main() -> int:
             "seed_hex": RUNTIME_SEED_2.hex(),
             "pub_b64u": b64u(runtime_pub_2),
         },
+        "origin_2": {
+            "seed_hex": ORIGIN_SEED_2.hex(),
+            "pub_b64u": b64u(origin_pub_2),
+            "tor_v3_address": onion_address(origin_pub_2),
+        },
     }
     (ROOT / "keys.json").write_bytes(
         (json.dumps(keys_doc, indent=2, ensure_ascii=False) + "\n")
@@ -1054,7 +1174,7 @@ def main() -> int:
     corpus = {
         "_comment": "Generated by corpus/tools/generate.py. Do not hand-edit.",
         "spec_version_target": "1.0",
-        "rc_target": "1.0-rc.15",
+        "rc_target": "1.0-rc.16",
         "keys": "keys.json",
         "clock_now": "2026-05-07T00:01:00Z",
         "vectors": vectors,

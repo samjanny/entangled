@@ -373,7 +373,7 @@ Before treating the successor origin as authoritative for the publisher, the cli
 3. verify that `successor_manifest.publisher_pubkey` byte-equals the announcing manifest's `publisher_pubkey`;
 4. verify, for Tor v3, that `successor_manifest.origin.address` byte-equals `migration_pointer.successor_origin.address` and that `successor_manifest.origin.origin_pubkey` byte-equals `migration_pointer.successor_origin.origin_pubkey`.
 
-If any of these checks fails, the client MUST reject the migration announcement. The announcing manifest remains current at the announcing origin, but the successor is not adopted into the publisher profile. The diagnostic is `E_MIGRATION_MISMATCH` (§11). When the failure originates from the Stage 1 through 9 pipeline applied to the successor manifest itself (check 2 above) rather than from the migration-binding fields (checks 3 and 4), `details.mismatch_field` is set to `successor_stage9_failure` and `details.underlying_diagnostic` SHOULD carry the diagnostic that the successor manifest's pipeline would have reported in isolation, to preserve debuggability for publisher operators (§11).
+If any of these checks fails, the client MUST reject the migration announcement. The announcing manifest remains current at the announcing origin, but the successor is not adopted into the publisher profile. The diagnostic is `E_MIGRATION_MISMATCH` (§11). When the failure originates from the Stage 1 through 9 pipeline applied to the successor manifest itself (check 2 above) rather than from the migration-binding fields (checks 3 and 4), `details.mismatch_field` is set to `successor_stage9_failure` and `details.underlying_diagnostic_code` SHOULD carry the diagnostic code identifier (a string such as `"E_ORIGIN_EXPIRED"`) that the successor manifest's pipeline would have reported in isolation, to preserve debuggability for publisher operators (§11).
 
 If all checks pass, the client adopts the successor origin into the publisher profile keyed by `K_publisher.pub`, and the successor manifest is treated as current for the successor origin under the standard caching rules.
 
@@ -416,6 +416,28 @@ The chain-depth limit applies to *automatic* hops only. A user who, after the ch
 When the chain-depth limit is reached without user confirmation, the client treats the deeper successor as "pending user action": the announcement is displayed in chrome (per "Detection and chrome" above), but the client MUST NOT automatically navigate, MUST NOT fetch publisher-controlled content from the deeper successor, and MUST NOT migrate cached state to it. The migration remains pending until the user invokes the confirmation control or the announcing manifest's chain changes (replacement, withdrawal, or replacement of the deeper announcement).
 
 A `migration_pointer` whose `successor_origin.address` equals `origin.address` is already ill-formed at the manifest layer (§06) and is rejected at Stage 5 as part of `migration_pointer` validation; it does not reach the chain check.
+
+### Cross-session migration history
+
+The `visited_origins` set defined under "Chain depth and cycle prevention" is per-flow and per-navigation, not persisted across sessions. A publisher under the same `K_publisher` who alternately announces address `A → B` in one session and `B → A` in a later session can therefore force a client to re-traverse the migration on every fresh navigation, since each new flow begins with an empty `visited_origins`. For First-contact identities, where one automatic migration hop is permitted without a user-confirmation prompt under "User confirmation" above, this re-traversal can be silent.
+
+The vector is most concerning when an attacker has temporarily compromised `K_publisher_priv` and used the window to publish a self-cancelling migration loop: even after the publisher recovers control of the keys, every cached client continues to ping-pong between the two announced addresses on each session until a user explicitly intervenes.
+
+To raise friction on this vector, a client SHOULD record migration outcomes in publisher history, keyed by `K_publisher.pub`. The recorded events are:
+
+* **Adoption.** A successor address that the client adopted into the publisher profile under "Successor verification" above. The record SHOULD preserve the announcing origin address, the successor origin address, the announcement timestamp `migration_pointer.announced_at`, and the local timestamp at adoption.
+* **Replacement.** A previously adopted successor address that has subsequently been replaced by a newer migration announcement (per "Anti-downgrade and anti-forgery interaction" above). The record SHOULD preserve the replaced address, the replacing address, and the local timestamp at replacement.
+
+When processing a new migration announcement that names successor address `S` for the publisher profile keyed by `P = K_publisher.pub`, a client that maintains migration history SHOULD consult publisher history for `P` and check whether `S` appears as a previously-replaced successor within a recall window. The recommended recall window is 30 days. A client MAY make the window configurable; the minimum SHOULD be 7 days. A window of zero (no recall) is permitted but discouraged because it disables the mitigation entirely.
+
+If `S` is in the recall window as a previously-replaced successor for `P`, the client SHOULD treat the migration with elevated friction:
+
+* For trust states **Externally verified** and **TOFU pinned**, the user-confirmation requirement under "User confirmation" above already applies; no additional behavior is required, but the confirmation dialog SHOULD surface the recall information, including the prior replacement timestamp and the address pair involved.
+* For trust state **First contact**, where automatic adoption of one hop is otherwise permitted under "Chain depth and cycle prevention" above, the client SHOULD instead require explicit user confirmation before adopting `S`, presenting the recall information.
+
+The mitigation is SHOULD-level rather than MUST because v1 does not specify the storage backend for publisher history beyond what is already required for trust-state continuity, and this subsection introduces a new event class within publisher history. Implementations that do not maintain migration history are not non-conformant; they leave the cross-session ping-pong vector open as documented in §00 "v1.0 limitations".
+
+`visited_origins` (per-flow) and migration history (per-publisher, persistent) are independent mitigations: the former rejects intra-flow cycles outright as `E_MIGRATION_INVALID`; the latter raises friction on cross-session cycles without rejecting them, since a publisher rotating between addresses for legitimate operational reasons must remain reachable. Migration history never causes outright rejection; the diagnostic outcome of a cross-session cycle, when the user declines, is simply that the migration is not adopted in the current navigation, identical to any other declined migration.
 
 ### Refusal scope
 
