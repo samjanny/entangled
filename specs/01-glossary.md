@@ -63,6 +63,15 @@ The UI surface in which publisher-signed document content is rendered. The conte
 **Content document**  
 A signed Entangled document representing a publication served from a path on a site. Signed by `K_runtime`. Verified against the runtime key authorized by the current manifest for the same site. Defined in §02. Related: document, manifest, transaction document, K_runtime.
 
+**Content index**  
+A JSON document served at `/content_index.json`, listing per-path content sequence numbers and SHA-256 hashes. Not an Entangled signed document; its integrity is established by hash binding against the manifest's `content_root` field. The closed structure is defined in §02; the fetch is defined in §09; verification is defined in §10. Related: content root, content sequence number, hash binding.
+
+**Content root**  
+An optional manifest field (`content_root`) containing the SHA-256 digest of the content index. When present, the publisher commits to a specific content state via `K_publisher` signature. Content at indexed paths is frozen between ceremonies; a `K_runtime`-only attacker cannot forge or roll back indexed content. Defined in §06. Related: content index, manifest, hash binding.
+
+**Content sequence number**  
+An optional field (`seq`) on content documents, a positive integer monotonically increasing per path. Used in conjunction with the content index to detect rollback and forgery of content by a `K_runtime`-only attacker. Indexed paths require exact `seq` match against the content index. Defined in §02; verification in §10. Related: content index, content root.
+
 **Context string**  
 An ASCII string prefixed to the JCS-canonicalized payload during signature input construction, providing domain separation between signed object kinds. The context strings reserved for v1 are `ENTANGLED-v1 manifest`, `ENTANGLED-v1 content`, and `ENTANGLED-v1 transaction`. The canary is not signed independently in v1; it is covered by the manifest signature. Defined in §05. Related: signature input, signed payload, JCS, domain separation.
 
@@ -136,10 +145,10 @@ The operational signing key. An Ed25519 keypair used to sign content and transac
 A navigational element referring to a destination. Links appear inline within block content as inline `link` elements, or as standalone `link` blocks. Four target kinds are permitted: same-site, entangled, carrier, citation. Defined in §03. Related: same-site link, entangled link, carrier link, citation link, inline element.
 
 **Manifest**  
-The signed document by which a publisher declares the current authorization state of an Entangled site. Signed directly by `K_publisher`. Contains `publisher_pubkey`, `origin`, `canary`, `state_policy`, `navigation`, `min_refresh_interval`, `updated`, and `migration_pointer`. Fetched at the canonical path `/manifest.json`. Defined in §06. Related: K_publisher, K_origin, K_runtime, canary, document, migration pointer.
+The signed document by which a publisher declares the current authorization state of an Entangled site. Signed directly by `K_publisher`. Contains `publisher_pubkey`, `origin`, `canary`, `state_policy`, `navigation`, `min_refresh_interval`, `updated`, and optionally `migration_pointer` and `content_root`. Fetched at the canonical path `/manifest.json`. Defined in §06. Related: K_publisher, K_origin, K_runtime, canary, content root, document, migration pointer.
 
 **Migration history**  
-A per-publisher log of migration outcomes (adoption, replacement) recorded in publisher history under `K_publisher.pub`. Used by clients to detect cross-session migration cycles where a publisher under the same `K_publisher` alternates between two carrier addresses across sessions, raising user-confirmation friction on second-and-subsequent migrations to a previously-replaced successor within a recall window. SHOULD-level mitigation in v1.0; recall window recommended at 30 days, with a 7-day minimum. Defined in §10. Related: migration pointer, publisher history, K_publisher, visited origins.
+A per-publisher log of migration outcomes (adoption, replacement) recorded in publisher history under `K_publisher.pub`. Used by clients to detect cross-session migration cycles where a publisher under the same `K_publisher` alternates between two carrier addresses across sessions, raising user-confirmation friction on second-and-subsequent migrations to a previously-replaced successor within a recall window. MUST-level requirement in v1.0; storage backend is implementation-defined; recall window recommended at 30 days, with a 7-day MUST floor. Defined in §10. Related: migration pointer, publisher history, K_publisher, visited origins.
 
 **Migration pointer**  
 The signed announcement, carried in a manifest's optional `migration_pointer` field, that the publisher is migrating to a new carrier endpoint under the same `K_publisher`. Absent in the manifest when no migration is announced; present as an object containing `successor_origin` and `announced_at` when announced. Allows clients with publisher-profile support to migrate trust continuity in-band, without out-of-band PIP exchange, after independently verifying the successor manifest. Clients enforce a chain-depth limit and a per-flow visited-origin cycle check when following successive migration pointers (§10). Defined in §06 and §10. Related: manifest, origin, publisher profile, K_publisher, migration history.

@@ -87,6 +87,34 @@ The client validates the content document as defined in §02 and §05, including
 
 State is not transmitted in content fetches. Request-mode state items are excluded from `GET` requests by §07.
 
+## Content index fetch
+
+When the manifest contains a `content_root` field (§06), the client fetches the content index at the reserved path `/content_index.json` on the same carrier origin:
+
+```http
+GET /content_index.json HTTP/1.1
+Host: <56-character-onion-address>.onion
+```
+
+The content index fetch is a `GET` request with no request body. It uses the same restrictive request-header discipline as manifest and content fetches.
+
+The publisher responds with `200 OK` and the content index as the response body.
+
+The response MUST include:
+
+* `Content-Type: application/json`. The content index is not an Entangled signed document; it MUST NOT use `Content-Type: application/entangled+json`.
+* `Content-Length` with the exact byte count of the response body. Responses without `Content-Length` are rejected as `E_CONTENT_INDEX_FETCH_FAILED`.
+
+The response MUST NOT use `Content-Encoding` or `Transfer-Encoding`. The hash binding in `content_root` is over the exact response body bytes; any transfer-layer transformation invalidates the hash. A response carrying `Content-Encoding` or `Transfer-Encoding` is rejected as `E_CONTENT_INDEX_FETCH_FAILED`.
+
+The client enforces the 1 MiB byte cap defined in §02 before parsing. A response body exceeding 1 MiB is rejected as `E_CONTENT_INDEX_INVALID` (§11).
+
+The client verifies the SHA-256 digest of the exact response body bytes against the manifest's `content_root` value. Mismatch is `E_CONTENT_INDEX_HASH_MISMATCH` (§11). The client then validates the content index against the closed structure defined in §02. Structural failure is `E_CONTENT_INDEX_INVALID` (§11).
+
+A non-`200` response is `E_CONTENT_INDEX_FETCH_FAILED` (§11). When the manifest declares `content_root` and the content index cannot be obtained, the client MUST NOT render content documents from the site under that manifest; this is a hard-fail model, because `content_root` is a `K_publisher`-signed commitment and failure to honor it is indistinguishable from server compromise.
+
+State is not transmitted in content index fetches.
+
 ## Submit request
 
 A submit is a `POST` request to a transaction endpoint declared by the publisher, typically declared in `blocks` of a content document; see §03.

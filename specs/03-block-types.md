@@ -364,6 +364,7 @@ The image bytes are not embedded in the document. They are fetched separately fr
 * does not contain `.` or `..` path segments;
 * does not contain a query string, fragment, scheme, or host;
 * does not equal `/manifest.json`, which is reserved for manifest fetches (§09);
+* does not equal `/content_index.json`, which is reserved for content index fetches (§09);
 * does not exceed 256 ASCII characters.
 
 `sha256` is the SHA-256 digest of the exact response body bytes of the image resource, encoded as a string of the form:

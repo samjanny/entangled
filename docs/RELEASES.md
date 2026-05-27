@@ -47,6 +47,42 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.19 (planned — after rc.18 soak)
+
+This section describes the changes that will land in v1.0-rc.19. The changes are on `main` ahead of the rc.18 tag; rc.19 will be tagged once the rc.18 soak window concludes without blockers.
+
+Date: TBD
+
+Changes since v1.0-rc.18:
+
+This rc lands three audit-closing workstreams: a content-tree mechanism (Lotto 11, N45–N49) that lets the publisher commit to per-path content hashes in the manifest, closing audit findings C-1 (K_runtime forgery) and H-1 (content rollback); a SHOULD-to-MUST elevation on cross-session migration history (Lotto 12, N50), closing H-4; and a canary-block default flip (Lotto 13, N51), closing M-1. Wire format gains two optional fields (`content_root` on manifests, `seq` on content documents), one new non-signed resource (`/content_index.json`), and one new reserved path. The diagnostic catalog gains seven new error codes. One SHOULD is elevated to MUST with cross-session persistence required. One behavioral default is inverted (expired-canary block-by-default with per-session override).
+
+**Lotto 11 — Content tree (N45–N49)**
+
+**§06 Manifest — `content_root` field (N45)** — New optional top-level manifest field `content_root` (string, `sha-256:<base64url>`, 51 characters). When present, commits the manifest (and by extension `K_publisher`) to the SHA-256 digest of the exact bytes of `/content_index.json`. Absent when the publisher does not use the content index mechanism. Per the rc-cycle additive-field rule (§11 N38), this optional field is added without bumping `spec_version`. Ceremony interaction: `content_root` is updated at each canary rotation; `K_publisher` remains offline between ceremonies.
+
+**§02 Content document — `seq` field and content index format (N46)** — New optional top-level content document field `seq` (integer ≥ 1, monotonic per path). New closed-structure content index format at `/content_index.json` defined in §02: a non-signed JSON document with `entries` mapping paths to `{seq, hash}` pairs. Size cap 1 MiB. Parsing restrictions inherited from Entangled document rules (strict UTF-8, no BOM, no duplicate keys, integer grammar per §04, strict base64url). Path `/content_index.json` reserved in content `path`, transaction `in_response_to`, and image `src` across §02 and §03.
+
+**§09 Transport — content index fetch (N47)** — New fetch section defining GET `/content_index.json` with `Content-Type: application/json`, `Content-Length` required, no `Content-Encoding` or `Transfer-Encoding` (hash binding requires exact bytes).
+
+**§10 Client behavior — content index verification (N48)** — Stage 9 gains a content index sub-step for manifests with `content_root`: fetch, hash-verify, validate structure, cache. Per-content-document verification at Stage 9 enforces exact match for indexed paths: `doc_seq == idx_seq AND doc_hash == idx_hash` is the only accept; `seq < idx_seq` is `E_CONTENT_SEQ_ROLLBACK`, `seq > idx_seq` is `E_CONTENT_SEQ_UNCOMMITTED`, hash mismatch at equal seq is `E_CONTENT_HASH_MISMATCH`, missing `seq` on indexed path is `E_CONTENT_SEQ_MISSING`. Paths not in the index are accepted without content-index verification (unprotected, documented). Indexed paths are frozen between ceremonies.
+
+**§11 Diagnostic catalog — content index diagnostics (N49)** — Seven new error codes: `E_CONTENT_INDEX_FETCH_FAILED`, `E_CONTENT_INDEX_HASH_MISMATCH`, `E_CONTENT_INDEX_INVALID`, `E_CONTENT_SEQ_MISSING`, `E_CONTENT_SEQ_ROLLBACK`, `E_CONTENT_SEQ_UNCOMMITTED`, `E_CONTENT_HASH_MISMATCH`. All at stage 9, severity error. §00 limitation N39 updated to "Partial detection" (indexed paths now protected). §01 three new glossary entries (Content index, Content root, Content sequence number). §01 Manifest entry updated. docs/design-decisions.md revision/content_hash note updated.
+
+**Lotto 12 — Migration history SHOULD to MUST (N50)**
+
+**§10 Cross-session migration history — SHOULD to MUST (N50)** — All SHOULD-level migration-history requirements in §10 elevated to MUST. Implementations MUST record Adoption and Replacement events, MUST persist them across sessions (volatile-only storage is non-conformant), and MUST consult the recall window (30-day recommended, 7-day MUST floor, 365-day MUST ceiling, zero not permitted) when processing new migration announcements. The storage backend (serialization format, database technology) remains implementation-defined; cross-session persistence is required. §00 limitation revised. §01 glossary updated.
+
+**Lotto 13 — Canary-block default (N51)**
+
+**§08 Canary expired behavior — block default with per-session override (N51)** — The §08 Expired state default flips from warning-only rendering to rendering block. Clients MUST refuse to render current content when the canary is Expired; the content area is blank or shows a client-generated placeholder; the chrome displays the block notice and per-session override control. The override requires affirmative user action, applies for the current session only, and does not suppress the chrome warning. §10 canary state table updated (Expired: "No, blocked; per-session override available"). "Expired-canary-block mode" (previously opt-in) replaced by "Permissive-canary mode" (opt-in to the old warning-only behavior). §00 limitation updated.
+
+**Diagnostic catalog summary.** Seven new error codes (all stage 9, all error severity): `E_CONTENT_INDEX_FETCH_FAILED`, `E_CONTENT_INDEX_HASH_MISMATCH`, `E_CONTENT_INDEX_INVALID`, `E_CONTENT_SEQ_MISSING`, `E_CONTENT_SEQ_ROLLBACK`, `E_CONTENT_SEQ_UNCOMMITTED`, `E_CONTENT_HASH_MISMATCH`. No existing codes changed.
+
+**Wire format summary.** Two new optional top-level fields: `content_root` on manifests, `seq` on content documents. One new non-signed resource: `/content_index.json`. One new reserved path. `spec_version` remains `"1.0"` per the rc-cycle additive-field rule (§11 N38). All rc.18 documents validate identically under rc.19 (the new fields are optional and absent in rc.18 documents).
+
+**Behavioral compatibility.** N45–N49 (content tree): purely additive and opt-in for publishers. An rc.18 client encountering an rc.19 manifest with `content_root` will reject it as `E_SCHEMA_UNKNOWN_FIELD` (expected closed-schema consequence during RC). An rc.19 client encountering an rc.18 manifest (no `content_root`) operates identically to rc.18. N50 (migration MUST): normative tightening. An rc.18 implementation that did not implement migration history is non-conformant under rc.19. N51 (canary block): behavioral inversion. An rc.18 implementation rendering content on expired canaries without blocking is non-conformant under rc.19 unless it was already in expired-canary-block mode. Permissive-canary mode provides an explicit opt-out.
+
 ### v1.0-rc.18 (planned — soak on rc.17 in progress)
 
 This section describes the changes that will land in v1.0-rc.18 when the tag is created. The commit carrying these changes is on `main` ahead of the v1.0-rc.17 tag; rc.18 will be tagged on that commit (or a successor including any soak-period fixes) once the rc.17 soak window concludes without blockers. Until then, this section is forward-looking, not a published release.

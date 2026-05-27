@@ -172,17 +172,19 @@ The client renders content normally. The chrome shows the canary state as near-e
 
 ### Expired
 
-The client continues to render content but MUST display a prominent warning in the chrome. The warning is not easily dismissible.
+The client MUST refuse to render current content from any site whose canary is in Expired state. The content area MUST be blank or display a client-generated placeholder; publisher-controlled content MUST NOT appear. The chrome MUST display a clear notice that the canary is expired and rendering is blocked, alongside the per-session override control defined below.
 
-The client MUST NOT refuse to render content solely because the canary has expired. Hard-failing on expiration would conflate publisher operational pause (vacation, server outage, ceremony delay) with publisher compromise, producing false positives that erode the credibility of the warning.
+The client MUST provide a per-session user-override affordance: a chrome control that explicitly allows the user to proceed with rendering for the current session despite the expired canary. The override MUST require affirmative user action (a button, key combination, or equivalent affordance whose semantics are unambiguously "accept the risk and proceed"); passive events MUST NOT count as acceptance. The override applies for the remainder of the current session for the affected site; it does not persist across sessions, does not modify the canary state, and does not suppress the chrome warning. When the override is active, the client MUST display a persistent, not-easily-dismissible warning in chrome indicating that expired-canary rendering is active by user override.
 
-The user is presented with the elapsed time since `next_expected` and the contents of the canary's `statement` and `freshness_proof` (if present). The user decides whether to continue using the site.
+The per-session override addresses the concern that hard-failing conflates publisher operational pause (vacation, server outage, ceremony delay) with publisher compromise. Users who trust the publisher's operational situation can proceed; the default posture protects users who do not actively assess the situation.
+
+The user is presented with the elapsed time since `next_expected` and the contents of the canary's `statement` and `freshness_proof` (if present).
 
 The client MUST NOT pin a new manifest with a fresh canary to replace the expired one without user awareness. Manifest refresh is normal protocol behavior, but the user MUST be notified when an expired canary is replaced, since the gap itself is the protocol-level warning condition.
 
 If a client has observed an expired canary for a publisher identity, and later observes a fresh canary for the same `K_publisher.pub`, the client MUST notify the user that a canary gap occurred. The fresh canary may restore current freshness, but it MUST NOT erase the historical fact that the publisher missed a committed refresh deadline.
 
-Canary expiration does not cryptographically revoke `K_runtime` in v1. Forgery exposure for a compromised `K_runtime` is bounded by rotation cadence only when the publisher actively rotates `K_runtime` and deploys a fresh manifest. An expired canary is a UX warning state, not a cryptographic revocation. Clients MAY offer a high-security policy that refuses to render current content while the canary is expired; see §10.
+Canary expiration does not cryptographically revoke `K_runtime` in v1. Forgery exposure for a compromised `K_runtime` is bounded by rotation cadence only when the publisher actively rotates `K_runtime` and deploys a fresh manifest. An expired canary is a UX warning state, not a cryptographic revocation; the rendering block is a client behavioral response to the warning. Clients MAY offer a permissive-canary mode that reverts to warning-only rendering without requiring the per-session override; see §10.
 
 ### Invalid
 

@@ -29,7 +29,7 @@ The manifest is a flat JSON object whose fields are the signed payload, plus a t
 }
 ```
 
-All fields listed above are required. The optional top-level field `migration_pointer` MAY appear in addition to the required fields (see "`migration_pointer`" below). No other fields are permitted.
+All fields listed above are required. The optional top-level fields `migration_pointer` and `content_root` MAY appear in addition to the required fields (see "`migration_pointer`" and "`content_root`" below). No other fields are permitted.
 
 Optional top-level fields are part of the closed schema: only fields explicitly listed by this section as required or optional may appear. A document containing any other top-level field is rejected.
 
@@ -410,6 +410,38 @@ A publisher who wants the announcing origin to stop being current eventually sto
 
 Multi-origin operation under the same `K_publisher` is governed by the publisher-profile rules in §10 and the publication cadence rules above; `migration_pointer` is one mechanism for the publisher to bring clients of the old origin into a publisher-profile relationship with the new origin without out-of-band PIP exchange.
 
+## `content_root`
+
+`content_root` is the publisher's commitment to the current content state of the site.
+
+### Optionality
+
+`content_root` is an OPTIONAL top-level field. Following the "absent values are encoded by omitting the field" rule of §04, a manifest whose publisher does not use the content index mechanism omits the field entirely. The JSON literal `null` is not permitted as a value for `content_root`, in keeping with the no-`null` rule of §04.
+
+### Value when present
+
+When present, `content_root` is a string of the form:
+
+```text
+sha-256:<base64url>
+```
+
+using the same encoding as `image.sha256` (§03) and `request_hash` (§02): a literal prefix `sha-256:` (eight lowercase ASCII characters including the trailing colon) followed by the base64url encoding (RFC 4648 Section 5) of the 32-byte SHA-256 digest, with no padding, exactly 43 ASCII characters. The total string length is exactly 51 ASCII characters.
+
+The value is the SHA-256 digest of the exact response body bytes of `/content_index.json` served from the same carrier origin. The content index format is defined in §02. The fetch is defined in §09. Client verification is defined in §10.
+
+### Semantics
+
+`content_root` is part of the signed manifest payload and is covered by the `K_publisher` signature. It commits the publisher to a specific set of `(path, seq, hash)` triples. Only a publisher with `K_publisher_priv` can produce or modify this commitment. An attacker holding only `K_runtime_priv` cannot forge, alter, or roll back content at paths listed in the content index.
+
+Content at paths not listed in the content index is not covered by `content_root` and is protected only by the `K_runtime` signature, as for content in manifests without `content_root`.
+
+### Ceremony interaction
+
+`content_root` is updated at each publisher ceremony (canary rotation). The publisher computes the content index from the current set of published content documents, hashes it, and includes the hash as `content_root` in the manifest being signed. Between ceremonies, the content index and the content at indexed paths are frozen: the publisher MUST NOT serve content at indexed paths with a different `seq` or body hash than what the index declares. New content at paths not in the index may be published between ceremonies using `K_runtime` alone.
+
+This preserves the `K_publisher`-offline model: the publisher key is used only during ceremonies, not for individual content updates.
+
 ## `sig`
 
 `sig` is the Ed25519 signature over the manifest signature input as defined in §05.
@@ -523,7 +555,8 @@ The high-level lifecycle is:
    * `navigation`;
    * `min_refresh_interval`;
    * current UTC `updated`;
-   * `migration_pointer`, included only when announcing a migration to a successor origin; otherwise omitted.
+   * `migration_pointer`, included only when announcing a migration to a successor origin; otherwise omitted;
+   * `content_root`, included only when the publisher commits to a content index; otherwise omitted.
 
 2. Treat the manifest object without `sig` as the signed payload. At this point, `sig` has not yet been added.
 

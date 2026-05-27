@@ -110,6 +110,10 @@ Stage 9.  Path and origin binding
               supports publisher profiles: successor verification and chain-
               depth check
             - for content: byte-exact comparison of `path` field against fetched path
+            - for content, when a verified content index is cached for the
+              current manifest and the index contains an entry for the
+              document's `path`: verify `seq` and response body hash against
+              the index entry per "Content index verification" below
             - for transaction:
               - byte-exact comparison of `in_response_to` against submit path
               - byte-exact comparison of `request_id` against the request_id sent
@@ -119,6 +123,21 @@ Stage 9.  Path and origin binding
 Stage 10. Render or report
             - if all required stages pass, the document is rendered or processed
             - if any stage fails, an error is reported per the error precedence rule
+
+For manifests carrying `content_root`, Stage 9 includes an additional
+sub-step after the other Stage 9 binding checks complete:
+
+            Stage 9 content index sub-step (manifest only, when
+            `content_root` is present)
+            - fetch `/content_index.json` from the same carrier origin
+            - verify SHA-256 of response body bytes against `content_root`
+            - validate the content index closed structure per §02
+            - cache the verified index for use in content-document
+              verification at Stage 9
+
+This sub-step is part of Stage 9. Diagnostics produced by this sub-step
+use `stage: 9` in the structured diagnostic format. The manifest does
+not pass Stage 9 until this sub-step succeeds (when applicable).
 ````
 
 For a manifest, the acceptance order is: transport, byte validation, JSON parsing, kind discrimination, schema validation, signature verification, publisher identity/trust resolution, canary validation, anti-downgrade, origin binding, then cache/update. A manifest is not accepted as current until all applicable stages have succeeded.
@@ -430,19 +449,19 @@ The `visited_origins` set defined under "Chain depth and cycle prevention" is pe
 
 The vector is most concerning when an attacker has temporarily compromised `K_publisher_priv` and used the window to publish a self-cancelling migration loop: even after the publisher recovers control of the keys, every cached client continues to ping-pong between the two announced addresses on each session until a user explicitly intervenes.
 
-To raise friction on this vector, a client SHOULD record migration outcomes in publisher history, keyed by `K_publisher.pub`. The recorded events are:
+To prevent this vector, a client MUST record migration outcomes in publisher history, keyed by `K_publisher.pub`. The storage backend is implementation-defined; the minimum required state is the Adoption and Replacement events defined below, keyed by `K_publisher.pub`, with timestamps sufficient to evaluate the recall window. The recorded events are:
 
-* **Adoption.** A successor address that the client adopted into the publisher profile under "Successor verification" above. The record SHOULD preserve the announcing origin address, the successor origin address, the announcement timestamp `migration_pointer.announced_at`, and the local timestamp at adoption.
-* **Replacement.** Recorded in two situations: (a) when an Adoption is recorded for a successor `S`, the address that was the publisher profile's current origin immediately before that Adoption (the announcing origin) is recorded as Replacement at that time; (b) when a previously adopted successor address is itself superseded by a newer migration announcement (per "Anti-downgrade and anti-forgery interaction" above), that address is recorded as Replacement at that time. The dual recording is required so that the cross-session ping-pong vector `A → B → A → B` is detectable in both directions: case (a) ensures the starting origin `A` appears as "previously replaced" the first time the publisher migrates from it, even though `A` was never itself a successor in any earlier event. The Replacement record SHOULD preserve the replaced address, the replacing address (when known — for case (a) this is the new successor; for case (b) this is the new replacing successor), and the local timestamp at replacement.
+* **Adoption.** A successor address that the client adopted into the publisher profile under "Successor verification" above. The record MUST preserve the announcing origin address, the successor origin address, the announcement timestamp `migration_pointer.announced_at`, and the local timestamp at adoption.
+* **Replacement.** Recorded in two situations: (a) when an Adoption is recorded for a successor `S`, the address that was the publisher profile's current origin immediately before that Adoption (the announcing origin) is recorded as Replacement at that time; (b) when a previously adopted successor address is itself superseded by a newer migration announcement (per "Anti-downgrade and anti-forgery interaction" above), that address is recorded as Replacement at that time. The dual recording is required so that the cross-session ping-pong vector `A → B → A → B` is detectable in both directions: case (a) ensures the starting origin `A` appears as "previously replaced" the first time the publisher migrates from it, even though `A` was never itself a successor in any earlier event. The Replacement record MUST preserve the replaced address, the replacing address (when known — for case (a) this is the new successor; for case (b) this is the new replacing successor), and the local timestamp at replacement.
 
-When processing a new migration announcement that names successor address `S` for the publisher profile keyed by `P = K_publisher.pub`, a client that maintains migration history SHOULD consult publisher history for `P` and check whether `S` appears as a previously-replaced successor within a recall window. The recommended recall window is 30 days. A client MAY make the window configurable; the minimum SHOULD be 7 days. A window of zero (no recall) is permitted but discouraged because it disables the mitigation entirely. The recall window SHOULD NOT exceed 365 days; clients with bounded storage MAY enforce a smaller cap, whether by time or by event count (for example, the most recent 100 migration events per publisher profile, evicting the oldest first), provided the cap remains at or above the 7-day floor.
+When processing a new migration announcement that names successor address `S` for the publisher profile keyed by `P = K_publisher.pub`, the client MUST consult publisher history for `P` and check whether `S` appears as a previously-replaced successor within a recall window. The recommended recall window is 30 days. A client MAY make the window configurable; the minimum MUST be 7 days. A window of zero (no recall) is not permitted. The recall window MUST NOT exceed 365 days; clients with bounded storage MAY enforce a smaller cap, whether by time or by event count (for example, the most recent 100 migration events per publisher profile, evicting the oldest first), provided the cap remains at or above the 7-day floor.
 
-If `S` is in the recall window as a previously-replaced successor for `P`, the client SHOULD treat the migration with elevated friction:
+If `S` is in the recall window as a previously-replaced successor for `P`, the client MUST treat the migration with elevated friction:
 
-* For trust states **Externally verified** and **TOFU pinned**, the user-confirmation requirement under "User confirmation" above already applies; no additional behavior is required, but the confirmation dialog SHOULD surface the recall information, including the prior replacement timestamp and the address pair involved.
-* For trust state **First contact**, the user-confirmation requirement under "User confirmation" above already applies; the confirmation dialog SHOULD surface the recall information, including the prior replacement timestamp and the address pair involved.
+* For trust states **Externally verified** and **TOFU pinned**, the user-confirmation requirement under "User confirmation" above already applies; no additional behavior is required, but the confirmation dialog MUST surface the recall information, including the prior replacement timestamp and the address pair involved.
+* For trust state **First contact**, the user-confirmation requirement under "User confirmation" above already applies; the confirmation dialog MUST surface the recall information, including the prior replacement timestamp and the address pair involved.
 
-The mitigation is SHOULD-level rather than MUST because v1 does not specify the storage backend for publisher history beyond what is already required for trust-state continuity, and this subsection introduces a new event class within publisher history. Implementations that do not maintain migration history are not non-conformant; they leave the cross-session ping-pong vector open as documented in §00 "v1.0 limitations".
+The storage backend for migration history is implementation-defined: the protocol does not prescribe a specific serialization format or database technology. Migration history MUST persist across client sessions. An implementation whose migration-history storage is volatile (for example, in-memory only and lost on process restart) is non-conformant, because the mechanism's purpose is cross-session cycle detection. The minimum conformant implementation is an append-only event log, bounded by the recall window and event-count cap, persisted to the client's local storage.
 
 `visited_origins` (per-flow) and migration history (per-publisher, persistent) are independent mitigations: the former rejects intra-flow cycles outright as `E_MIGRATION_INVALID`; the latter raises friction on cross-session cycles without rejecting them, since a publisher rotating between addresses for legitimate operational reasons must remain reachable. Migration history never causes outright rejection; the diagnostic outcome of a cross-session cycle, when the user declines, is simply that the migration is not adopted in the current navigation, identical to any other declined migration.
 
@@ -462,11 +481,11 @@ The canary state, as defined in §08, governs additional client behavior beyond 
 | --------------- | --------------------------------------------- | ----------------------------------------- |
 | Fresh           | Yes                                           | Compact: state + `next_expected`          |
 | Near-expiration | Yes                                           | Compact, with visual emphasis             |
-| Expired         | Yes                                           | Prominent warning, not easily dismissible |
+| Expired         | No (blocked; per-session user override available) | Block notice + override control; persistent warning when override active |
 | Invalid         | No                                            | Prominent error                           |
 | Unavailable     | Cached content only, with explicit indication | Compact, with explanation                 |
 
-Invalid canary state is a hard failure for current content. Expired canary state is not a hard failure by itself, but MUST be displayed prominently.
+Invalid canary state is a hard failure for current content. Expired canary state is a hard failure by default; current content is not rendered until the user invokes the per-session override defined in §08, or unless permissive-canary mode (see "Stateless and reduced modes" below) is active.
 
 ## Canary gap memory
 
@@ -542,6 +561,54 @@ The user MUST be able to identify, at a glance, that they are viewing historical
 ## Historical content does not affect canary state
 
 Rendering historical content does not change the canary state of the site. The canary state reflects the current manifest, regardless of whether the user is viewing historical or current content.
+
+## Content index verification
+
+When a verified manifest contains `content_root` (§06), the client MUST fetch and verify the content index before rendering content documents from the site under that manifest.
+
+### Index fetch and hash verification
+
+As part of Stage 9 (after the other manifest binding checks but before Stage 10), the client fetches `/content_index.json` from the same carrier origin, following the content index fetch rules in §09.
+
+The client computes SHA-256 of the exact response body bytes. If the computed digest does not match the manifest's `content_root` value, the client MUST reject the index with `E_CONTENT_INDEX_HASH_MISMATCH` (§11). If the fetch fails at the transport level, the client MUST reject with `E_CONTENT_INDEX_FETCH_FAILED` (§11). If the response body exceeds the 1 MiB byte cap (§02), or fails structural validation against the closed content index schema (§02), the client MUST reject with `E_CONTENT_INDEX_INVALID` (§11).
+
+In all three rejection cases, the client MUST NOT render any content document from the site under this manifest. This is a hard-fail model: a manifest that commits to a content index but cannot deliver a valid one is treated as a security failure, not a graceful degradation. The rationale is that `content_root` is a `K_publisher`-signed commitment; failure to honor it is indistinguishable from server compromise.
+
+### Index caching
+
+The verified content index is cached alongside the manifest for the same carrier origin. The cached index is invalidated when the manifest is replaced by a newer manifest, whether or not the new manifest also carries `content_root`.
+
+### Per-content-document verification
+
+When rendering a content document fetched from path `P`, and a verified content index is cached for the current manifest:
+
+**Case 1: the content index has an entry for `P`.**
+
+Let `idx_seq` and `idx_hash` be the `seq` and `hash` from the index entry for `P`. Let `doc_seq` be the `seq` field of the content document. Let `doc_hash` be SHA-256 of the exact response body bytes of the content document, encoded in the `sha-256:<base64url>` form.
+
+The client applies the following checks in order:
+
+1. If the content document omits `seq`: reject as `E_CONTENT_SEQ_MISSING` (§11). The `seq` field is conditionally required when the content index has an entry for the document's path; this is a binding-level requirement, not a schema requirement, because the condition depends on the content index verified at Stage 9.
+2. If `doc_seq < idx_seq`: reject as `E_CONTENT_SEQ_ROLLBACK` (§11). This prevents a `K_runtime`-only attacker from serving an older signed version of the document.
+3. If `doc_seq > idx_seq`: reject as `E_CONTENT_SEQ_UNCOMMITTED` (§11). This prevents a `K_runtime`-only attacker from injecting a forged update at a higher sequence number.
+4. If `doc_seq == idx_seq` and `doc_hash != idx_hash`: reject as `E_CONTENT_HASH_MISMATCH` (§11). This prevents content forgery at the committed sequence number.
+5. If `doc_seq == idx_seq` and `doc_hash == idx_hash`: accept. The document matches the publisher's commitment.
+
+**Case 2: the content index has NO entry for `P`.**
+
+Accept. The document is at a path the publisher did not include in the content index. It is protected only by the `K_runtime` signature, as for content in manifests without `content_root`.
+
+Paths not in the content index are not covered by the `K_publisher` commitment. The client MAY indicate in chrome whether the current content is index-verified or unindexed, at the implementation's discretion.
+
+**Case 3: no content index is cached (manifest has no `content_root`).**
+
+Accept. The content index mechanism does not apply. All content is protected only by the `K_runtime` signature, as in prior protocol versions.
+
+### Operational consequence
+
+Paths present in the content index are frozen at the committed state between publisher ceremonies. The publisher cannot serve updated content at an indexed path without performing a new ceremony (new manifest, new content index, new `content_root`, new `K_publisher` signature). Between ceremonies, the publisher may publish new content at paths not in the index using `K_runtime` alone.
+
+This preserves the `K_publisher`-offline model: the publisher key is used only during ceremonies. The operational trade-off is that indexed-path updates require a ceremony, whose cadence is 7 to 30 days per §08.
 
 ## Chrome layout requirements
 
@@ -851,9 +918,7 @@ A client MAY support modes with reduced functionality:
 * **Stateless mode** (§07): state items are not persisted across sessions. Other state semantics apply normally during the session.
 * **Read-only mode**: the client refuses all submit operations regardless of user input. Useful for archival viewers.
 * **Externally-verified-only mode**: the client refuses to render content from sites in First contact or TOFU pinned trust states; only Externally verified publishers are accepted. Useful for high-threat users.
-* **Expired-canary-block mode**: the client refuses to render current content from sites whose canary is in Expired state. Historical content rules are unaffected. Useful for users who want canary expiration to act as a hard block, not a warning.
-
-When Expired-canary-block mode is active, the rendered content area is replaced by a clear notice that the canary is expired and rendering is blocked by client policy.
+* **Permissive-canary mode**: the client reverts expired-canary behavior to warning-only rendering, suppressing the default block defined in §08. The client still displays a prominent, not-easily-dismissible warning in chrome when the canary is expired, but renders content without requiring the per-session override. Useful for users or environments where operational pauses are frequent and the block-by-default behavior causes unacceptable disruption.
 
 When a reduced mode is active, the client MUST display the mode in chrome.
 

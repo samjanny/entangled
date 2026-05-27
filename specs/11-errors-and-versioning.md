@@ -217,6 +217,13 @@ The structured diagnostic format for `E_CANARY_CONFLICT` SHOULD include in `deta
 | `E_ORIGIN_INVALID`     | error    | manifest      | `origin.not_after` is present but violates a semantic constraint (`not_after` not strictly later than `canary.issued_at`, or more than 5 years after `canary.issued_at`)            |
 | `E_MIGRATION_MISMATCH` | error    | manifest      | A `migration_pointer` announcement was present, but the successor manifest fetched from the announced address fails a binding check (publisher key, origin address, or origin pubkey) |
 | `E_MIGRATION_INVALID`  | error    | manifest      | The `migration_pointer` value is structurally valid JSON but fails semantic checks (successor address equals announcing address, `announced_at` later than manifest `updated`, carrier mismatch, or — for clients enforcing the chain-depth rule — chain depth exceeded)                                  |
+| `E_CONTENT_INDEX_FETCH_FAILED` | error | manifest | The manifest declares `content_root` but the `/content_index.json` fetch failed at the transport level; the client MUST NOT render content under this manifest |
+| `E_CONTENT_INDEX_HASH_MISMATCH` | error | manifest | The SHA-256 digest of the fetched `/content_index.json` response body bytes does not match the manifest's `content_root` value |
+| `E_CONTENT_INDEX_INVALID` | error | manifest | The content index was fetched and hash-verified but fails structural validation: not valid JSON, closed-structure violation, path syntax violation, entry field violation, or exceeds the 1 MiB size cap (§02) |
+| `E_CONTENT_SEQ_MISSING` | error | content | The content index has an entry for the document's path, but the content document omits the `seq` field; `seq` is conditionally required when the path is indexed |
+| `E_CONTENT_SEQ_ROLLBACK` | error | content | The content document's `seq` is strictly less than the `seq` in the verified content index for the same path |
+| `E_CONTENT_SEQ_UNCOMMITTED` | error | content | The content document's `seq` is strictly greater than the `seq` in the verified content index for the same path; the content is not covered by the publisher's `content_root` commitment |
+| `E_CONTENT_HASH_MISMATCH` | error | content | The content document's `seq` equals the content index entry's `seq` for the same path, but the SHA-256 digest of the response body bytes does not match the entry's `hash` |
 
 The structured diagnostic format for `E_BIND_REQUEST_ID` and `E_BIND_REQUEST_HASH` SHOULD include in `details`:
 

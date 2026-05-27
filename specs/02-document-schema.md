@@ -103,7 +103,7 @@ A `content` document is a publication served from a path on a site. It is signed
 }
 ```
 
-All six fields are required. No other top-level fields are permitted.
+All six fields are required. The optional top-level field `seq` MAY appear in addition to the required fields (see "`seq`" below). No other top-level fields are permitted.
 
 ### `path`
 
@@ -116,7 +116,8 @@ The value MUST:
 * not contain consecutive `/` characters;
 * not contain `.` or `..` path segments;
 * not contain a query string, fragment, scheme, or host;
-* not equal `/manifest.json`, which is reserved for manifest fetches (§09).
+* not equal `/manifest.json`, which is reserved for manifest fetches (§09);
+* not equal `/content_index.json`, which is reserved for content index fetches (§09).
 
 The value MUST NOT exceed 256 ASCII characters.
 
@@ -184,6 +185,66 @@ The block types and their schemas are defined in §03.
 
 The `blocks` array MUST contain at least one block and MUST NOT contain more than 1024 blocks.
 
+### `seq`
+
+`seq` is an OPTIONAL top-level field on content documents. It is a positive integer (at least 1) representing the content sequence number for this document's `path`.
+
+When present, `seq` is monotonically increasing per path: each republication of the same `path` increments `seq` by at least one. The publisher MUST NOT reuse or decrease `seq` for a given path across manifest cycles.
+
+A publisher that uses `content_root` (§06) MUST include `seq` on every content document whose path has an entry in the content index. The client enforces this at Stage 9: a content document that omits `seq` for a path listed in the content index is rejected as `E_CONTENT_SEQ_MISSING` (§11). This is a binding-level requirement, not a schema requirement, because the condition depends on the content index verified at Stage 9.
+
+A publisher that does not use `content_root` MAY omit `seq` on all content documents. A publisher that uses `content_root` MAY omit `seq` on content documents at paths not listed in the content index; such paths are not protected by the content index mechanism.
+
+`seq` is part of the signed payload. It is verified by the client against the content index when `content_root` is present; see §10.
+
+When absent, the field is omitted from the JSON object; the JSON literal `null` is not permitted, per §04.
+
+## Content index
+
+The content index is a JSON document served at `/content_index.json`. It is NOT an Entangled signed document. It does not carry `spec_version`, `kind`, or `sig`. Its integrity is established by hash binding: the manifest's `content_root` field (§06) contains the SHA-256 digest of the exact response body bytes of the content index, and the manifest is signed by `K_publisher`. This is the same trust model used for image bytes verified against the `sha256` field in signed image blocks (§03).
+
+The content index uses a closed structure: only the fields defined in this section may appear.
+
+Although the content index is not a signed document, it is hash-bound to a `K_publisher`-signed commitment and MUST be parsed under the same input restrictions that apply to Entangled documents: strict UTF-8 (no ill-formed byte sequences), no BOM, no duplicate JSON keys (rejection on duplicate, not first-wins or last-wins), integers in the lexical grammar defined in §04 (no floats, no exponents, no leading zeros), and base64url values in the strict encoding defined in §02 (no padding, no whitespace, no alphabet violations). These restrictions ensure that two conforming parsers produce identical interpretations of the same content index bytes, which is a prerequisite for the hash-binding model: the publisher computes the hash over specific bytes, and every client must derive the same structured data from those bytes.
+
+### Content index schema
+
+```json
+{
+  "entries": {
+    "/articles/first-post": { "seq": 5, "hash": "sha-256:..." },
+    "/about": { "seq": 1, "hash": "sha-256:..." }
+  }
+}
+```
+
+The content index is a JSON object with exactly one top-level field: `entries`. No other top-level fields are permitted.
+
+`entries` is a JSON object whose keys are content paths and whose values are entry objects.
+
+Each key MUST satisfy the path syntax defined for content document `path` values in this section, including the reservations of `/manifest.json` and `/content_index.json`.
+
+Each entry object has exactly two fields:
+
+* `seq`: a positive integer (at least 1), the committed content sequence number for the path;
+* `hash`: a string of the form `sha-256:<base64url>` (exactly 51 ASCII characters), the SHA-256 digest of the exact response body bytes of the content document at that path.
+
+No other fields are permitted on entry objects.
+
+The `hash` value uses the same encoding as `image.sha256` (§03) and `request_hash` (§02): literal prefix `sha-256:` followed by 43 characters of base64url-encoded SHA-256 digest with no padding.
+
+### Content index size limit
+
+The content index response body MUST NOT exceed 1 MiB. The 1 MiB byte cap is enforced before JSON parsing, following the same discipline as the document byte cap (§10 Stage 2).
+
+### Content index semantics
+
+The content index declares the committed content state at the time of the manifest ceremony. Each entry `(path, seq, hash)` is a commitment: the publisher asserts that the content document served at `path` has sequence number `seq` and that the SHA-256 of its exact response body bytes equals `hash`.
+
+Paths present in the content index are protected by the `content_root` mechanism: a `K_runtime`-only attacker cannot forge, alter, or roll back content at those paths (§10). Paths not present in the content index are not protected and behave as in manifests without `content_root`.
+
+The content index is a security mechanism, not a sitemap or content enumeration. The publisher is not required to index all published paths. Unindexed paths remain reachable; they are simply not covered by the `K_publisher` commitment.
+
 ## Transaction document
 
 A `transaction` document is a response to a submit. It is signed by `K_runtime` and verified against the runtime key authorized by the current manifest for the same site.
@@ -219,6 +280,7 @@ The value MUST satisfy the same path syntax as `path` in content documents:
 * not contain `.` or `..` path segments;
 * not contain a query string, fragment, scheme, or host;
 * not equal `/manifest.json`, which is reserved for manifest fetches (§09);
+* not equal `/content_index.json`, which is reserved for content index fetches (§09);
 * not exceed 256 ASCII characters.
 
 The `in_response_to` field is part of the signed payload. The client MUST compare it against the path to which the submit was sent. A transaction document whose `in_response_to` does not equal the path of the originating submit is rejected.
