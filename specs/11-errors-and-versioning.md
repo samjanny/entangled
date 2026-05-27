@@ -197,9 +197,9 @@ For content and transaction documents, `E_SIG_INVALID_KEY` includes the case whe
 | `W_CANARY_EXPIRED`         | warning  | manifest      | The canary has passed `next_expected`                                                                                                                  |
 | `W_CANARY_GAP`             | warning  | manifest      | A canary gap was previously observed and has not been dismissed by the user                                                                            |
 | `W_CANARY_UNAVAILABLE`     | warning  | manifest      | The current canary state could not be determined; cached content may be available                                                                      |
-| `W_CANARY_RUNTIME_REUSE`   | warning  | manifest      | The canary declares the same `runtime_pubkey` as the immediately preceding verified manifest for the same `K_publisher.pub`; key rotation did not occur |
+| `E_CANARY_RUNTIME_REUSE`   | error    | manifest      | The canary declares the same `runtime_pubkey` as the immediately preceding verified manifest for the same `K_publisher.pub`; key rotation did not occur |
 
-The structured diagnostic format for `W_CANARY_RUNTIME_REUSE` SHOULD include in `details`:
+The structured diagnostic format for `E_CANARY_RUNTIME_REUSE` SHOULD include in `details`:
 
 * `runtime_pubkey`: the reused key;
 * `previous_issued_at`: the `issued_at` of the preceding manifest that also declared this key;

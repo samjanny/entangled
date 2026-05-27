@@ -89,7 +89,7 @@ Requires Python 3.10+ and the `cryptography` package (for raw Ed25519 RFC 8032 s
 | 150–159 | Stage 6 signature (modified payload, malformed length, non-canonical S, small-order A, non-canonical R, non-canonical A) |
 | 160–169 | Strict base64url (padding, alphabet, whitespace) |
 | 170–179 | Stage 9 binding (path mismatch, reserved path, request_hash, origin binding, origin not_after semantic constraints) |
-| 180–189 | Canary (equal `issued_at` conflict, anti-downgrade, interval-bounds violation) |
+| 180–189 | Canary (equal `issued_at` conflict, anti-downgrade, interval-bounds violation, runtime-key reuse) |
 | 190–199 | Unicode and canonicalization (NFD vs NFC) |
 | 200–209 | Migration scenarios (multi-document; successor manifest in `extra_files`) |
 
@@ -100,9 +100,10 @@ Coverage relative to the §11 diagnostic code catalog remains partial. Codes not
 - **Stage 9 binding** sub-codes whose isolation is currently ambiguous: `E_BIND_RESPONSE_PATH`, `E_BIND_REQUEST_ID` (the latter cannot be exercised in isolation from `E_BIND_REQUEST_HASH` because `request_id` is part of the hashed submit body; §10 does not normatively order Stage-9 sub-checks).
 - **Stage 9 origin lifecycle**: `E_ORIGIN_EXPIRED` requires either a SHOULD-only violation between `not_after` and `next_expected` or co-emission with `W_CANARY_EXPIRED`.
 - **Warning-class diagnostics** (`W_CANARY_NEAR_EXPIRATION`, `W_CANARY_EXPIRED`, `W_CANARY_GAP`, `W_CANARY_UNAVAILABLE`, all `W_IMAGE_*`, `W_HISTORICAL_*`): require an `expected.warnings` extension to the vector schema, since warnings coexist with an `accept` verdict.
+- **Canary runtime-key reuse** (`E_CANARY_RUNTIME_REUSE`): requires a multi-manifest scenario establishing a previous verified manifest and presenting a new manifest with the same `runtime_pubkey`.
 - **Image** (`W_IMAGE_*`, all 7 codes): require image bytes in `extra_files` and an `image_response.json` describing the fetched-content type/length; vector schema extension.
 - **State** (`E_STATE_*`, all 6 codes): mostly publisher-side; require submit-flow vector schema.
-- **Historical content** (`E_HISTORICAL_*`, `W_HISTORICAL_*`): require multi-manifest authorization-history scenarios.
+- **Historical content** (`E_HISTORICAL_*` including `E_HISTORICAL_NO_PUBLICATION_PROOF`, `W_HISTORICAL_*`): require multi-manifest authorization-history scenarios.
 - **Migration** (`E_MIGRATION_INVALID`): structurally-valid migration_pointer with semantic-check failures other than `successor_stage9_failure`.
 
 Vector-schema extensions (transport metadata, image responses, expected-warnings array, multi-manifest histories) are deferred to a future tranche. The current corpus exercises every diagnostic code reachable within the existing schema.

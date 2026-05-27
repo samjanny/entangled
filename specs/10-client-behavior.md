@@ -99,7 +99,7 @@ Stage 8.  Canary and anti-downgrade resolution
             - for manifests: compute canary state from `issued_at` and `next_expected`
             - reject invalid canaries
             - apply anti-downgrade against publisher history
-            - verify runtime-key rotation: reject with W_CANARY_RUNTIME_REUSE
+            - verify runtime-key rotation: reject with E_CANARY_RUNTIME_REUSE
               if `runtime_pubkey` matches the immediately preceding manifest (§08)
 
 Stage 9.  Path and origin binding
