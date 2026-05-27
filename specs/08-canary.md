@@ -40,7 +40,9 @@ It is encoded as 43 ASCII characters of base64url representing 32 bytes, with no
 
 This is the key against which the client verifies `content` and `transaction` document signatures during the publication cycle covered by the current manifest, as defined in §05.
 
-A new manifest with a fresh canary declares a new `runtime_pubkey`. The publisher generates a new `K_runtime` keypair as part of the rotation ceremony.
+A new manifest with a fresh canary MUST declare a `runtime_pubkey` distinct from the `runtime_pubkey` of the immediately preceding manifest for the same `K_publisher.pub` in the client's publisher history. The publisher generates a new `K_runtime` keypair as part of every rotation ceremony.
+
+If a new manifest presents the same `runtime_pubkey` as the immediately preceding verified manifest for the same `K_publisher.pub`, the client MUST reject the manifest with `W_CANARY_RUNTIME_REUSE` (§11). This ensures that canary freshness is evidence of actual key rotation, not merely a timestamp update with the same operational key. Without this rule, a publisher — or an attacker holding a compromised `K_runtime` — can maintain the same runtime key indefinitely while producing apparently fresh canaries, defeating the rotation guarantee described in §05.
 
 ### `issued_at`
 

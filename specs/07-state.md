@@ -57,16 +57,17 @@ Request state is publisher-wide, not endpoint-private.
 
 The client attaches every non-expired consented request-state item for the current publisher to every submit request to that publisher, regardless of which submit endpoint the user is interacting with. There is no endpoint-level scoping in v1.
 
-Publishers MUST treat request-mode state as publisher-wide. Sensitive data that should be confined to a specific endpoint or backend SHOULD NOT be stored as request state in v1.
+**Security implication.** Because all non-expired request-state items are attached to every submit, any transaction endpoint receiving a submit also receives every request-state secret — including session tokens, authorization tokens, and any other credentials stored as request state. A publisher operating multiple transaction endpoints with different trust levels MUST assume that every endpoint sees every request-state value. This means that a less-trusted or auxiliary endpoint has access to the same credentials as the publisher's most sensitive endpoint. Publishers MUST NOT store credentials whose exposure must be limited to a single endpoint as request state in v1. Where endpoint-level credential isolation is required, the publisher SHOULD use out-of-band mechanisms or defer the functionality until endpoint-scoped request state is available.
+
+Publishers MUST treat request-mode state as publisher-wide. Sensitive data that should be confined to a specific endpoint or backend MUST NOT be stored as request state in v1.
 
 Endpoint-scoped request state is reserved for a future protocol version.
 
-Examples include:
+Examples of appropriate request-state uses — where publisher-wide visibility is acceptable:
 
-- session token for submit endpoints;
+- session token for submit endpoints where all endpoints share a trust boundary;
 - checkout state;
-- authenticated form token;
-- user-specific submit authorization.
+- user-specific submit authorization where all transaction endpoints are equally trusted.
 
 The two modes share storage and consent mechanisms. They differ only in whether the client may transmit the value as part of submit requests.
 
@@ -506,6 +507,20 @@ These rules ensure that a publisher cannot use policy changes to silently upgrad
 Policy changes affect future set operations and future request inclusion. They do not silently rewrite previously consented entries.
 
 The client MAY display a notice when policy changes affect future state behavior, particularly when a previously declared `(namespace, key)` is removed from the policy or when the mode of a `(namespace, key)` changes.
+
+## State and runtime-key rotation
+
+When the client observes a new manifest authorizing a different `K_runtime` than the one that authorized state entries currently in storage, the following applies:
+
+* existing request-state entries whose authorizing `K_runtime` has been superseded MUST be marked as `runtime_superseded` in client storage;
+* `runtime_superseded` request-state entries MUST NOT be included in submit requests;
+* `runtime_superseded` request-state entries MUST be retained for user inspection and deletion until their natural `expires_at`;
+* the client MUST display a chrome notice informing the user that request-state entries from a previous publication cycle have been suspended due to key rotation;
+* if the new manifest's `state_policy` re-declares the same `(namespace, key)` combinations, the publisher MAY install fresh values through new transaction documents signed by the new `K_runtime`; these are independent entries and require fresh consent.
+
+The rationale is that `K_runtime` compromise (§05) allows an attacker to plant request-state items — including session tokens and authorization credentials — with TTLs up to 90 days. Without this rule, such items survive rotation and are transmitted in submit requests to the publisher's backends, extending the effective compromise window far beyond the rotation boundary. Suspending transmit eligibility on rotation ensures that rotation actually bounds the exposure of request-state credentials.
+
+Client-only state entries are not affected by this rule because they are never transmitted to the publisher.
 
 ## Stateless mode
 

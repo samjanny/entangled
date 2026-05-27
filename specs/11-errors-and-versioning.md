@@ -197,6 +197,13 @@ For content and transaction documents, `E_SIG_INVALID_KEY` includes the case whe
 | `W_CANARY_EXPIRED`         | warning  | manifest      | The canary has passed `next_expected`                                                                                                                  |
 | `W_CANARY_GAP`             | warning  | manifest      | A canary gap was previously observed and has not been dismissed by the user                                                                            |
 | `W_CANARY_UNAVAILABLE`     | warning  | manifest      | The current canary state could not be determined; cached content may be available                                                                      |
+| `W_CANARY_RUNTIME_REUSE`   | warning  | manifest      | The canary declares the same `runtime_pubkey` as the immediately preceding verified manifest for the same `K_publisher.pub`; key rotation did not occur |
+
+The structured diagnostic format for `W_CANARY_RUNTIME_REUSE` SHOULD include in `details`:
+
+* `runtime_pubkey`: the reused key;
+* `previous_issued_at`: the `issued_at` of the preceding manifest that also declared this key;
+* `current_issued_at`: the `issued_at` of the current manifest.
 
 The structured diagnostic format for `E_CANARY_CONFLICT` SHOULD include in `details`:
 
@@ -277,12 +284,15 @@ A rejected state set operation does not necessarily invalidate the transaction d
 
 | Code                              | Severity | Document kind | Meaning                                                                                                                                                                                                                            |
 | --------------------------------- | -------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `E_HISTORICAL_NO_AUTHORIZATION`   | error    | content       | The runtime key signing the historical content is not in the client's authorization history for this `K_publisher.pub`                                                                                                             |
-| `E_HISTORICAL_TRUST_BLOCKED`      | error    | content       | Historical content cannot be rendered while the publisher identity is in Changed/mismatch state                                                                                                                                    |
-| `W_HISTORICAL_RENDERED`           | warning  | content       | Historical content is being rendered with the historical-content marker                                                                                                                                                            |
-| `W_HISTORICAL_RUNTIME_AMBIGUOUS`  | warning  | content       | Historical content signature verifies under more than one distinct retained `K_runtime.pub` for the same `K_publisher.pub`; the document is rejected as a cryptographic anomaly indicating implementation bug or authorization-history corruption. |
+| `E_HISTORICAL_NO_AUTHORIZATION`      | error    | content       | The runtime key signing the historical content is not in the client's authorization history for this `K_publisher.pub`                                                                                                             |
+| `E_HISTORICAL_NO_PUBLICATION_PROOF`  | error    | content       | The historical content document cannot be verified as having been published during the authorization window: no content-index entry and no client rendering record exist for the document under the authorizing manifest             |
+| `E_HISTORICAL_TRUST_BLOCKED`        | error    | content       | Historical content cannot be rendered while the publisher identity is in Changed/mismatch state                                                                                                                                    |
+| `W_HISTORICAL_RENDERED`             | warning  | content       | Historical content is being rendered with the historical-content marker                                                                                                                                                            |
+| `W_HISTORICAL_RUNTIME_AMBIGUOUS`    | warning  | content       | Historical content signature verifies under more than one distinct retained `K_runtime.pub` for the same `K_publisher.pub`; the document is rejected as a cryptographic anomaly indicating implementation bug or authorization-history corruption. |
 
 Severity for `W_HISTORICAL_RUNTIME_AMBIGUOUS` is `warning` rather than `error` because the affected document is rejected (per §10) but the condition does not invalidate other content for the same publisher. Clients SHOULD log the condition for offline analysis.
+
+`E_HISTORICAL_NO_PUBLICATION_PROOF` is an error because an attacker who has exfiltrated a former `K_runtime_priv` can fabricate arbitrary documents that verify under the old key but were never published. Without a publication-existence check, historical content mode becomes an avenue for injecting forged content with apparent authenticity. The structured diagnostic format for `E_HISTORICAL_NO_PUBLICATION_PROOF` SHOULD include in `details`: the `path`, the authorizing `K_runtime.pub`, and whether the authorizing manifest carried `content_root`.
 
 ## Image resource diagnostics
 

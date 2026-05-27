@@ -99,6 +99,8 @@ Stage 8.  Canary and anti-downgrade resolution
             - for manifests: compute canary state from `issued_at` and `next_expected`
             - reject invalid canaries
             - apply anti-downgrade against publisher history
+            - verify runtime-key rotation: reject with W_CANARY_RUNTIME_REUSE
+              if `runtime_pubkey` matches the immediately preceding manifest (§08)
 
 Stage 9.  Path and origin binding
             - for manifest: carrier origin binding, such as Tor v3 address derivation
@@ -512,7 +514,10 @@ Historical content MAY be rendered only if all of the following hold:
 * the document signature verifies against a `K_runtime` that the client has previously verified as authorized for the same `K_publisher.pub` under a previous manifest or publication cycle;
 * the relevant previous manifest or publication cycle is present in the client's publisher history;
 * the current publisher identity is not in Changed/mismatch state;
-* the path binding (§02) succeeds against the path from which the historical content was fetched.
+* the path binding (§02) succeeds against the path from which the historical content was fetched;
+* the document's `(path, seq, hash)` tuple is present in a content index that the client verified under the manifest that authorized the signing `K_runtime`, or the document was previously rendered by this client under that manifest and the client has retained a record of the rendering.
+
+The fifth condition — publication-existence verification — ensures that historical authorization proves the document was actually published during the authorization window, not merely that it could have been signed. Without this condition, an attacker who exfiltrates a former `K_runtime_priv` can fabricate documents that appear historically authentic but were never published. When the authorizing manifest did not carry `content_root`, and the client has no rendering record for the document, the client MUST NOT render the document as historical content; it MUST reject it with `E_HISTORICAL_NO_PUBLICATION_PROOF` (§11).
 
 A client MUST NOT treat a runtime key as historically authorized merely because a server presents an old manifest during the current fetch. Historical authorization is based on publisher history already verified by the client, or on historical-verification rules explicitly defined by a future version. Entangled v1 does not define server-provided historical manifest discovery.
 
