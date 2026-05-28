@@ -550,7 +550,7 @@ The first retained `K_runtime.pub` under which the document signature verifies i
 
 If no retained runtime key verifies the document, the document is rejected with `E_HISTORICAL_NO_AUTHORIZATION` (§11).
 
-If signature verification succeeds under more than one distinct retained `K_runtime.pub` for the same document - an outcome whose probability under Ed25519 is approximately `2^-256` and which therefore indicates a cryptographic anomaly, an implementation bug, or corruption in the authorization-history store - the client MUST reject the document and surface `W_HISTORICAL_RUNTIME_AMBIGUOUS` (§11). The document is not rendered. Clients SHOULD log the condition for offline analysis.
+If signature verification succeeds under more than one distinct retained `K_runtime.pub` for the same document - an outcome whose probability under Ed25519 is approximately `2^-256` and which therefore indicates a cryptographic anomaly, an implementation bug, or corruption in the authorization-history store - the client MUST reject the document and surface `E_HISTORICAL_RUNTIME_AMBIGUOUS` (§11). The document is not rendered. Clients SHOULD log the condition for offline analysis.
 
 ## Historical content marker
 

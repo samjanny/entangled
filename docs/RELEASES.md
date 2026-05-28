@@ -47,6 +47,136 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.23
+
+Date: 2026-05-28
+
+**Lotto 23 - §11 catalog vs §02-§10 behavior sweep (N64-N66)**
+
+Closes issues #10 (AMB-09) and #6 (AMB-05) on the repository, plus one new finding surfaced by the catalog-vs-behavior sweep that those two issues motivated. All three findings share the same root pattern: the §11 diagnostic catalog was verified internally against itself in each prior audit pass, rather than being re-read against the emission sections in §02-§10 that fire each code. Three rows of the catalog had drifted from the normative behavior the emission sections specify, and the drift would not have been caught by a §11-internal review because §11 was internally consistent.
+
+This is the same anti-pattern that N63 (Lotto 22) closed at the spec-vs-library level: §05:174 was wrong about a cited external library (ed25519-dalek `verify_strict`), and the bug survived multiple review passes because each pass compared §05 against itself rather than against the library source. Lotto 23 extends the same discipline to the catalog-vs-behavior dimension: §11 was verified against the actual MUST and MUST-NOT clauses in §02-§10, code by code, against the section text rather than against the catalog row.
+
+**§11 catalog vs §02-§10 behavior sweep methodology (N64-N66)** - For every row in the §11 catalog (approximately 70 codes), the emission section was opened and the normative passage read. Three checks per row: (a) stage column matches the actual emission stage as defined in §10; (b) severity column is consistent with the §11:81 default rules (`E_` blocks, `W_` does not, `I_` informational); (c) document_kind column matches the docs the code can fire on. Three rows drifted and are corrected in this rc; the remaining rows matched and required no change. The sweep is recorded as a row-by-row markdown table at the end of this entry for replayability.
+
+**AMB-09 / N64: `W_CANARY_EXPIRED` -> `E_CANARY_EXPIRED`, severity warning -> error.** Closes issue #10. The pre-N64 catalog row in the §11 Canary diagnostics table catalogued `W_CANARY_EXPIRED` at `warning` severity, while §08:183 attaches a normative MUST-block on rendering when the canary is in Expired state, and §08:185 attaches a normative MUST-provide per-session user-override affordance. §11:81 (warnings do not block by default) and §11:87 (client policy MAY apply stricter blocking, but the protocol severity is reported accurately) together frame any block-on-Expired posture as "stricter-than-default client policy". The two paragraphs disagreed on whether the rendering block is a protocol-level MUST or a client-policy choice; conforming implementations could read §08 and block, or read §11 and warn-only, and both could claim conformance.
+
+The catalog row is renamed and the severity is promoted to align with §08's MUST-block: `E_CANARY_EXPIRED`, severity `error`. The catalog wording explicitly cites the §08:185 per-session user-override and the §08 permissive-canary mode as spec-defined laxer-policy carve-outs, distinguishing them from the §11:87 client-side reclassification pattern. The diagnostic name change is normative: rc.22 implementations that emitted `W_CANARY_EXPIRED` update both the code name and the severity in their emission.
+
+**§08 cross-reference for permissive-canary mode (N64 ancillary)** - The §08 paragraph that introduces permissive-canary mode is reworded to describe the diagnostic as an operational hard-block state with a §08:185 per-session user-override carve-out rather than as a UX warning state, and to identify the rendering block as the §11:79 default behavior for the `error`-severity `E_CANARY_EXPIRED` diagnostic applied via the §08:183 MUST. A new closing sentence pins permissive-canary mode as the §08-sanctioned laxer-policy exception to the default block on `E_CANARY_EXPIRED` mandated by §08:183, distinct from a §11:87 client-side reclassification of severity. The behavior of §08:183 itself is unchanged.
+
+**AMB-05 / N65: `E_ORIGIN_INVALID` Stage 9 -> Stage 5.** Closes issue #6. The pre-N65 catalog row in the §11 Binding diagnostics (Stage 9) table catalogued `E_ORIGIN_INVALID` as a Stage 9 diagnostic. The actual emission is Stage 5: §06:171 ("A manifest carrying `origin.not_after` outside these constraints is rejected as `E_ORIGIN_INVALID`") covers the two semantic violations (`not_after` not strictly later than `canary.issued_at`; `not_after` more than 5 years after `canary.issued_at`), both of which are closed-schema cross-field semantic checks on `origin.not_after` and `canary.issued_at`. §10:191 explicitly classifies them as Stage 5: "rejected at Stage 5 as `E_ORIGIN_INVALID`; these are cross-field semantic checks per the Stage 5 definition above". The row is moved from the Binding (Stage 9) catalog to the Schema (Stage 5) catalog, alongside the manifest-specific `E_SUBMIT_BUDGET` row that also lives there. The structured `details` block for `E_ORIGIN_INVALID` is moved correspondingly from the post-Stage-9 details cluster to the post-Stage-5 details cluster. The catalog wording is extended to cite §06 (the constraint definition) and §10 (the Stage 5 vs Stage 9 split for `origin.not_after`) so the cross-reference is explicit. The error code, document kind, and structured-details schema are unchanged; only the stage tag is corrected.
+
+**Sweep finding N66: `W_HISTORICAL_RUNTIME_AMBIGUOUS` -> `E_HISTORICAL_RUNTIME_AMBIGUOUS`, severity warning -> error.** Surfaced by the §11 sweep, not by an upstream issue. The pre-N66 catalog row in the §11 Historical content diagnostics table catalogued `W_HISTORICAL_RUNTIME_AMBIGUOUS` at `warning` severity, with a deliberate post-row rationale paragraph that justified the warning severity by "the affected document is rejected (per §10) but the condition does not invalidate other content for the same publisher". §10:553 normatively says "the client MUST reject the document and surface `W_HISTORICAL_RUNTIME_AMBIGUOUS`. The document is not rendered."
+
+This is the same catalog-vs-behavior pattern as AMB-09: a `W_` code that nonetheless mandates document rejection. The §11 rationale attempted to encode "block one, allow others" via the warning severity, but §11:81 defines `warning` as not blocking by default, and the "other content for the same publisher is independently validated" claim is trivially true of any per-document error; it is not a distinguishing semantic. Under the same alignment principle applied to AMB-09, the code is renamed and the severity is promoted: `E_HISTORICAL_RUNTIME_AMBIGUOUS`, severity `error`. The §11 rationale paragraph is rewritten to acknowledge the error classification while preserving the SHOULD-log-for-offline-analysis guidance, which remains useful regardless of severity. The §10:553 reference is updated to the new code name. rc.10 through rc.22 implementations that emitted `W_HISTORICAL_RUNTIME_AMBIGUOUS` at warning severity update both the code name and the severity.
+
+**Corpus regeneration (N64-N66).** No vector input bytes change. None of the 60 corpus vectors targets `W_CANARY_EXPIRED`, `W_HISTORICAL_RUNTIME_AMBIGUOUS`, or carries an explicit stage label that would be affected by the AMB-05 stage relocation, so `corpus/tools/generate.py` was rerun and produces a byte-equal `vectors/` tree. The only generated change is the `rc_target` field in `corpus.json` (`1.0-rc.22` -> `1.0-rc.23`). The deferred multi-manifest authorization-history corpus that would exercise `E_HISTORICAL_RUNTIME_AMBIGUOUS` end-to-end remains out of scope for this rc (tracked separately in `corpus/README.md`). The `corpus/README.md` "Coverage relative to the §11 diagnostic code catalog" bullets are updated: the warning-class coverage list drops `W_CANARY_EXPIRED` and `W_HISTORICAL_RUNTIME_AMBIGUOUS` (now error) and the "Stage 9 origin lifecycle" bullet drops the "co-emission with `W_CANARY_EXPIRED`" option, since it is no longer reachable under first-failing-stage precedence after the promotion.
+
+**Corpus `rc_target` bump 1.0-rc.22 -> 1.0-rc.23.** The bump identifies the rc.23 conformance profile. The conformance profile under rc.22 vs rc.23 differs only in two code names, two severity classifications, and one stage tag. An rc.22 implementation that emitted the old codes at the old severities is non-conformant under rc.23 in the diagnostic-reporting axis: the codes must change name and the severities must be reported as `error`. Behaviorally (whether a given document is accepted or rejected), an rc.22 implementation that followed §08:183, §10:191, and §10:553 is already conformant under rc.23.
+
+**Behavioral compatibility.** N64-N66 are catalog alignment fixes: the rejection behavior was already normatively specified in the emission sections of the prior rcs (§08:183 for canary Expired, §06:171 and §10:191 for `origin.not_after` semantic violations, §10:553 for historical-runtime-ambiguous). The catalog is now corrected to report those decisions under the matching severity classification and the matching stage tag. No wire-format, schema, JCS canonicalization, NFC, byte-cap, or signature-input change. All rc.22 documents validate identically under rc.23. The only conformant-implementation update is in diagnostic reporting: the two renamed codes emit under their new names and at the `error` severity, and `E_ORIGIN_INVALID` is reported with `stage: 5` rather than `stage: 9`. An rc.22 implementation that already followed the §08 and §10 MUSTs for the rejection itself (blocking content rendering and reporting the failure) needs only the diagnostic-string and stage-tag updates to be rc.23-conformant. An rc.22 implementation that read the catalog literally as warning-only on the two renamed codes is non-conformant against the §08:183 and §10:553 MUSTs of rc.22 itself, not just rc.23; the rc.23 catalog now reports that misalignment in the canonical place rather than implicitly in the emission sections.
+
+**Diagnostic catalog summary.** Two code renames with severity promotion: `W_CANARY_EXPIRED` -> `E_CANARY_EXPIRED` (warning -> error); `W_HISTORICAL_RUNTIME_AMBIGUOUS` -> `E_HISTORICAL_RUNTIME_AMBIGUOUS` (warning -> error). One stage tag correction with no rename: `E_ORIGIN_INVALID` (Stage 9 -> Stage 5). No new codes; no codes removed; no document_kind changes; no structured-details schema changes. Total v1.0 catalog code count unchanged.
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. No schema, signature-input, JCS, NFC, or transport changes. The diagnostic catalog change is reporting-layer only; the wire bytes of any document and the verification path that produces them are identical between rc.22 and rc.23.
+
+**§11 catalog sweep summary table.** Every catalog row was checked against the emission section. Action column: "matched" means the catalog row matches the emission section; "fixed" means the row was corrected in this rc and the change is documented above; "flagged" would mean the row presents a structural ambiguity referred for human review without auto-edit (none in this rc).
+
+| Code | Emission section | Catalog said | Behavior says | Action |
+| ---- | ---- | ---- | ---- | ---- |
+| `E_TRANSPORT_STATUS` | §09 transport whitelist | error, Stage 1, any | matches | matched |
+| `E_TRANSPORT_REDIRECT` | §09 transport, §11:111 | error, Stage 1, any | matches | matched |
+| `E_TRANSPORT_CONTENT_TYPE` | §09 transport headers | error, Stage 1, any | matches | matched |
+| `E_TRANSPORT_CONTENT_LENGTH` | §09 transport headers | error, Stage 1, any | matches | matched |
+| `E_TRANSPORT_BODY_FAILURE` | §09 transport body | error, Stage 1, any | matches | matched |
+| `E_TRANSPORT_RATE_LIMITED` | §09 HTTP 429 | error, Stage 1, any | matches | matched |
+| `E_TRANSPORT_NOT_FOUND` | §09 HTTP 404 | error, Stage 1, any | matches | matched |
+| `E_TRANSPORT_METHOD_NOT_ALLOWED` | §09 HTTP 405 | error, Stage 1, any | matches | matched |
+| `E_TRANSPORT_PAYLOAD_TOO_LARGE` | §09 HTTP 413 submit | error, Stage 1, transaction | matches | matched |
+| `E_TRANSPORT_UNAVAILABLE` | §09 HTTP 503 | error, Stage 1, any | matches | matched |
+| `E_TRANSPORT_BAD_REQUEST` | §09 HTTP 400 submit | error, Stage 1, transaction | matches | matched |
+| `E_TRANSPORT_CONTENT_ENCODING` | §09:424 | error, Stage 1, any | matches | matched |
+| `E_TRANSPORT_TRANSFER_ENCODING` | §09:434 | error, Stage 1, any | matches | matched |
+| `E_INPUT_BYTE_CAP` | §10 Stage 2 (per §04 byte caps) | error, Stage 2, any | matches | matched |
+| `E_INPUT_UTF8` | §10 Stage 2 (per §04 UTF-8) | error, Stage 2, any | matches | matched |
+| `E_INPUT_BOM` | §10 Stage 2 (per §04 no-BOM) | error, Stage 2, any | matches | matched |
+| `E_PARSE_JSON` | §10 Stage 3 (per §04 JSON limits) | error, Stage 3, any | matches | matched |
+| `E_PARSE_NESTING_DEPTH` | §10 Stage 3 (per §04) | error, Stage 3, any | matches | matched |
+| `E_PARSE_STRING_LENGTH` | §10 Stage 3 (per §04) | error, Stage 3, any | matches | matched |
+| `E_PARSE_ARRAY_LENGTH` | §10 Stage 3 (per §04) | error, Stage 3, any | matches | matched |
+| `E_PARSE_OBJECT_KEYS` | §10 Stage 3 (per §04) | error, Stage 3, any | matches | matched |
+| `E_PARSE_DUPLICATE_KEY` | §10:913 (per §04) | error, Stage 3, any | matches | matched |
+| `E_KIND_MISSING_FIELDS` | §02 / §10 Stage 4 | error, Stage 4, any | matches | matched |
+| `E_KIND_SPEC_VERSION` | §11:427 (`spec_version` MUST be `"1.0"`) | error, Stage 4, any | matches | matched |
+| `E_KIND_UNKNOWN` | §02 / §10 Stage 4 | error, Stage 4, any | matches | matched |
+| `E_SCHEMA_REQUIRED_FIELD` | §02 / §06 Stage 5 | error, Stage 5, any | matches | matched |
+| `E_SCHEMA_UNKNOWN_FIELD` | §02 / §06 Stage 5 | error, Stage 5, any | matches | matched |
+| `E_SCHEMA_BLOCK_NOT_PERMITTED` | §02 / §03 Stage 5 | error, Stage 5, any | matches | matched |
+| `E_SCHEMA_FIELD_TYPE` | §02 / §06 Stage 5 | error, Stage 5, any | matches | matched |
+| `E_SCHEMA_FIELD_RANGE` | §02 / §06 Stage 5 | error, Stage 5, any | matches | matched |
+| `E_SCHEMA_FIELD_SYNTAX` | §04 / §06 Stage 5 | error, Stage 5, any | matches | matched |
+| `E_SCHEMA_ENUM_VIOLATION` | §02 / §03 Stage 5 | error, Stage 5, any | matches | matched |
+| `E_SCHEMA_DUPLICATE_ENTRY` | §02 / §06 Stage 5 | error, Stage 5, any | matches | matched |
+| `E_SCHEMA_FIELD_LENGTH` | §02 / §06 Stage 5 | error, Stage 5, any | matches | matched |
+| `E_SCHEMA_NULL_VALUE` | §04 no-null Stage 5 | error, Stage 5, any | matches | matched |
+| `E_SCHEMA_NON_INTEGER` | §04 integer grammar Stage 5 | error, Stage 5, any | matches | matched |
+| `E_SCHEMA_MALFORMED_UNICODE` | §04 Stage 5 | error, Stage 5, any | matches | matched |
+| `E_SUBMIT_BUDGET` | §07 / §09 Stage 5 | error, Stage 5, manifest | matches | matched |
+| `E_ORIGIN_INVALID` | §06:171, §10:191 | error, Stage 9, manifest | error, Stage 5, manifest | fixed (Stage 9 -> Stage 5, row and details block both moved) |
+| `E_SIG_VERIFICATION` | §05:157, §05:172 | error, Stage 6, any | matches | matched |
+| `E_SIG_INVALID_KEY` | §05 / §11:184 | error, Stage 6, any | matches | matched |
+| `E_SIG_MALFORMED` | §05:172 | error, Stage 6, any | matches | matched |
+| `E_TRUST_MISMATCH` | §10:173 Stage 6 pre-check | error, Stage 6, manifest | matches | matched |
+| `E_TRUST_USER_REJECTED` | §10 Stage 6 pre-check | error, Stage 6, manifest | matches | matched |
+| `I_TRUST_FIRST_CONTACT` | §10 Stage 7 | info, Stage 7, manifest | matches | matched |
+| `I_TRUST_TOFU_PINNED` | §10 Stage 7 | info, Stage 7, manifest | matches | matched |
+| `I_TRUST_VERIFIED` | §10 Stage 7 | info, Stage 7, manifest | matches | matched |
+| `E_CANARY_INVALID` | §08 Stage 8 (Invalid state) | error, Stage 8, manifest | matches | matched |
+| `E_CANARY_DOWNGRADE` | §08:215-217 | error, Stage 8, manifest | matches | matched |
+| `E_CANARY_CONFLICT` | §08:227 | error, Stage 8, manifest | matches | matched |
+| `W_CANARY_NEAR_EXPIRATION` | §08:179 (renders normally) | warning, Stage 8, manifest | matches | matched |
+| `W_CANARY_EXPIRED` | §08:183, §08:185 (MUST block + MUST override) | warning, Stage 8, manifest | error, Stage 8, manifest | fixed (renamed to `E_CANARY_EXPIRED`, warning -> error) |
+| `W_CANARY_GAP` | §08:193 (notify on gap recovery) | warning, Stage 8, manifest | matches | matched |
+| `W_CANARY_UNAVAILABLE` | §08:207 (cached fallback) | warning, Stage 8, manifest | matches | matched |
+| `E_CANARY_RUNTIME_REUSE` | §08 N55 N60 | error, Stage 8, manifest | matches | matched |
+| `E_BIND_PATH` | §09 / §10 Stage 9 | error, Stage 9, content | matches | matched |
+| `E_BIND_RESPONSE_PATH` | §09 / §10 Stage 9 | error, Stage 9, transaction | matches | matched |
+| `E_BIND_REQUEST_ID` | §09 / §10 Stage 9 | error, Stage 9, transaction | matches | matched |
+| `E_BIND_REQUEST_HASH` | §09 / §10 Stage 9 | error, Stage 9, transaction | matches | matched |
+| `E_BIND_ORIGIN` | §09 / §10 / §06 | error, Stage 9, manifest | matches | matched |
+| `E_ORIGIN_EXPIRED` | §06 / §10:191 (Stage 9 clock check) | error, Stage 9, manifest | matches | matched |
+| `E_MIGRATION_MISMATCH` | §10:398 | error, Stage 9, manifest | matches | matched |
+| `E_MIGRATION_INVALID` | §10:436 | error, Stage 9, manifest | matches | matched |
+| `E_CONTENT_INDEX_FETCH_FAILED` | §09:106, §09:108, §09:114 | error, Stage 9, manifest | matches | matched |
+| `E_CONTENT_INDEX_HASH_MISMATCH` | §09:112 | error, Stage 9, manifest | matches | matched |
+| `E_CONTENT_INDEX_INVALID` | §09:110, §09:112 | error, Stage 9, manifest | matches | matched |
+| `E_CONTENT_SEQ_MISSING` | §02:194 (Stage 9) | error, Stage 9, content | matches | matched |
+| `E_CONTENT_SEQ_ROLLBACK` | §10:599 | error, Stage 9, content | matches | matched |
+| `E_CONTENT_SEQ_UNCOMMITTED` | §10:600 | error, Stage 9, content | matches | matched |
+| `E_CONTENT_HASH_MISMATCH` | §10:601 | error, Stage 9, content | matches | matched |
+| `E_STATE_UNDECLARED` | §07 (state ops) | error, n/a, transaction | matches | matched |
+| `E_STATE_VALUE_SIZE` | §07 (`max_size` cap) | error, n/a, transaction | matches | matched |
+| `E_STATE_TTL` | §07 (ttl bounds) | error, n/a, transaction | matches | matched |
+| `E_STATE_OP` | §07 (op enum / required fields) | error, n/a, transaction | matches | matched |
+| `E_STATE_STORAGE_CAP` | §07 (per-publisher storage cap) | error, n/a, transaction | matches | matched |
+| `E_STATE_TRANSMIT_BUDGET` | §07:478 | error, n/a, transaction | matches | matched |
+| `E_STATE_DUPLICATE` | §07 (request_state uniqueness) | error, n/a, transaction | matches | matched |
+| `I_STATE_CONSENT_REJECTED` | §07 / §10 (consent UX) | info, n/a, transaction | matches | matched |
+| `I_STATE_CONSENT_REMEMBERED` | §07 / §10 (consent UX) | info, n/a, transaction | matches | matched |
+| `E_HISTORICAL_NO_AUTHORIZATION` | §10:551 | error, n/a, content | matches | matched |
+| `E_HISTORICAL_NO_PUBLICATION_PROOF` | §10 / §11 historical group | error, n/a, content | matches | matched |
+| `E_HISTORICAL_TRUST_BLOCKED` | §10 historical, Changed/mismatch | error, n/a, content | matches | matched |
+| `W_HISTORICAL_RENDERED` | §10:680 (historical content marker) | warning, n/a, content | matches | matched |
+| `W_HISTORICAL_RUNTIME_AMBIGUOUS` | §10:553 (MUST reject, not rendered) | warning, n/a, content | error, n/a, content | fixed (renamed to `E_HISTORICAL_RUNTIME_AMBIGUOUS`, warning -> error) |
+| `W_IMAGE_HASH_MISMATCH` | §03:417 | warning, n/a, containing | matches | matched |
+| `W_IMAGE_OVERSIZE` | §03:416 | warning, n/a, containing | matches | matched |
+| `W_IMAGE_CONTENT_TYPE` | §03:415 | warning, n/a, containing | matches | matched |
+| `W_IMAGE_DIMENSIONS` | §03:420 | warning, n/a, containing | matches | matched |
+| `W_IMAGE_DECODE_FAILED` | §03:418, §03:419 | warning, n/a, containing | matches | matched |
+| `W_IMAGE_FETCH_FAILED` | §03:414 | warning, n/a, containing | matches | matched |
+| `W_IMAGE_BUDGET` | §03:421 | warning, n/a, containing | matches | matched |
+
 ### v1.0-rc.22
 
 Date: 2026-05-28

@@ -159,6 +159,7 @@ The structured diagnostic format for `E_PARSE_DUPLICATE_KEY` SHOULD include in `
 | `E_SCHEMA_NON_INTEGER`         | error    | any           | A numeric value is not a non-negative integer permitted by the schema                                                                                     |
 | `E_SCHEMA_MALFORMED_UNICODE`   | error    | any           | A string contains malformed Unicode escape sequences or isolated surrogates                                                                               |
 | `E_SUBMIT_BUDGET`              | error    | manifest      | The manifest's `state_policy` declares an aggregate worst-case request-state encoded contribution exceeding the `state_budget` defined in §09 ("Submit body budget partition"). The check is performed at Stage 5 schema validation against the declared `state_policy` only; it does not depend on retained client state. See §07 "Submit budget satisfiability". |
+| `E_ORIGIN_INVALID`             | error    | manifest      | `origin.not_after` is present but violates a semantic constraint (`not_after` not strictly later than `canary.issued_at`, or more than 5 years after `canary.issued_at`). The check is a Stage 5 cross-field semantic validation on `origin.not_after` and `canary.issued_at`; see §06 ("origin.not_after") and §10 (Stage 5 vs Stage 9 split for `origin.not_after`). |
 
 The structured diagnostic format for `E_SCHEMA_DUPLICATE_ENTRY` SHOULD include in `details`:
 
@@ -172,6 +173,12 @@ The structured diagnostic format for `E_SUBMIT_BUDGET` SHOULD include in `detail
 * `budget_bytes`: the applicable budget value (53248 for `component = "state"` per §09).
 
 `E_SUBMIT_BUDGET` is distinct from `E_STATE_TRANSMIT_BUDGET` (Stage 5 manifest schema validation vs runtime client-side soft-fail on individual `set` operations). The former rejects a publisher-declared policy that could never produce a satisfiable submit; the latter rejects an individual `set` operation under an otherwise-satisfiable policy when the client's runtime accumulation would overflow.
+
+The structured diagnostic format for `E_ORIGIN_INVALID` SHOULD include in `details`:
+
+* `reason`: a short identifier of which constraint was violated, drawn from `not_after_not_later_than_issued_at` (the declared `not_after` is not strictly later than `canary.issued_at`) and `not_after_beyond_5y` (the declared `not_after` is more than 5 years after `canary.issued_at`);
+* `not_after`: the declared `origin.not_after` value;
+* `issued_at`: the declared `canary.issued_at` value.
 
 ## Signature diagnostics (Stage 6)
 
@@ -203,7 +210,7 @@ For content and transaction documents, `E_SIG_INVALID_KEY` includes the case whe
 | `E_CANARY_DOWNGRADE`       | error    | manifest      | Anti-downgrade failure: canary `issued_at` is older than the newest verified `issued_at` for the same `K_publisher.pub`                                |
 | `E_CANARY_CONFLICT`        | error    | manifest      | A manifest with the same canary `issued_at` as a previously verified manifest for the same `K_publisher.pub` presents a different signed payload       |
 | `W_CANARY_NEAR_EXPIRATION` | warning  | manifest      | The canary is approaching `next_expected`                                                                                                              |
-| `W_CANARY_EXPIRED`         | warning  | manifest      | The canary has passed `next_expected`                                                                                                                  |
+| `E_CANARY_EXPIRED`         | error    | manifest      | The canary has passed `next_expected`. The error severity reflects the §08:183 normative MUST that rendering of current content is blocked. The §08:185 per-session user-override affordance and the §08 permissive-canary mode are the spec-defined laxer-policy carve-outs, not §11:87 client-side reclassifications |
 | `W_CANARY_GAP`             | warning  | manifest      | A canary gap was previously observed and has not been dismissed by the user                                                                            |
 | `W_CANARY_UNAVAILABLE`     | warning  | manifest      | The current canary state could not be determined; cached content may be available                                                                      |
 | `E_CANARY_RUNTIME_REUSE`   | error    | manifest      | The canary declares the same `runtime_pubkey` as a previously verified manifest for the same `K_publisher.pub`; key rotation did not occur. The MUST-level case is reuse against the immediately preceding verified manifest; a SHOULD-level extension for clients maintaining publisher history covers reuse against any previously verified `runtime_pubkey` for the same `K_publisher.pub` (§08, §00). |
@@ -231,7 +238,6 @@ The structured diagnostic format for `E_CANARY_CONFLICT` SHOULD include in `deta
 | `E_BIND_REQUEST_HASH`  | error    | transaction   | The `request_hash` field of the transaction document does not match the locally computed JCS-hash of the submit body the client sent                     |
 | `E_BIND_ORIGIN`        | error    | manifest      | The carrier origin from which the manifest was fetched does not match `origin`, including Tor v3 address-to-key derivation failure                       |
 | `E_ORIGIN_EXPIRED`     | error    | manifest      | `origin.not_after` is present and the client's clock is strictly later than the declared instant, applying the past-bound clock-skew tolerance (`current_time > not_after + 300 seconds`); the manifest is not accepted as current |
-| `E_ORIGIN_INVALID`     | error    | manifest      | `origin.not_after` is present but violates a semantic constraint (`not_after` not strictly later than `canary.issued_at`, or more than 5 years after `canary.issued_at`)            |
 | `E_MIGRATION_MISMATCH` | error    | manifest      | A `migration_pointer` announcement was present, but the successor manifest fetched from the announced address fails a binding check (publisher key, origin address, or origin pubkey) |
 | `E_MIGRATION_INVALID`  | error    | manifest      | The `migration_pointer` value is structurally valid JSON but fails semantic checks: successor address equals announcing address, `announced_at` later than manifest `updated`, carrier mismatch, or the successor address is already present in the per-flow `visited_origins` set (a chain cycle; `details.reason = "chain_cycle"`, §10). Reaching the client's automatic chain-depth limit is not a semantic failure and does not produce this diagnostic; per §10 it is a recoverable "pending user action" state resolved by user confirmation. |
 | `E_CONTENT_INDEX_FETCH_FAILED` | error | manifest | The manifest declares `content_root` but the `/content_index.json` fetch failed at the transport level; the client MUST NOT render content under this manifest |
@@ -265,12 +271,6 @@ The structured diagnostic format for `E_ORIGIN_EXPIRED` SHOULD include in `detai
 
 * `not_after`: the declared `origin.not_after` value;
 * `now`: the client's clock value used for the comparison, rounded down to minute precision (UTC, RFC 3339 form `YYYY-MM-DDTHH:MM:00Z`). The minute-precision rounding limits the precision of any clock-skew leak when the diagnostic is logged or transmitted to third parties (crash reports, support channels) without compromising the diagnostic's usefulness for clock-skew troubleshooting, where minute-level resolution is sufficient.
-
-The structured diagnostic format for `E_ORIGIN_INVALID` SHOULD include in `details`:
-
-* `reason`: a short identifier of which constraint was violated, drawn from `not_after_not_later_than_issued_at` (the declared `not_after` is not strictly later than `canary.issued_at`) and `not_after_beyond_5y` (the declared `not_after` is more than 5 years after `canary.issued_at`);
-* `not_after`: the declared `origin.not_after` value;
-* `issued_at`: the declared `canary.issued_at` value.
 
 ## State diagnostics
 
@@ -314,9 +314,9 @@ A rejected state set operation does not necessarily invalidate the transaction d
 | `E_HISTORICAL_NO_PUBLICATION_PROOF`  | error    | content       | The historical content document cannot be verified as having been published during the authorization window: no content-index entry and no client rendering record exist for the document under the authorizing manifest             |
 | `E_HISTORICAL_TRUST_BLOCKED`        | error    | content       | Historical content cannot be rendered while the publisher identity is in Changed/mismatch state                                                                                                                                    |
 | `W_HISTORICAL_RENDERED`             | warning  | content       | Historical content is being rendered with the historical-content marker                                                                                                                                                            |
-| `W_HISTORICAL_RUNTIME_AMBIGUOUS`    | warning  | content       | Historical content signature verifies under more than one distinct retained `K_runtime.pub` for the same `K_publisher.pub`; the document is rejected as a cryptographic anomaly indicating implementation bug or authorization-history corruption. |
+| `E_HISTORICAL_RUNTIME_AMBIGUOUS`    | error    | content       | Historical content signature verifies under more than one distinct retained `K_runtime.pub` for the same `K_publisher.pub`; the document is rejected as a cryptographic anomaly indicating implementation bug or authorization-history corruption. |
 
-Severity for `W_HISTORICAL_RUNTIME_AMBIGUOUS` is `warning` rather than `error` because the affected document is rejected (per §10) but the condition does not invalidate other content for the same publisher. Clients SHOULD log the condition for offline analysis.
+`E_HISTORICAL_RUNTIME_AMBIGUOUS` is an error because the affected document is rejected per §10 as a cryptographic anomaly: under the §11:79 default for `error` severity, the document does not render. The rejection is per-document; other content for the same publisher is independently validated and is not invalidated by this condition (this is the standard per-document scope of an `error` diagnostic, not a soft-fail exception). Clients SHOULD log the condition for offline analysis. The severity was `warning` in rc.10 through rc.22; rc.23 promoted it to `error` to align the catalog with the rejection behavior in §10 ("Historical content authorization") per the §11:81 default rule that warnings do not block rendering.
 
 `E_HISTORICAL_NO_PUBLICATION_PROOF` is an error because an attacker who has exfiltrated a former `K_runtime_priv` can fabricate arbitrary documents that verify under the old key but were never published. Without a publication-existence check, historical content mode becomes an avenue for injecting forged content with apparent authenticity. The structured diagnostic format for `E_HISTORICAL_NO_PUBLICATION_PROOF` SHOULD include in `details`: the `path`, the authorizing `K_runtime.pub`, and whether the authorizing manifest carried `content_root`.
 
