@@ -51,20 +51,24 @@ Release notes for each tag are added below as releases are made. Newest entries 
 
 Date: 2026-05-28
 
-Errata-only tag on top of v1.0-rc.19. No protocol, schema, wire-format, diagnostic-catalog, or coverage-accounting change. Two corrections:
+Errata-only tag on top of v1.0-rc.19. No protocol, schema, wire-format, diagnostic-catalog, or coverage-accounting change. Three corrections:
 
 * **Corpus vector 139 field correction.** Vector `139-schema-field-length` originally targeted `canary.statement` with a 201-byte string and asserted `E_SCHEMA_FIELD_LENGTH`, but `canary.statement` has a 2048-byte cap (§08:104); a 201-byte statement is within cap and would not fire the diagnostic. The vector's own description, the 201-byte length, and the original §08:112 line citation all corresponded to `canary.freshness_proof` (cap 200 bytes, §08:118), not statement. Vector 139 is corrected to target `canary.freshness_proof`; verdict and diagnostic are unchanged. An rc.19 implementation that regenerated the corpus and reported `accept` on vector 139 was conforming-to-the-corpus-as-published (the published verdict was wrong); under rc.20 the corpus verdict matches what a conforming implementation actually produces. Distinct-code coverage is unchanged because `E_SCHEMA_FIELD_LENGTH` is exercised either way.
 
 * **Lotto 16 intro wording correction in this changelog.** The Lotto 16 section's introductory sentence in the rc.19 entry read "identified eight previously-uncovered diagnostic codes that are reachable within the existing vector schema", which was inconsistent with both the section's own later accounting (four newly-covered distinct codes plus three sub-cases of already-covered codes, not eight previously-uncovered codes) and the statement immediately after that `E_SIG_MALFORMED` is NOT vector-constructible. The intro is rewritten to be consistent with both. The precise accounting (32 -> 36 distinct, three sub-cases, vectors 139/156/177/178/183/184/201) is unchanged.
 
+* **`corpus.json` `rc_target` bump 1.0-rc.19 -> 1.0-rc.20.** The corpus index's `rc_target` field is bumped to match the tag the corpus is shipped under. The corpus is normative: an implementer fetching the `v1.0-rc.20` tag must find a `rc_target` that identifies that same tag, not the predecessor. The field was left at `1.0-rc.19` in the first rc.20 cut (commit 3072aca) and has been corrected by re-cutting the tag at a fresh commit that bumps the field. No protocol semantics depend on the value of `rc_target`; it is metadata identifying which conformance profile the corpus claims to exercise, and that profile is rc.20 because rc.20 is the tag the corpus is published under, even though the protocol semantics rc.20 exercises are byte-identical to rc.19's. There is no rc.19-vs-rc.20 conformance distinction at the protocol or diagnostic-catalog level; the bump is metadata correctness.
+
 The rc.19 entry below carries the corrected Lotto 16 wording and an appended errata paragraph documenting the vector 139 field correction in line. The rc.19 tag itself remains immutable per the release engineering convention (`docs/RELEASES.md` §15); operators preferring the rc.19 corpus byte-for-byte may continue to use that tag, with the caveat that vector 139 in that corpus has the broken verdict described above.
 
 Changes since v1.0-rc.19:
 
-* `corpus/tools/generate.py` - vector 139 block: targets `freshness_proof` instead of `statement`; local variable renamed `statement_201 -> fp_201`; comment and description cite §08:118 in place of §08:112; manifest re-signed after setting the field per the corpus isolation rule.
+* `corpus/tools/generate.py` - vector 139 block: targets `freshness_proof` instead of `statement`; local variable renamed `statement_201 -> fp_201`; comment and description cite §08:118 in place of §08:112; manifest re-signed after setting the field per the corpus isolation rule. Generator constant `rc_target` bumped to `"1.0-rc.20"`.
 * `corpus/vectors/139-schema-field-length/input.json` - regenerated: `canary.freshness_proof` is now a 201-byte ASCII string, `canary.statement` is the normal 21-byte valid value, and the manifest signature is valid.
-* `corpus/corpus.json` - regenerated: vector 139 description updated; rc_target unchanged at `"1.0-rc.19"` (the corpus index continues to declare its target as rc.19 since no protocol semantics changed; rc.20 is a corpus-correctness errata, not a new conformance profile).
-* `docs/RELEASES.md` - Lotto 16 intro reworded; in-line errata paragraph appended to Lotto 16 documenting the 139 correction.
+* `corpus/corpus.json` - regenerated: vector 139 description updated; `rc_target` is now `"1.0-rc.20"` matching the tag.
+* `docs/RELEASES.md` - Lotto 16 intro reworded; in-line errata paragraph appended to Lotto 16 documenting the 139 correction; this rc.20 section added.
+
+Note on the in-source references that still say "rc.19": the historical `rc.19 N55`, `rc.19 N60`, `rc.19 N59` markers in generator comments and vector descriptions are intentionally left intact - they correctly identify the rc in which a given change landed (every Lotto 11 through Lotto 20 change landed in rc.19), not the current conformance-profile label. The `rc_target` field is the single canonical "which conformance profile does this corpus claim".
 
 Determinism verified: two consecutive runs of `python3 corpus/tools/generate.py` produce byte-identical `corpus/` output.
 
