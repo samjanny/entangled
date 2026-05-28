@@ -800,7 +800,7 @@
     {
       "id": "139-schema-field-length",
       "kind": "manifest",
-      "description": "Manifest whose canary.statement is a 201-byte ASCII string, one byte above the 200-byte cap declared in §08:112. The string is well within the Stage 3 100 KiB parser cap (§04) so Stage 3 passes; Stage 5 schema validation fires E_SCHEMA_FIELD_LENGTH for the field-specific cap, distinct from the parser-level E_PARSE_STRING_LENGTH (vector 112).",
+      "description": "Manifest whose canary.freshness_proof is a 201-byte ASCII string, one byte above the 200-byte cap declared in §08:118. The string is well within the Stage 3 100 KiB parser cap (§04) so Stage 3 passes; Stage 5 schema validation fires E_SCHEMA_FIELD_LENGTH for the field-specific cap, distinct from the parser-level E_PARSE_STRING_LENGTH (vector 112).",
       "spec_refs": [
         "§08",
         "§11"

@@ -1550,28 +1550,34 @@ def negative_vectors(keys) -> list[dict]:
     # =====================================================================
 
     # ---- 139-schema-field-length (Stage 5, E_SCHEMA_FIELD_LENGTH) ----
-    # Manifest whose canary.statement is a 201-byte ASCII string, one byte
-    # above the 200-byte cap declared in §08:112. The string is well within
-    # the Stage 3 100 KiB parser cap (§04) so Stage 3 passes; Stage 5
-    # schema validation fires the field-specific length cap as distinct
-    # from the parser-level cap that E_PARSE_STRING_LENGTH covers.
-    statement_201 = "x" * 201
+    # Manifest whose canary.freshness_proof is a 201-byte ASCII string,
+    # one byte above the 200-byte cap declared in §08:118. The string is
+    # well within the Stage 3 100 KiB parser cap (§04) so Stage 3 passes;
+    # Stage 5 schema validation fires the field-specific length cap as
+    # distinct from the parser-level cap that E_PARSE_STRING_LENGTH
+    # covers. ASCII is NFC and contains no control characters so the only
+    # live violation at the first failing stage is the length cap on
+    # freshness_proof (corpus isolation rule). statement is left at its
+    # normal short valid value from make_manifest; freshness_proof is
+    # optional, this vector explicitly adds it to exercise the cap.
+    fp_201 = "x" * 201
     m_139 = make_manifest(
         publisher_priv=pp, publisher_pub=pp_pub,
         origin_pub=op_pub, runtime_pub=rp_pub,
     )
-    m_139["canary"]["statement"] = statement_201
+    m_139["canary"]["freshness_proof"] = fp_201
     m_139["sig"] = sign(pp, CTX_MANIFEST, m_139)
     out.append(vec(
         "139-schema-field-length",
         kind="manifest",
         description=(
-            "Manifest whose canary.statement is a 201-byte ASCII string, "
-            "one byte above the 200-byte cap declared in §08:112. The "
-            "string is well within the Stage 3 100 KiB parser cap (§04) "
-            "so Stage 3 passes; Stage 5 schema validation fires "
-            "E_SCHEMA_FIELD_LENGTH for the field-specific cap, distinct "
-            "from the parser-level E_PARSE_STRING_LENGTH (vector 112)."
+            "Manifest whose canary.freshness_proof is a 201-byte ASCII "
+            "string, one byte above the 200-byte cap declared in "
+            "§08:118. The string is well within the Stage 3 100 KiB "
+            "parser cap (§04) so Stage 3 passes; Stage 5 schema "
+            "validation fires E_SCHEMA_FIELD_LENGTH for the "
+            "field-specific cap, distinct from the parser-level "
+            "E_PARSE_STRING_LENGTH (vector 112)."
         ),
         spec_refs=["§08", "§11"],
         verdict="reject",
