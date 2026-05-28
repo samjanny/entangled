@@ -489,6 +489,8 @@ The canary state, as defined in §08, governs additional client behavior beyond 
 
 Invalid canary state is a hard failure for current content. Expired canary state is a hard failure by default; current content is not rendered until the user invokes the per-session override defined in §08, or unless permissive-canary mode (see "Stateless and reduced modes" below) is active.
 
+The five canary states above are the values of the canary state machine and they are mutually exclusive. Freshness-unverified mode, defined under "Clock reliability and the verified-time reference" above, is not a sixth value of this state machine: it is an orthogonal qualifier on the canary presentation. It applies to a client that cannot establish a reliable current-time reference and therefore cannot compute the time-dependent determinations Fresh, Near-expiration, and Expired. The time-independent determinations - Invalid (structural failure), Unavailable (canary absent or unreachable), and the lower-bound Expired determination available when an expiry timestamp is strictly less than `T_verified` - are unaffected by freshness-unverified mode and continue to govern rendering and chrome per this table. Anti-downgrade enforcement is likewise unaffected. Freshness-unverified mode suppresses only the Fresh, Near-expiration, and (clock-dependent) Expired determinations, replacing them with the explicit chrome indication that the client cannot place the current time within the canary's claimed validity window.
+
 ## Canary gap memory
 
 If the client has observed an Expired canary for a publisher, and later observes a Fresh canary for the same `K_publisher.pub`, the client MUST notify the user that a canary gap occurred (§08).
@@ -813,6 +815,44 @@ The symmetric tolerance gives the publisher a margin to publish a successor mani
 When rejecting a timestamp because it exceeds the clock-skew tolerance (in either direction), the client SHOULD indicate to the user that the local clock may be incorrect, since clock-skew failures are a likely cause of false positives on devices with unsynchronized clocks. The protocol-level diagnostic remains the one specified for the failing field (`E_CANARY_INVALID` for canary `issued_at`, `E_SCHEMA_FIELD_SYNTAX` for `manifest.updated`, `E_ORIGIN_EXPIRED` for `origin.not_after`); the local-clock advisory is a user-presentation hint, not a separate diagnostic code.
 
 For `manifest.updated` future-skew rejection specifically, the `details` field of the structured `E_SCHEMA_FIELD_SYNTAX` diagnostic SHOULD include `reason: "future_beyond_skew_tolerance"` and the offending timestamp, to distinguish this temporal-domain failure from lexical RFC 3339 violations.
+
+## Clock reliability and the verified-time reference
+
+Several validation checks compare a document timestamp against the client's notion of the current time: the future-skew bounds on `manifest.updated` (§10) and `canary.issued_at` (§08, §10), the `origin.not_after` expiry check (§06), and the canary freshness determination distinguishing the Fresh, Near-expiration, and Expired states (§08). These are *absolute-time* checks: they require the client to know the current real time. Anti-downgrade enforcement (§08, §10) is by contrast a *relative* check - it compares an incoming `canary.issued_at` against the newest previously verified `issued_at` for the same `K_publisher.pub` - and requires no current-time reference at all.
+
+A client cannot soundly perform the absolute-time checks without a current-time reference it treats as reliable. Confirming that a canary is currently fresh requires knowing that the present moment falls within the canary's validity window; no protocol mechanism can supply this for a client that has no reliable clock, because it is the current time itself that is unavailable. This subsection defines client behavior in the absence of a reliable current-time reference. It does not weaken the requirements for a client that has one: a client with a clock it treats as reliable performs every absolute-time check defined in §06, §08, and §10 unchanged.
+
+### Anti-downgrade is unconditional
+
+A client MUST enforce anti-downgrade (§08, §10) regardless of clock reliability. The comparison is relative to previously verified `issued_at` values and does not depend on the current time.
+
+### The verified-time reference
+
+A client MAY maintain a verified-time reference `T_verified`, defined as the greatest `canary.issued_at` among all manifests it has verified for the relevant `K_publisher.pub`. `T_verified` is an authenticated lower bound on the current real time: a value an adversary cannot advance without producing a validly signed manifest that itself passes every check, including anti-downgrade.
+
+At the instant a client successfully verifies a freshly fetched manifest, that manifest's `issued_at` closely approximates the current real time, because the publisher issued it recently. `T_verified` is therefore a useful current-time reference *at fetch time* and for detecting local-clock drift. It is NOT a substitute for a current-time reference while the client is offline: `T_verified` does not advance between fetches, so it cannot detect that time has passed since the last verified manifest. A client MUST NOT treat `T_verified` as evidence that a canary is currently fresh (see "Freshness-unverified mode").
+
+A client maintaining both `T_verified` and a local clock SHOULD compare each freshly verified `issued_at` against its local clock. A divergence beyond the §10 skew tolerance indicates either local-clock drift or an anomalous `issued_at`; the client SHOULD surface a drift advisory inviting clock synchronization, and MUST NOT treat the divergence alone as grounds to reject the manifest, since it cannot distinguish drift from anomaly without an external reference.
+
+### Sound expiration in the lower-bound direction
+
+A client MAY use `T_verified` to determine that an expiry timestamp is definitely past: if `origin.not_after` or a canary `next_expected` is strictly less than `T_verified`, the resource is expired, because `T_verified` is a lower bound on current time. This determination is sound (no false positives) but incomplete: because `T_verified` for a held manifest equals that manifest's own `issued_at`, which is by construction earlier than its `next_expected`, this check never establishes the expiry of the manifest the client currently holds. It therefore does not detect a publisher that stops issuing canaries while the client is offline; that case is handled by freshness-unverified mode.
+
+### Freshness-unverified mode
+
+A client that cannot establish a current-time reference it treats as reliable - because it has no clock, does not trust its clock, or is operating offline beyond the point where its last verified manifest is a meaningful time reference - MUST NOT compute the time-dependent canary states (Fresh, Near-expiration, Expired) as if it had a reliable clock, and MUST NOT silently treat the canary as fresh. It also MUST NOT block rendering solely because it cannot determine freshness; doing so would make every clock-less client unusable.
+
+Instead the client enters freshness-unverified mode: it MAY render content, and MUST surface in chrome an explicit, not-easily-dismissible indication that it cannot verify whether the canary is currently fresh, conveying the canary's claimed validity window (`issued_at` and `next_expected`) and the fact that the client cannot place the current time within it.
+
+Freshness-unverified mode is an orthogonal qualifier on the canary presentation, not a value of the canary state machine. The time-independent determinations remain in force: a structurally Invalid canary is still Invalid (§08); an absent or unreachable canary is still Unavailable (§08); anti-downgrade still applies; and an expiry shown definitely-past by the lower-bound check above is still Expired and still subject to the expired-canary block of §08/§10. Freshness-unverified mode applies only to the determination the client cannot make: whether a structurally valid, non-definitely-expired canary is currently within its validity window.
+
+The natural recovery is a successful manifest fetch: a freshly verified `issued_at` re-establishes a current-time reference and, with a reliable clock, resolves the canary to one of its time-dependent states. A client SHOULD attempt to refresh the manifest before entering or while in freshness-unverified mode where the carrier is reachable.
+
+### Future-skew without a reliable clock
+
+The future-skew bounds on `manifest.updated` and `canary.issued_at` (§10) require an upper bound on current time and cannot be enforced precisely by a client without a reliable clock. `T_verified` is a lower bound and MUST NOT be used as the future-skew reference: doing so rejects legitimate manifests issued after `T_verified` - for example, every manifest a publisher issues while the client is offline - deadlocking the client against its own stale reference.
+
+A client without a reliable clock MUST NOT hard-reject a manifest on a future-skew determination. It MAY apply a loose sanity bound to reject grossly implausible timestamps and SHOULD surface a drift advisory, but it advances `T_verified` to the newest verified `issued_at` as usual so that anti-downgrade replay protection is preserved. The residual exposure - an adversary holding `K_publisher_priv` inflating `issued_at` to poison the anti-downgrade floor - is documented as a v1.0 limitation in §00; it requires identity-key compromise, against which a clock-less client has no protocol-provided defense, and an adversary with `K_publisher_priv` can mount more direct attacks regardless.
 
 ## Editorial published_at display
 

@@ -104,8 +104,10 @@ Coverage relative to the §11 diagnostic code catalog remains partial. Codes not
 - **State** (`E_STATE_*`, all 6 codes): mostly publisher-side; require submit-flow vector schema.
 - **Historical content** (`E_HISTORICAL_*` including `E_HISTORICAL_NO_PUBLICATION_PROOF`, `W_HISTORICAL_*`): require multi-manifest authorization-history scenarios.
 
-The following code is not vector-constructible within the wire-only scope of this corpus:
+The following conditions are not vector-constructible within the wire-only scope of this corpus:
 
 - **`E_SIG_MALFORMED`**: per §11:173, this diagnostic only applies "in a context where stage-5 wire-side field-syntax validation does not apply". On the wire, signature length and base64url-alphabet violations are reported as `E_SCHEMA_FIELD_SYNTAX` at Stage 5 per §04 and §10 first-failing-stage precedence (exercised by vector 151). There is no wire-side construction that bypasses Stage 5 and reaches the Stage 6 raw-signature-decode path; the diagnostic is reachable only from out-of-band signature decoding (an implementation API surface that the corpus does not exercise).
+
+- **Freshness-unverified mode** (§10 "Clock reliability and the verified-time reference"): the trigger is a client-side property (no reliable current-time reference) that no document can induce. The corpus exercises a wire-to-verdict mapping in which each vector's input is a byte sequence and the verdict is the diagnostic the conforming validation pipeline produces; a condition whose trigger lives entirely outside that mapping cannot be a vector. Conforming clients exercise freshness-unverified mode through their clock-acquisition path, not through any document the corpus could supply.
 
 Vector-schema extensions (transport metadata, image responses, expected-warnings array, multi-manifest histories) are deferred to a future tranche. The current corpus exercises every diagnostic code reachable within the existing schema, except `E_SIG_MALFORMED` (not vector-constructible as documented above).

@@ -827,6 +827,12 @@ The operator SHOULD configure alerts on the following indicators, with threshold
 
 * If the publisher operates a reader feedback channel: any reader report of an `E_CANARY_RUNTIME_REUSE` rejection (§11 rc.19 N55) at a fresh canary indicates that the publisher's rotation procedure failed silently and the same `K_runtime.pub` was emitted twice. This is a publisher-side correctness bug, not a security event, but it makes the latest manifest unacceptable to clients.
 
+**Freshness-unverified reports (reader-side feedback, weak signal only):**
+
+* If the publisher operates a reader feedback channel: reader reports of clients entering freshness-unverified mode (§10 "Clock reliability and the verified-time reference") are a *weak diagnostic signal*, not an actionable infrastructure event. The condition lives client-side (the reader's device has no reliable clock, distrusts its own clock, or is offline beyond the meaningful lifetime of its last verified manifest), and the publisher cannot remediate it: no infrastructure change on the publisher side gives a reader's clock-less device a reliable current time.
+* A *correlated spike* of freshness-unverified reports across the reader base may indicate that the canary interval (§7 "Choosing canary interval") is longer than the typical online cadence of the reader base, so that clients are routinely offline between successive canary issuances and lose freshness reference between them. This is worth a §7 interval review, not an alert action: shortening the canary interval reduces the fraction of the reader base in freshness-unverified mode at steady state. A correlated spike may also be benign: a deployment whose reader base includes many clock-less or intermittently-online devices (embedded readers, archive-only access, deliberately-offline operational environments) is expected to report freshness-unverified at non-trivial rates, and that rate is itself the baseline.
+* Do not alert on freshness-unverified reports per se. The signal is qualitative: changes in the rate may indicate carrier or cadence drift; absolute rate is a publisher-deployment characteristic, not an anomaly.
+
 **Origin reachability (publisher-side):**
 
 * Baseline: the publisher's origin is reachable from a clean-client probe positioned independently from the publishing infrastructure.

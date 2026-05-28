@@ -108,6 +108,9 @@ The trust state of a publisher identity for which the client has no prior retain
 **Freshness proof**  
 An optional field in the canary structure by which the publisher anchors the canary to a temporal reference outside the publisher's control, such as a recent block hash, a news headline, or another public event. Helps detect certain forms of canary backdating. Defined in §08. Related: canary, issued_at.
 
+**Freshness-unverified mode**  
+A presentation qualifier applied by a client that cannot establish a reliable current-time reference and therefore cannot compute the time-dependent canary states (Fresh, Near-expiration, Expired). The client surfaces in chrome an explicit indication that it cannot place the current time within the canary's claimed validity window. Anti-downgrade, structural-validity, and lower-bound expiration determinations remain in force; only the freshness verdict is suppressed. It is an orthogonal qualifier, not a value of the canary state machine. Defined in §10 "Clock reliability and the verified-time reference". Related: canary, verified-time reference, anti-downgrade.
+
 **Hash binding**  
 The technique by which a signed document commits to external bytes by including their cryptographic digest in the signed payload. Entangled uses hash binding for image resources: the document contains a same-origin image path and the SHA-256 digest of the exact image response body bytes. Defined in §03. Related: image, SHA-256, signed payload.
 
@@ -263,6 +266,9 @@ The 10-stage sequence by which a fetched document is validated, from transport-l
 
 **Verification chain**  
 The cryptographic sequence by which a document is verified, anchored at `K_publisher.pub`: PIP or TOFU pin establishes expected `K_publisher.pub`, manifest signature verifies under it, manifest authorizes `K_origin` and `K_runtime`, content and transaction documents verify under the authorized `K_runtime`. Defined in §05. Related: K_publisher, K_origin, K_runtime, manifest, signature input.
+
+**Verified-time reference (`T_verified`)**  
+An authenticated lower bound on the current real time that a client MAY maintain, defined as the greatest `canary.issued_at` among all manifests it has verified for the relevant `K_publisher.pub`. An adversary cannot advance `T_verified` without producing a validly signed manifest that itself passes every check including anti-downgrade. Useful as a current-time reference at fetch time and for detecting local-clock drift; NOT a substitute for a current-time reference while the client is offline (it does not advance between fetches). Used to determine that an expiry timestamp is definitely past (a sound but incomplete check) and as the reference the client MUST NOT use for future-skew bounds (lower bound where an upper bound is needed). Defined in §10 "Clock reliability and the verified-time reference". Related: anti-downgrade, freshness-unverified mode, issued_at.
 
 **Warrant canary**  
 A traditional security pattern: a periodic signed statement attesting that the publisher has not been compromised, coerced, or compelled to act against users. The signal is the absence of fresh signatures when the publisher cannot, or will not, sign on schedule. In Entangled, the warrant function is unified with runtime authorization in the canary structure. The protocol does not verify the truth of the statement; it provides a structural failure condition. Defined in §08. Related: canary, canary gap.
