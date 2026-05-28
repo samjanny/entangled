@@ -796,6 +796,153 @@
       "context": {
         "fetched_origin_address": "dkptfyethnbfsj7qsxscia4w6lg4yssjca2gdrqlk457qav2lkna4xqd.onion"
       }
+    },
+    {
+      "id": "139-schema-field-length",
+      "kind": "manifest",
+      "description": "Manifest whose canary.statement is a 201-byte ASCII string, one byte above the 200-byte cap declared in §08:112. The string is well within the Stage 3 100 KiB parser cap (§04) so Stage 3 passes; Stage 5 schema validation fires E_SCHEMA_FIELD_LENGTH for the field-specific cap, distinct from the parser-level E_PARSE_STRING_LENGTH (vector 112).",
+      "spec_refs": [
+        "§08",
+        "§11"
+      ],
+      "input": "vectors/139-schema-field-length/input.json",
+      "expected": {
+        "verdict": "reject",
+        "diagnostic": "E_SCHEMA_FIELD_LENGTH"
+      },
+      "context": {
+        "fetched_origin_address": "dkptfyethnbfsj7qsxscia4w6lg4yssjca2gdrqlk457qav2lkna4xqd.onion"
+      }
+    },
+    {
+      "id": "156-sig-invalid-key-no-manifest",
+      "kind": "content",
+      "description": "Content document presented without any verified manifest supplying an authorized runtime_pubkey for the publisher. Per §11:172,175 the absence of the expected verification key yields E_SIG_INVALID_KEY, distinct from E_SIG_VERIFICATION which requires a key that decodes and fails the verify equation. The content body and signature are themselves well-formed; the failure is the missing key context. Vector context deliberately omits expected_runtime_pubkey and previously_verified.",
+      "spec_refs": [
+        "§05",
+        "§11"
+      ],
+      "input": "vectors/156-sig-invalid-key-no-manifest/input.json",
+      "expected": {
+        "verdict": "reject",
+        "diagnostic": "E_SIG_INVALID_KEY"
+      },
+      "context": {
+        "fetched_path": "/articles/orphan-content"
+      }
+    },
+    {
+      "id": "177-origin-invalid-beyond-5y",
+      "kind": "manifest",
+      "description": "Manifest whose origin.not_after is 2031-05-08, more than 5 years after canary.issued_at (2026-05-07). §06 forbids not_after beyond 5 years past issued_at. This vector pairs with 176 (equal-to-issued_at reason) to cover both reason values of E_ORIGIN_INVALID structured details (not_after_beyond_5y vs not_after_not_later_than_issued_at).",
+      "spec_refs": [
+        "§06",
+        "§11"
+      ],
+      "input": "vectors/177-origin-invalid-beyond-5y/input.json",
+      "expected": {
+        "verdict": "reject",
+        "diagnostic": "E_ORIGIN_INVALID",
+        "diagnostic_details": {
+          "reason": "not_after_beyond_5y"
+        }
+      },
+      "context": {
+        "fetched_origin_address": "dkptfyethnbfsj7qsxscia4w6lg4yssjca2gdrqlk457qav2lkna4xqd.onion"
+      }
+    },
+    {
+      "id": "178-manifest-updated-future-skew",
+      "kind": "manifest",
+      "description": "Manifest whose `updated` is set 6 minutes ahead of clock_now (2026-05-07T00:07:00Z vs 2026-05-07T00:01:00Z), exceeding the 300-second future-skew tolerance defined in §10. Per §06:342 and §10:815, this is rejected as E_SCHEMA_FIELD_SYNTAX with structured details reason=future_beyond_skew_tolerance. The manifest is signed correctly and otherwise valid; the temporal-domain failure is the only live violation at Stage 5.",
+      "spec_refs": [
+        "§06",
+        "§10",
+        "§11"
+      ],
+      "input": "vectors/178-manifest-updated-future-skew/input.json",
+      "expected": {
+        "verdict": "reject",
+        "diagnostic": "E_SCHEMA_FIELD_SYNTAX",
+        "diagnostic_details": {
+          "reason": "future_beyond_skew_tolerance"
+        }
+      },
+      "context": {
+        "fetched_origin_address": "dkptfyethnbfsj7qsxscia4w6lg4yssjca2gdrqlk457qav2lkna4xqd.onion"
+      }
+    },
+    {
+      "id": "183-canary-issued-at-future-skew",
+      "kind": "manifest",
+      "description": "Manifest whose canary.issued_at is 2026-05-07T00:07:00Z, 6 minutes ahead of clock_now (2026-05-07T00:01:00Z), exceeding the 300-second future-skew tolerance defined in §10. Per §08:68,156 this is one of the named E_CANARY_INVALID conditions. The manifest signature is valid, the canary interval is within bounds, and `updated` is kept at clock_now-1 to avoid competing with the §06 future-skew check exercised by vector 178: the Stage 8 issued_at check is the only live skew violation.",
+      "spec_refs": [
+        "§08",
+        "§10",
+        "§11"
+      ],
+      "input": "vectors/183-canary-issued-at-future-skew/input.json",
+      "expected": {
+        "verdict": "reject",
+        "diagnostic": "E_CANARY_INVALID"
+      },
+      "context": {
+        "fetched_origin_address": "dkptfyethnbfsj7qsxscia4w6lg4yssjca2gdrqlk457qav2lkna4xqd.onion"
+      }
+    },
+    {
+      "id": "184-canary-runtime-reuse",
+      "kind": "manifest",
+      "description": "Multi-manifest scenario: a previously verified manifest dated 2026-04-30 (carried in extra_files as prior_manifest.json) authorizes runtime_pubkey X. The presented manifest at clock_now (issued_at 2026-05-07) for the same K_publisher.pub declares the same runtime_pubkey X. Per §08 (rc.19 N55) and §11:200, rotation MUST produce a distinct runtime_pubkey; reuse is rejected as E_CANARY_RUNTIME_REUSE at Stage 8. Both manifests are signed correctly and otherwise valid; the rotation-proof failure is the only live Stage 8 violation.",
+      "spec_refs": [
+        "§08",
+        "§11"
+      ],
+      "input": "vectors/184-canary-runtime-reuse/input.json",
+      "expected": {
+        "verdict": "reject",
+        "diagnostic": "E_CANARY_RUNTIME_REUSE",
+        "diagnostic_details": {
+          "runtime_pubkey": "jzFtziEJkbIdjI15I4u3ni3bBa6IFElyyjEmMVSGF7o",
+          "previous_issued_at": "2026-04-30T00:00:00Z",
+          "current_issued_at": "2026-05-07T00:00:00Z"
+        }
+      },
+      "context": {
+        "fetched_origin_address": "dkptfyethnbfsj7qsxscia4w6lg4yssjca2gdrqlk457qav2lkna4xqd.onion",
+        "previously_verified": "vectors/184-canary-runtime-reuse/prior_manifest.json"
+      },
+      "extra_files": [
+        "prior_manifest.json"
+      ]
+    },
+    {
+      "id": "201-migration-chain-cycle",
+      "kind": "manifest",
+      "description": "Two-manifest chain-cycle scenario A -> B -> A. The announcing manifest at origin A carries a migration_pointer to successor B (op_pub_2). The successor at B is signed correctly and binds correctly, but its own migration_pointer announces a return to A. Per §10:436, the per-flow visited_origins set forbids re-adopting an address already visited; B's announcement of A is rejected as E_MIGRATION_INVALID with details.reason='chain_cycle'. The diagnostic is deterministic across conforming clients (any client tracking visited_origins per §10 rejects on the second hop, regardless of chain-depth policy).",
+      "spec_refs": [
+        "§06",
+        "§10",
+        "§11"
+      ],
+      "input": "vectors/201-migration-chain-cycle/input.json",
+      "expected": {
+        "verdict": "reject",
+        "diagnostic": "E_MIGRATION_INVALID",
+        "diagnostic_details": {
+          "reason": "chain_cycle",
+          "announcing_origin_address": "fkhd5flqvbfahfdt7wb3oydc6tltevzfbxogmiaqumezea6qww7rjhid.onion",
+          "successor_origin_address": "dkptfyethnbfsj7qsxscia4w6lg4yssjca2gdrqlk457qav2lkna4xqd.onion"
+        }
+      },
+      "context": {
+        "fetched_origin_address": "dkptfyethnbfsj7qsxscia4w6lg4yssjca2gdrqlk457qav2lkna4xqd.onion",
+        "successor_origin_address": "fkhd5flqvbfahfdt7wb3oydc6tltevzfbxogmiaqumezea6qww7rjhid.onion",
+        "successor_manifest_path": "vectors/201-migration-chain-cycle/successor_manifest.json"
+      },
+      "extra_files": [
+        "successor_manifest.json"
+      ]
     }
   ]
 }

@@ -84,14 +84,14 @@ Requires Python 3.10+ and the `cryptography` package (for raw Ed25519 RFC 8032 s
 | 100-109 | Stage 2 input checks (BOM, UTF-8, byte cap) |
 | 110-119 | Stage 3 JSON parsing (duplicate keys, nesting depth, string length, array length, object keys, malformed JSON) |
 | 120-129 | Stage 4 kind discrimination (spec_version, unknown kind, missing required top-level field) |
-| 130-139 | Stage 5 schema (unknown field, missing required, null literal, unknown block kind, field type, field range, block not permitted in document kind, duplicate uniqueness-required entry, malformed Unicode) |
+| 130-139 | Stage 5 schema (unknown field, missing required, null literal, unknown block kind, field type, field range, block not permitted in document kind, duplicate uniqueness-required entry, malformed Unicode, field-specific length cap) |
 | 140-149 | Numeric grammar (float, exponent, overflow) |
-| 150-159 | Stage 6 signature (modified payload, malformed length, non-canonical S, small-order A, non-canonical R, non-canonical A) |
+| 150-159 | Stage 6 signature (modified payload, malformed length, non-canonical S, small-order A, non-canonical R, non-canonical A, missing-key context) |
 | 160-169 | Strict base64url (padding, alphabet, whitespace) |
-| 170-179 | Stage 9 binding (path mismatch, reserved path, request_hash, origin binding, origin not_after semantic constraints) |
-| 180-189 | Canary (equal `issued_at` conflict, anti-downgrade, interval-bounds violation, runtime-key reuse) |
+| 170-179 | Stage 9 binding (path mismatch, reserved path, request_hash, origin binding, origin not_after semantic constraints including both `reason` values, manifest.updated future-skew) |
+| 180-189 | Canary (equal `issued_at` conflict, anti-downgrade, interval-bounds violation, issued_at future-skew, runtime-key reuse) |
 | 190-199 | Unicode and canonicalization (NFD vs NFC) |
-| 200-209 | Migration scenarios (multi-document; successor manifest in `extra_files`) |
+| 200-209 | Migration scenarios (multi-document; successor manifest in `extra_files`; successor_stage9_failure under `E_MIGRATION_MISMATCH`, chain-cycle under `E_MIGRATION_INVALID`) |
 
 Coverage relative to the §11 diagnostic code catalog remains partial. Codes not yet covered in this corpus fall into the following groups:
 
@@ -100,10 +100,12 @@ Coverage relative to the §11 diagnostic code catalog remains partial. Codes not
 - **Stage 9 binding** sub-codes whose isolation is currently ambiguous: `E_BIND_RESPONSE_PATH`, `E_BIND_REQUEST_ID` (the latter cannot be exercised in isolation from `E_BIND_REQUEST_HASH` because `request_id` is part of the hashed submit body; §10 does not normatively order Stage-9 sub-checks).
 - **Stage 9 origin lifecycle**: `E_ORIGIN_EXPIRED` requires either a SHOULD-only violation between `not_after` and `next_expected` or co-emission with `W_CANARY_EXPIRED`.
 - **Warning-class diagnostics** (`W_CANARY_NEAR_EXPIRATION`, `W_CANARY_EXPIRED`, `W_CANARY_GAP`, `W_CANARY_UNAVAILABLE`, all `W_IMAGE_*`, `W_HISTORICAL_*`): require an `expected.warnings` extension to the vector schema, since warnings coexist with an `accept` verdict.
-- **Canary runtime-key reuse** (`E_CANARY_RUNTIME_REUSE`): requires a multi-manifest scenario establishing a previous verified manifest and presenting a new manifest with the same `runtime_pubkey`.
 - **Image** (`W_IMAGE_*`, all 7 codes): require image bytes in `extra_files` and an `image_response.json` describing the fetched-content type/length; vector schema extension.
 - **State** (`E_STATE_*`, all 6 codes): mostly publisher-side; require submit-flow vector schema.
 - **Historical content** (`E_HISTORICAL_*` including `E_HISTORICAL_NO_PUBLICATION_PROOF`, `W_HISTORICAL_*`): require multi-manifest authorization-history scenarios.
-- **Migration** (`E_MIGRATION_INVALID`): structurally-valid migration_pointer with semantic-check failures other than `successor_stage9_failure`.
 
-Vector-schema extensions (transport metadata, image responses, expected-warnings array, multi-manifest histories) are deferred to a future tranche. The current corpus exercises every diagnostic code reachable within the existing schema.
+The following code is not vector-constructible within the wire-only scope of this corpus:
+
+- **`E_SIG_MALFORMED`**: per §11:173, this diagnostic only applies "in a context where stage-5 wire-side field-syntax validation does not apply". On the wire, signature length and base64url-alphabet violations are reported as `E_SCHEMA_FIELD_SYNTAX` at Stage 5 per §04 and §10 first-failing-stage precedence (exercised by vector 151). There is no wire-side construction that bypasses Stage 5 and reaches the Stage 6 raw-signature-decode path; the diagnostic is reachable only from out-of-band signature decoding (an implementation API surface that the corpus does not exercise).
+
+Vector-schema extensions (transport metadata, image responses, expected-warnings array, multi-manifest histories) are deferred to a future tranche. The current corpus exercises every diagnostic code reachable within the existing schema, except `E_SIG_MALFORMED` (not vector-constructible as documented above).

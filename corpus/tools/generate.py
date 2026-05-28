@@ -1540,6 +1540,317 @@ def negative_vectors(keys) -> list[dict]:
         context={"fetched_origin_address": m_182["origin"]["address"]},
     ))
 
+    # =====================================================================
+    # rc.19 Lotto 16 corpus additions: vectors filling diagnostic codes
+    # that remained zero-covered after rc.18 Phase-1 but are reachable
+    # within the existing single-document or already-supported
+    # multi-manifest schema. Each vector observes the corpus isolation
+    # rule (only the targeted diagnostic-relevant violation is live at
+    # the first failing pipeline stage).
+    # =====================================================================
+
+    # ---- 139-schema-field-length (Stage 5, E_SCHEMA_FIELD_LENGTH) ----
+    # Manifest whose canary.statement is a 201-byte ASCII string, one byte
+    # above the 200-byte cap declared in §08:112. The string is well within
+    # the Stage 3 100 KiB parser cap (§04) so Stage 3 passes; Stage 5
+    # schema validation fires the field-specific length cap as distinct
+    # from the parser-level cap that E_PARSE_STRING_LENGTH covers.
+    statement_201 = "x" * 201
+    m_139 = make_manifest(
+        publisher_priv=pp, publisher_pub=pp_pub,
+        origin_pub=op_pub, runtime_pub=rp_pub,
+    )
+    m_139["canary"]["statement"] = statement_201
+    m_139["sig"] = sign(pp, CTX_MANIFEST, m_139)
+    out.append(vec(
+        "139-schema-field-length",
+        kind="manifest",
+        description=(
+            "Manifest whose canary.statement is a 201-byte ASCII string, "
+            "one byte above the 200-byte cap declared in §08:112. The "
+            "string is well within the Stage 3 100 KiB parser cap (§04) "
+            "so Stage 3 passes; Stage 5 schema validation fires "
+            "E_SCHEMA_FIELD_LENGTH for the field-specific cap, distinct "
+            "from the parser-level E_PARSE_STRING_LENGTH (vector 112)."
+        ),
+        spec_refs=["§08", "§11"],
+        verdict="reject",
+        diagnostic="E_SCHEMA_FIELD_LENGTH",
+        body_obj=m_139,
+        context={"fetched_origin_address": m_139["origin"]["address"]},
+    ))
+
+    # ---- 156-sig-invalid-key-no-manifest (Stage 6, E_SIG_INVALID_KEY) ----
+    # Content document presented without any previously verified manifest
+    # for its publisher. Per §11:175, the absence of an authorized
+    # runtime_pubkey to verify against is E_SIG_INVALID_KEY, distinct
+    # from E_SIG_VERIFICATION (signature decoded and the verify equation
+    # failed). The content body and signature are themselves well-formed;
+    # the failure is the missing key context. Vector context deliberately
+    # omits `expected_runtime_pubkey` and `previously_verified` to model
+    # the no-manifest condition.
+    c_156 = make_content(runtime_priv=rp, path="/articles/orphan-content")
+    out.append(vec(
+        "156-sig-invalid-key-no-manifest",
+        kind="content",
+        description=(
+            "Content document presented without any verified manifest "
+            "supplying an authorized runtime_pubkey for the publisher. "
+            "Per §11:172,175 the absence of the expected verification "
+            "key yields E_SIG_INVALID_KEY, distinct from "
+            "E_SIG_VERIFICATION which requires a key that decodes and "
+            "fails the verify equation. The content body and signature "
+            "are themselves well-formed; the failure is the missing key "
+            "context. Vector context deliberately omits "
+            "expected_runtime_pubkey and previously_verified."
+        ),
+        spec_refs=["§05", "§11"],
+        verdict="reject",
+        diagnostic="E_SIG_INVALID_KEY",
+        body_obj=c_156,
+        context={"fetched_path": c_156["path"]},
+    ))
+
+    # ---- 177-origin-invalid-beyond-5y (E_ORIGIN_INVALID, second reason) ----
+    # Manifest whose origin.not_after is more than 5 years after
+    # canary.issued_at. §06 caps not_after at 5 years past issued_at; this
+    # vector pairs with 176 (the not_after_not_later_than_issued_at reason)
+    # to cover both reason values declared in §11 E_ORIGIN_INVALID
+    # structured details.
+    m_177 = make_manifest(
+        publisher_priv=pp, publisher_pub=pp_pub,
+        origin_pub=op_pub, runtime_pub=rp_pub,
+        not_after="2031-05-08T00:00:00Z",  # >5y after issued_at 2026-05-07
+    )
+    out.append(vec(
+        "177-origin-invalid-beyond-5y",
+        kind="manifest",
+        description=(
+            "Manifest whose origin.not_after is 2031-05-08, more than 5 "
+            "years after canary.issued_at (2026-05-07). §06 forbids "
+            "not_after beyond 5 years past issued_at. This vector pairs "
+            "with 176 (equal-to-issued_at reason) to cover both reason "
+            "values of E_ORIGIN_INVALID structured details "
+            "(not_after_beyond_5y vs not_after_not_later_than_issued_at)."
+        ),
+        spec_refs=["§06", "§11"],
+        verdict="reject",
+        diagnostic="E_ORIGIN_INVALID",
+        diagnostic_details={"reason": "not_after_beyond_5y"},
+        body_obj=m_177,
+        context={"fetched_origin_address": m_177["origin"]["address"]},
+    ))
+
+    # ---- 178-manifest-updated-future-skew (Stage 5, E_SCHEMA_FIELD_SYNTAX) ----
+    # Manifest whose `updated` is set to 2026-05-07T00:07:00Z, six minutes
+    # ahead of clock_now (2026-05-07T00:01:00Z), exceeding the 300-second
+    # future-skew tolerance defined in §10. Per §06:342 and §10:815, this
+    # is rejected as E_SCHEMA_FIELD_SYNTAX with structured details
+    # reason="future_beyond_skew_tolerance". Distinct from canary
+    # issued_at future skew (vector 183, which yields E_CANARY_INVALID).
+    m_178 = make_manifest(
+        publisher_priv=pp, publisher_pub=pp_pub,
+        origin_pub=op_pub, runtime_pub=rp_pub,
+        updated="2026-05-07T00:07:00Z",
+    )
+    out.append(vec(
+        "178-manifest-updated-future-skew",
+        kind="manifest",
+        description=(
+            "Manifest whose `updated` is set 6 minutes ahead of clock_now "
+            "(2026-05-07T00:07:00Z vs 2026-05-07T00:01:00Z), exceeding "
+            "the 300-second future-skew tolerance defined in §10. Per "
+            "§06:342 and §10:815, this is rejected as "
+            "E_SCHEMA_FIELD_SYNTAX with structured details "
+            "reason=future_beyond_skew_tolerance. The manifest is signed "
+            "correctly and otherwise valid; the temporal-domain failure "
+            "is the only live violation at Stage 5."
+        ),
+        spec_refs=["§06", "§10", "§11"],
+        verdict="reject",
+        diagnostic="E_SCHEMA_FIELD_SYNTAX",
+        diagnostic_details={"reason": "future_beyond_skew_tolerance"},
+        body_obj=m_178,
+        context={"fetched_origin_address": m_178["origin"]["address"]},
+    ))
+
+    # ---- 183-canary-issued-at-future-skew (Stage 8, E_CANARY_INVALID) ----
+    # Manifest whose canary.issued_at is 6 minutes ahead of clock_now,
+    # exceeding the 300-second future-skew tolerance defined in §10. Per
+    # §08:68,156 this is one of the named E_CANARY_INVALID conditions
+    # (issued_at implausibly in the future). The manifest signature is
+    # valid and the canary interval falls within the 7-to-30-day bounds;
+    # the only live violation at Stage 8 is the temporal-skew check.
+    m_183 = make_manifest(
+        publisher_priv=pp, publisher_pub=pp_pub,
+        origin_pub=op_pub, runtime_pub=rp_pub,
+        issued_at="2026-05-07T00:07:00Z",
+        next_expected="2026-06-06T00:07:00Z",
+        updated="2026-05-07T00:00:00Z",
+    )
+    out.append(vec(
+        "183-canary-issued-at-future-skew",
+        kind="manifest",
+        description=(
+            "Manifest whose canary.issued_at is 2026-05-07T00:07:00Z, 6 "
+            "minutes ahead of clock_now (2026-05-07T00:01:00Z), "
+            "exceeding the 300-second future-skew tolerance defined in "
+            "§10. Per §08:68,156 this is one of the named "
+            "E_CANARY_INVALID conditions. The manifest signature is "
+            "valid, the canary interval is within bounds, and `updated` "
+            "is kept at clock_now-1 to avoid competing with the §06 "
+            "future-skew check exercised by vector 178: the Stage 8 "
+            "issued_at check is the only live skew violation."
+        ),
+        spec_refs=["§08", "§10", "§11"],
+        verdict="reject",
+        diagnostic="E_CANARY_INVALID",
+        body_obj=m_183,
+        context={"fetched_origin_address": m_183["origin"]["address"]},
+    ))
+
+    # ---- 184-canary-runtime-reuse (Stage 8, E_CANARY_RUNTIME_REUSE) ----
+    # Multi-manifest scenario: the previously verified manifest is dated
+    # 2026-04-30 (carried in extra_files to avoid coupling to the 001
+    # positive fixture and keep the live manifest at clock_now without
+    # creating a future-skew confound). The presented manifest at
+    # clock_now (issued_at 2026-05-07) declares the same runtime_pubkey
+    # as the prior. Per §08 (rc.19 N55) and §11:200, rotation MUST
+    # produce a distinct runtime_pubkey; reuse is rejected as
+    # E_CANARY_RUNTIME_REUSE at Stage 8. Both the prior and the
+    # presented manifest are signed correctly, are within canary
+    # interval bounds, and have updated <= clock_now+300s so the only
+    # live Stage 8 violation is the rotation-proof failure.
+    m_184_prior = make_manifest(
+        publisher_priv=pp, publisher_pub=pp_pub,
+        origin_pub=op_pub, runtime_pub=rp_pub,
+        issued_at="2026-04-30T00:00:00Z",
+        next_expected="2026-05-30T00:00:00Z",
+        updated="2026-04-30T00:00:00Z",
+    )
+    m_184_prior_bytes = json.dumps(
+        m_184_prior, separators=(",", ":"), ensure_ascii=False
+    ).encode("utf-8")
+    m_184 = make_manifest(
+        publisher_priv=pp, publisher_pub=pp_pub,
+        origin_pub=op_pub, runtime_pub=rp_pub,
+        # default issued_at=2026-05-07, updated=2026-05-07; same runtime_pub
+    )
+    out.append(vec(
+        "184-canary-runtime-reuse",
+        kind="manifest",
+        description=(
+            "Multi-manifest scenario: a previously verified manifest "
+            "dated 2026-04-30 (carried in extra_files as "
+            "prior_manifest.json) authorizes runtime_pubkey X. The "
+            "presented manifest at clock_now (issued_at 2026-05-07) for "
+            "the same K_publisher.pub declares the same runtime_pubkey "
+            "X. Per §08 (rc.19 N55) and §11:200, rotation MUST produce "
+            "a distinct runtime_pubkey; reuse is rejected as "
+            "E_CANARY_RUNTIME_REUSE at Stage 8. Both manifests are "
+            "signed correctly and otherwise valid; the rotation-proof "
+            "failure is the only live Stage 8 violation."
+        ),
+        spec_refs=["§08", "§11"],
+        verdict="reject",
+        diagnostic="E_CANARY_RUNTIME_REUSE",
+        diagnostic_details={
+            "runtime_pubkey": b64u(rp_pub),
+            "previous_issued_at": "2026-04-30T00:00:00Z",
+            "current_issued_at": "2026-05-07T00:00:00Z",
+        },
+        body_obj=m_184,
+        context={
+            "fetched_origin_address": m_184["origin"]["address"],
+            "previously_verified": "vectors/184-canary-runtime-reuse/prior_manifest.json",
+        },
+        extra_files={
+            "prior_manifest.json": m_184_prior_bytes,
+        },
+    ))
+
+    # ---- 201-migration-chain-cycle (E_MIGRATION_INVALID chain_cycle) ----
+    #
+    # Two-manifest scenario realizing the deterministic A -> B -> A chain
+    # cycle. The announcing manifest at origin A (op_pub) carries a
+    # migration_pointer to successor B (op_pub_2). The successor manifest
+    # at B is signed correctly and binds correctly, but its own
+    # migration_pointer announces a return to A (op_pub). Per §10:436,
+    # the visited_origins set populated during a single migration
+    # resolution flow forbids re-adopting an address already in the set;
+    # B's announcement of A is therefore rejected as E_MIGRATION_INVALID
+    # with details.reason="chain_cycle". The diagnostic is deterministic
+    # across conforming clients: any client tracking visited_origins per
+    # §10 will reject on the second hop regardless of chain-depth policy.
+    # The vector pairs the announcing manifest at A as the primary input;
+    # the successor manifest at B is provided in extra_files. The verdict
+    # refers to the migration adoption outcome, not the in-isolation
+    # validity of the announcing manifest.
+    op_pub_2_201 = keys["origin_pub_2"]
+    address_a = onion_address(op_pub)
+    address_b = onion_address(op_pub_2_201)
+    successor_b = make_manifest(
+        publisher_priv=pp, publisher_pub=pp_pub,
+        origin_pub=op_pub_2_201, runtime_pub=rp_pub,
+        migration_pointer={
+            "successor_origin": {
+                "carrier": "tor-v3",
+                "address": address_a,  # back to A
+                "origin_pubkey": b64u(op_pub),
+            },
+            "announced_at": "2026-05-07T00:00:00Z",
+        },
+    )
+    successor_b_bytes = json.dumps(
+        successor_b, separators=(",", ":"), ensure_ascii=False
+    ).encode("utf-8")
+    announcing_a = make_manifest(
+        publisher_priv=pp, publisher_pub=pp_pub,
+        origin_pub=op_pub, runtime_pub=rp_pub,
+        migration_pointer={
+            "successor_origin": {
+                "carrier": "tor-v3",
+                "address": address_b,
+                "origin_pubkey": b64u(op_pub_2_201),
+            },
+            "announced_at": "2026-05-07T00:00:00Z",
+        },
+    )
+    out.append(vec(
+        "201-migration-chain-cycle",
+        kind="manifest",
+        description=(
+            "Two-manifest chain-cycle scenario A -> B -> A. The "
+            "announcing manifest at origin A carries a migration_pointer "
+            "to successor B (op_pub_2). The successor at B is signed "
+            "correctly and binds correctly, but its own "
+            "migration_pointer announces a return to A. Per §10:436, "
+            "the per-flow visited_origins set forbids re-adopting an "
+            "address already visited; B's announcement of A is rejected "
+            "as E_MIGRATION_INVALID with details.reason='chain_cycle'. "
+            "The diagnostic is deterministic across conforming clients "
+            "(any client tracking visited_origins per §10 rejects on "
+            "the second hop, regardless of chain-depth policy)."
+        ),
+        spec_refs=["§06", "§10", "§11"],
+        verdict="reject",
+        diagnostic="E_MIGRATION_INVALID",
+        diagnostic_details={
+            "reason": "chain_cycle",
+            "announcing_origin_address": address_b,
+            "successor_origin_address": address_a,
+        },
+        body_obj=announcing_a,
+        context={
+            "fetched_origin_address": address_a,
+            "successor_origin_address": address_b,
+            "successor_manifest_path": "vectors/201-migration-chain-cycle/successor_manifest.json",
+        },
+        extra_files={
+            "successor_manifest.json": successor_b_bytes,
+        },
+    ))
+
     return out
 
 
