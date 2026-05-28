@@ -235,6 +235,30 @@ The publisher MAY reject submits exceeding this size with `413 Payload Too Large
 
 The client SHOULD validate body size before transmission and refuse to submit oversize bodies.
 
+The client-side preflight check applies to the exact UTF-8 JSON byte sequence the client intends to transmit, not to an abstract submit-body object or to a hypothetical alternative serialization.
+
+For request-mode state, §07 adds a stronger retained-state invariant: the client rejects a request-mode `set` operation before it is committed if the retained request state would no longer fit even in the minimal submit body defined there. This prevents request-state accumulation from making all future submits impossible before any user-entered `fields` are considered.
+
+### Submit body budget partition
+
+The 64 KiB submit body cap is partitioned into three normative reserves so that the declared maximum request-state load and a minimally-submittable form always coexist within the cap:
+
+```text
+overhead_reserve + field_min_reserve + state_budget = 65536 bytes
+```
+
+with the values:
+
+* `overhead_reserve = 4096 bytes` - the allowance for the submit-body envelope: `request_id` (22 ASCII chars on the wire plus JSON quoting), `in_response_to` and any other top-level non-state non-fields keys defined in this section, JSON structural bytes (braces, commas, key strings, quoting), and a margin for future additive envelope fields under the rc-cycle additive-field rule (§11);
+* `field_min_reserve = 8192 bytes` - the allowance reserved for the user-entered `fields` portion of the submit, sized so that a publisher's form whose required fields' minimal lengths fit within this reserve is always submittable alongside a maximally-loaded request_state. This is a *reserve*, not a cap: the `fields` portion of an individual submit MAY exceed `field_min_reserve` provided the total submit body remains within 64 KiB at submit time per the local validation rule above;
+* `state_budget = 65536 - overhead_reserve - field_min_reserve = 53248 bytes` - the budget against which a manifest's `state_policy` declared aggregate is evaluated at manifest validation (§07).
+
+The partition is defined in terms of **encoded bytes on the wire**: for request-state entries, this is the JSON-encoded contribution to the `request_state` array (entry object with `namespace`, `key`, and `value` strings, including JSON quoting, escaping required by RFC 8259 for the declared character class, and array delimiters between entries), evaluated against the worst-case `value` length equal to the entry's `max_size` per §07. For form fields under `field_min_reserve`, "encoded bytes" similarly counts the wire-form contribution to the `fields` object (key, value, quoting, structural commas). The partition does NOT measure raw `value` byte lengths in isolation; an implementation that treats raw lengths as encoded lengths underestimates the wire load and may declare conformant a policy that is in fact over-budget.
+
+The specific values of `overhead_reserve` and `field_min_reserve` are normative; an implementation MUST evaluate the §07 `state_policy` invariant against `state_budget = 53248 bytes` exactly. The split is a normative judgment about how much mandatory request-state load is reasonable per submit: smaller `state_budget` favors form-heavy publishers, larger `state_budget` favors session-state-heavy publishers, and the chosen value of 53248 bytes (about 81% of the cap) reflects that mandatory state is the load that triggers the deadlock the partition is designed to prevent. The split MAY be re-tuned in a future protocol version; a v1.0-conforming implementation uses the values above.
+
+Operational note on §09 vs §03 field-count limits: §09 permits a `fields` object containing up to 32 key-value pairs (the transport-level upper bound). The §03 `submit_form` block declaration permits up to 16 fields per form. The wire `fields` object is constructed by the client from the user-entered form data; the per-form limit in §03 is the relevant declarative bound a publisher exercises through the schema, and the per-submit-body limit in §09 is the transport-level upper bound. The two limits are not contradictory: a single `submit_form` cannot declare more than 16 fields, but a wire submit body that originates from a `submit_form` carries at most those 16 declared fields (plus, in principle, any allowed extension a future protocol version might introduce within the §09 transport limit of 32).
+
 ### Submit validation timing
 
 A publisher SHOULD NOT early-exit submit validation on the first failing stage. The natural sequential validation path - JSON parse, JCS canonicalization, schema check, `request_state` policy check, `request_hash` computation - exposes the rejecting stage as a server-side timing signal that an attacker probing with crafted submit bodies can sample without authentication. The signal is small per-request but accumulates across probes and can be sufficient to infer publisher-side state (declared `state_policy`, `(namespace, key)` activity, backend availability) that the wire response does not expose.

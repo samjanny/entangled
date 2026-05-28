@@ -104,6 +104,18 @@ A `state_policy` array MUST NOT contain two entries with the same combination of
 
 The `state_policy` array MUST NOT contain more than 32 entries.
 
+### Submit budget satisfiability
+
+A manifest's `state_policy` MUST be satisfiable under the §09 submit body budget partition: the aggregate worst-case encoded wire contribution of all request-mode entries, computed as if every request-mode entry held a `value` of exactly its declared `max_size`, MUST NOT exceed `state_budget` defined in §09 ("Submit body budget partition").
+
+Aggregate encoded wire contribution is the sum, across all `state_policy` entries whose `mode` is `request`, of the JSON-encoded bytes that entry would contribute to the `request_state` array of a submit body when its retained `value` is at the declared `max_size`. The contribution includes the entry's JSON object structure, the `namespace` and `key` string values with required JSON quoting and escaping, the worst-case `value` string with the same encoding rules, and the array delimiter introduced by appending the entry to the `request_state` array. Client-only entries (`mode = "client_only"`) do not contribute to this aggregate, since client-only state is never transmitted in submit bodies.
+
+A manifest whose `state_policy` aggregate exceeds `state_budget` is rejected at Stage 5 manifest schema validation as `E_SUBMIT_BUDGET` (§11), with `details.component = "state"`. The check is deterministic and computable from the manifest payload alone; it does not depend on the client's current retained state.
+
+This invariant is distinct from the runtime client-side `E_STATE_TRANSMIT_BUDGET` rule below ("Request-state transmit budget"). The satisfiability invariant ensures that no conforming publisher can declare a `state_policy` under which even the worst-case retained request-state load would overflow the submit budget; it rejects the manifest at validation. The transmit budget rule ensures that, given a satisfiable policy, the client never accumulates retained state that overflows; it rejects an individual `set` operation at runtime. Both are required: the satisfiability invariant prevents publishers from declaring an unsatisfiable contract, and the transmit budget rule prevents the client from drifting into an unsatisfiable state under a contract that was satisfiable at declaration.
+
+This invariant bounds the deadlock vector in which a compromised `K_runtime` repeatedly issues `set` operations that fill state to the policy's declared maxima: under a satisfiable policy, even a maximally-filled retained state remains within `state_budget`, and the resulting minimal submit body remains within the 64 KiB cap.
+
 ### `namespace`
 
 `namespace` is an ASCII slug identifying a logical group of state items.
@@ -318,7 +330,7 @@ The client MUST obtain explicit user consent before committing any state set ope
 
 A set operation in a transaction document is a request, not a command. The client MAY perform other actions in response to the transaction, including rendering the response blocks, before, during, or after consent is decided.
 
-Rejecting a state update on consent or storage grounds does not reject the transaction document. The transaction may still be valid and renderable even if the client refuses the requested state change.
+Rejecting a state update on consent, storage, or transmit-budget grounds does not reject the transaction document. The transaction may still be valid and renderable even if the client refuses the requested state change.
 
 This rule is distinct from rejection of the transaction document itself on schema or policy grounds. The failure taxonomy for state updates is:
 
@@ -326,8 +338,9 @@ This rule is distinct from rejection of the transaction document itself on schem
 * **Policy failure.** A set operation referencing a `(namespace, key)` combination not declared in the current manifest's `state_policy` (see "namespace and key" above) rejects the entire transaction document. The same applies to a set operation whose `value` exceeds the policy's `max_size` or whose `ttl` exceeds the policy's `max_lifetime`.
 * **Consent failure.** The user declines the consent prompt for a set operation, or remembered-consent state does not authorize the operation. The state operation is rejected; the transaction document remains valid and renderable.
 * **Storage failure.** The client cannot commit the state operation because the per-publisher storage cap (see "Storage limits" above) would be exceeded, or a local write fails. The state operation is rejected; the transaction document remains valid and renderable.
+* **Transmit-budget failure.** A request-mode set operation would make future submit transmission impossible under the 64 KiB submit-body cap because the retained request state would no longer fit even in an otherwise-empty submit. The state operation is rejected; the transaction document remains valid and renderable.
 
-Schema and policy failures are hard-fail on the document; consent and storage failures are soft-fail on the individual state operation. The protocol enforces this distinction so that a publisher cannot prevent the rendering of a transaction response by requesting state the client refuses to store, and conversely so that a malformed or out-of-policy state update is not silently dropped.
+Schema and policy failures are hard-fail on the document; consent, storage, and transmit-budget failures are soft-fail on the individual state operation. The protocol enforces this distinction so that a publisher cannot prevent the rendering of a transaction response by requesting state the client refuses to store, and conversely so that a malformed or out-of-policy state update is not silently dropped.
 
 ## Consent presentation
 
@@ -441,6 +454,24 @@ Request state MUST NOT be attached to:
 * any request other than submit requests.
 
 Client-only state items are never included in submit request bodies, regardless of consent state.
+
+## Request-state transmit budget
+
+Request-mode state is retained so that the client can attach it automatically to future submits. A conforming client MUST ensure that retained request-mode state never makes even an otherwise-empty submit body untransmittable under the 64 KiB limit in §09.
+
+For this purpose, define the **minimal submit body** for a publisher as the submit body object the client would transmit with:
+
+* `fields` equal to the empty object `{}`;
+* `request_state` equal to all non-expired retained request-mode state items for that `K_publisher.pub`, in the wire form defined by §09;
+* `request_id` equal to any syntactically valid 22-character request identifier. The particular value is irrelevant because every valid `request_id` has the same wire length.
+
+The client MUST compute the byte length of the exact UTF-8 JSON byte sequence it would transmit for this minimal submit body. That byte length MUST NOT exceed 64 KiB.
+
+The client MUST NOT silently drop, truncate, or omit retained request-mode state items in order to satisfy this requirement. If committing a request-mode `set` operation would cause the minimal submit body to exceed 64 KiB, the client MUST reject that state operation, leave previously retained state unchanged, and report `E_STATE_TRANSMIT_BUDGET` (§11). The transaction document requesting the state change remains valid and renderable.
+
+This rule applies only to request-mode state. Client-only state is not counted toward the transmit budget because it is never attached to network requests.
+
+This rule bounds state-induced submit deadlock. It does not guarantee that every possible user input in `fields` fits within the submit-body cap; submit-time local validation of user-entered fields remains required by §03 and §09.
 
 ## Expiration
 

@@ -158,11 +158,20 @@ The structured diagnostic format for `E_PARSE_DUPLICATE_KEY` SHOULD include in `
 | `E_SCHEMA_NULL_VALUE`          | error    | any           | A `null` literal appears in the document; null values are not permitted                                                                                   |
 | `E_SCHEMA_NON_INTEGER`         | error    | any           | A numeric value is not a non-negative integer permitted by the schema                                                                                     |
 | `E_SCHEMA_MALFORMED_UNICODE`   | error    | any           | A string contains malformed Unicode escape sequences or isolated surrogates                                                                               |
+| `E_SUBMIT_BUDGET`              | error    | manifest      | The manifest's `state_policy` declares an aggregate worst-case request-state encoded contribution exceeding the `state_budget` defined in §09 ("Submit body budget partition"). The check is performed at Stage 5 schema validation against the declared `state_policy` only; it does not depend on retained client state. See §07 "Submit budget satisfiability". |
 
 The structured diagnostic format for `E_SCHEMA_DUPLICATE_ENTRY` SHOULD include in `details`:
 
 * `field_path`: a JSON pointer or dot-path identifying the array containing the duplicate;
 * `duplicate_value`: the duplicated entry value, or for composite uniqueness keys (such as `(namespace, key)`), an object identifying the duplicated key components.
+
+The structured diagnostic format for `E_SUBMIT_BUDGET` SHOULD include in `details`:
+
+* `component`: a short identifier of the component whose budget was exceeded. For v1.0, the only defined value is `"state"`, indicating the `state_policy` satisfiability invariant of §07. The field is present and explicit so that future protocol versions may extend it (for example, a `fields` component if a publisher-declared minimal-form invariant is added) without breaking existing diagnostic consumers;
+* `declared_bytes`: the computed aggregate worst-case encoded wire contribution that exceeded the budget;
+* `budget_bytes`: the applicable budget value (53248 for `component = "state"` per §09).
+
+`E_SUBMIT_BUDGET` is distinct from `E_STATE_TRANSMIT_BUDGET` (Stage 5 manifest schema validation vs runtime client-side soft-fail on individual `set` operations). The former rejects a publisher-declared policy that could never produce a satisfiable submit; the latter rejects an individual `set` operation under an otherwise-satisfiable policy when the client's runtime accumulation would overflow.
 
 ## Signature diagnostics (Stage 6)
 
@@ -274,6 +283,7 @@ State diagnostics arise during state operation processing. They are related to t
 | `E_STATE_TTL`                | error    | transaction   | A state set operation `ttl` is outside permitted bounds: 300 to 7776000 seconds and within `max_lifetime` |
 | `E_STATE_OP`                 | error    | transaction   | A state update operation has an unknown `op` value or is missing required fields for its operation form   |
 | `E_STATE_STORAGE_CAP`        | error    | transaction   | The client's per-publisher storage cap would be exceeded by the operation                                 |
+| `E_STATE_TRANSMIT_BUDGET`    | error    | transaction   | Committing the request-mode state operation would make the retained request state exceed the 64 KiB minimal-submit transmit budget; the state operation is rejected locally |
 | `E_STATE_DUPLICATE`          | error    | transaction   | The `request_state` array of a submit body contains duplicate `(namespace, key)` pairs                    |
 | `I_STATE_CONSENT_REJECTED`   | info     | transaction   | The user rejected a state set operation                                                                   |
 | `I_STATE_CONSENT_REMEMBERED` | info     | transaction   | The user remembered consent for a state item                                                              |
@@ -283,7 +293,16 @@ The structured diagnostic format for `E_STATE_DUPLICATE` SHOULD include in `deta
 * `duplicate_namespace`: the namespace of the duplicated entry;
 * `duplicate_key`: the key of the duplicated entry.
 
+The structured diagnostic format for `E_STATE_TRANSMIT_BUDGET` SHOULD include in `details`:
+
+* `namespace`: the namespace of the rejected state item;
+* `key`: the key of the rejected state item;
+* `projected_bytes`: the byte length of the minimal submit body that would result if the item were committed;
+* `cap_bytes`: the protocol limit, 65536.
+
 `E_STATE_DUPLICATE` is a publisher-side diagnostic in practice: the publisher detects it when parsing the submit body. A conformant client never generates it.
+
+`E_STATE_TRANSMIT_BUDGET` is a client-side diagnostic: it arises when the client evaluates whether a request-mode `set` operation may be retained without making future submits impossible under the §07/§09 transmit-budget rule.
 
 A rejected state set operation does not necessarily invalidate the transaction document. It means the requested state change was not committed. The transaction response may still render as defined in §07 and §10.
 

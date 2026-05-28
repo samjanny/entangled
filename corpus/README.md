@@ -85,7 +85,7 @@ Requires Python 3.10+ and the `cryptography` package (for raw Ed25519 RFC 8032 s
 | 110-119 | Stage 3 JSON parsing (duplicate keys, nesting depth, string length, array length, object keys, malformed JSON) |
 | 120-129 | Stage 4 kind discrimination (spec_version, unknown kind, missing required top-level field) |
 | 130-139 | Stage 5 schema (unknown field, missing required, null literal, unknown block kind, field type, field range, block not permitted in document kind, duplicate uniqueness-required entry, malformed Unicode, field-specific length cap) |
-| 140-149 | Numeric grammar (float, exponent, overflow) |
+| 140-149 | Numeric grammar (float, exponent, overflow); Stage 5 semantic (submit budget state overflow) |
 | 150-159 | Stage 6 signature (modified payload, malformed length, non-canonical S, small-order A, non-canonical R, non-canonical A, missing-key context) |
 | 160-169 | Strict base64url (padding, alphabet, whitespace) |
 | 170-179 | Stage 9 binding (path mismatch, reserved path, request_hash, origin binding, origin not_after semantic constraints including both `reason` values, manifest.updated future-skew) |
@@ -101,7 +101,7 @@ Coverage relative to the §11 diagnostic code catalog remains partial. Codes not
 - **Stage 9 origin lifecycle**: `E_ORIGIN_EXPIRED` requires either a SHOULD-only violation between `not_after` and `next_expected` or co-emission with `W_CANARY_EXPIRED`.
 - **Warning-class diagnostics** (`W_CANARY_NEAR_EXPIRATION`, `W_CANARY_EXPIRED`, `W_CANARY_GAP`, `W_CANARY_UNAVAILABLE`, all `W_IMAGE_*`, `W_HISTORICAL_*`): require an `expected.warnings` extension to the vector schema, since warnings coexist with an `accept` verdict.
 - **Image** (`W_IMAGE_*`, all 7 codes): require image bytes in `extra_files` and an `image_response.json` describing the fetched-content type/length; vector schema extension.
-- **State** (`E_STATE_*`, all 6 codes): mostly publisher-side; require submit-flow vector schema.
+- **State** (`E_STATE_*`, all 7 codes): mostly publisher-side; require submit-flow vector schema. The Stage 5 manifest-validation portion of the submit-budget machinery (`E_SUBMIT_BUDGET` with `details.component = "state"`) IS covered by a single-document vector (143-submit-budget-state-overflow) and does not require the submit-flow extension; only the runtime client-side `E_STATE_TRANSMIT_BUDGET` and the other `E_STATE_*` codes that depend on transaction-document processing remain deferred.
 - **Historical content** (`E_HISTORICAL_*` including `E_HISTORICAL_NO_PUBLICATION_PROOF`, `W_HISTORICAL_*`): require multi-manifest authorization-history scenarios.
 
 The following conditions are not vector-constructible within the wire-only scope of this corpus:
