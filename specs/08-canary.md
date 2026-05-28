@@ -95,7 +95,7 @@ A client receiving a manifest with `next_expected - issued_at` outside the permi
 
 `statement` is a human-readable text that the publisher includes in the canary as the substance of the warrant.
 
-It is a UTF-8 string. It MUST NOT exceed 2048 bytes when encoded as UTF-8. It MUST NOT contain control characters in the range U+0000 through U+001F or the value U+007F, except for the line feed character U+000A which is permitted to support multi-line statements.
+It is a UTF-8 string. It MUST NOT exceed 2048 bytes when encoded as UTF-8. It MUST NOT contain control characters in the range U+0000 through U+001F or the value U+007F, except for the line feed character U+000A which is permitted to support multi-line statements. It is subject to the §04 Unicode normalization rule for user-visible strings: `statement` MUST be encoded in Normalization Form C (NFC). A non-NFC `statement` is rejected at schema validation with `E_SCHEMA_FIELD_SYNTAX` per §04 and §11.
 
 Line feed is permitted only as plain text formatting. It has no markup semantics.
 
@@ -109,7 +109,7 @@ The protocol attaches no semantic meaning to the contents of the statement. The 
 
 `freshness_proof` is an optional field by which the publisher may anchor the canary to a temporal reference outside the publisher's control.
 
-When present, it is a UTF-8 string not exceeding 200 bytes. It MUST NOT contain control characters.
+When present, it is a UTF-8 string not exceeding 200 bytes. It MUST NOT contain control characters. It is subject to the §04 Unicode normalization rule for user-visible strings: `freshness_proof` MUST be encoded in Normalization Form C (NFC), consistent with the §04:140 rule applied to any field a conforming client renders as user-visible text (see §08:121 and §10:706 for the rendering requirement that makes `freshness_proof` subject to NFC). A non-NFC `freshness_proof` is rejected at schema validation with `E_SCHEMA_FIELD_SYNTAX` per §04 and §11.
 
 Common uses include:
 

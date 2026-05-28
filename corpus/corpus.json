@@ -917,6 +917,23 @@
       ]
     },
     {
+      "id": "191-unicode-nfd-freshness-proof",
+      "kind": "manifest",
+      "description": "Manifest whose canary.freshness_proof contains a decomposed combining mark (NFD) rather than the precomposed NFC form. Per §04 and the §08 explicit NFC rule for freshness_proof (rc.19 N59), user-visible strings must be in NFC. Rejected at schema validation with E_SCHEMA_FIELD_SYNTAX before signature verification. Parity with vector 190 for canary.statement.",
+      "spec_refs": [
+        "§04",
+        "§08"
+      ],
+      "input": "vectors/191-unicode-nfd-freshness-proof/input.json",
+      "expected": {
+        "verdict": "reject",
+        "diagnostic": "E_SCHEMA_FIELD_SYNTAX"
+      },
+      "context": {
+        "fetched_origin_address": "dkptfyethnbfsj7qsxscia4w6lg4yssjca2gdrqlk457qav2lkna4xqd.onion"
+      }
+    },
+    {
       "id": "201-migration-chain-cycle",
       "kind": "manifest",
       "description": "Two-manifest chain-cycle scenario A -> B -> A. The announcing manifest at origin A carries a migration_pointer to successor B (op_pub_2). The successor at B is signed correctly and binds correctly, but its own migration_pointer announces a return to A. Per §10:436, the per-flow visited_origins set forbids re-adopting an address already visited; B's announcement of A is rejected as E_MIGRATION_INVALID with details.reason='chain_cycle'. The diagnostic is deterministic across conforming clients (any client tracking visited_origins per §10 rejects on the second hop, regardless of chain-depth policy).",

@@ -1769,6 +1769,48 @@ def negative_vectors(keys) -> list[dict]:
         },
     ))
 
+    # ---- 191-unicode-nfd-freshness-proof (Stage 5, E_SCHEMA_FIELD_SYNTAX) ----
+    # Parity with vector 190 (statement NFD): manifest whose
+    # canary.freshness_proof contains a decomposed combining mark
+    # (NFD) rather than the precomposed NFC form. §04 plus the §08
+    # explicit MUST NFC for freshness_proof (rc.19 N59) require the
+    # field to be NFC. Rejected at schema validation with
+    # E_SCHEMA_FIELD_SYNTAX before signature verification.
+    # freshness_proof "Cafe(acute) block-871234" in NFD: "Cafe" + U+0301 + " block-871234"
+    nfd_freshness = "Cafe\u0301 block-871234"
+    m_191_payload = {
+        "spec_version": "1.0",
+        "kind": "manifest",
+        "publisher_pubkey": b64u(pp_pub),
+        "origin": {
+            "carrier": "tor-v3",
+            "address": onion_address(op_pub),
+            "origin_pubkey": b64u(op_pub),
+        },
+        "canary": {
+            "runtime_pubkey": b64u(rp_pub),
+            "issued_at": "2026-05-07T00:00:00Z",
+            "next_expected": "2026-06-06T00:00:00Z",
+            "statement": "No warrants received.",
+            "freshness_proof": nfd_freshness,
+        },
+        "state_policy": [],
+        "navigation": [],
+        "min_refresh_interval": 3600,
+        "updated": "2026-05-07T00:00:00Z",
+    }
+    m_191_payload["sig"] = sign(pp, CTX_MANIFEST, m_191_payload)
+    out.append(vec(
+        "191-unicode-nfd-freshness-proof",
+        kind="manifest",
+        description="Manifest whose canary.freshness_proof contains a decomposed combining mark (NFD) rather than the precomposed NFC form. Per §04 and the §08 explicit NFC rule for freshness_proof (rc.19 N59), user-visible strings must be in NFC. Rejected at schema validation with E_SCHEMA_FIELD_SYNTAX before signature verification. Parity with vector 190 for canary.statement.",
+        spec_refs=["§04", "§08"],
+        verdict="reject",
+        diagnostic="E_SCHEMA_FIELD_SYNTAX",
+        body_obj=m_191_payload,
+        context={"fetched_origin_address": m_191_payload["origin"]["address"]},
+    ))
+
     # ---- 201-migration-chain-cycle (E_MIGRATION_INVALID chain_cycle) ----
     #
     # Two-manifest scenario realizing the deterministic A -> B -> A chain
