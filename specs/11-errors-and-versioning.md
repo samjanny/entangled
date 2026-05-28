@@ -223,7 +223,7 @@ The structured diagnostic format for `E_CANARY_CONFLICT` SHOULD include in `deta
 | `E_ORIGIN_EXPIRED`     | error    | manifest      | `origin.not_after` is present and the client's clock is strictly later than the declared instant, applying the past-bound clock-skew tolerance (`current_time > not_after + 300 seconds`); the manifest is not accepted as current |
 | `E_ORIGIN_INVALID`     | error    | manifest      | `origin.not_after` is present but violates a semantic constraint (`not_after` not strictly later than `canary.issued_at`, or more than 5 years after `canary.issued_at`)            |
 | `E_MIGRATION_MISMATCH` | error    | manifest      | A `migration_pointer` announcement was present, but the successor manifest fetched from the announced address fails a binding check (publisher key, origin address, or origin pubkey) |
-| `E_MIGRATION_INVALID`  | error    | manifest      | The `migration_pointer` value is structurally valid JSON but fails semantic checks (successor address equals announcing address, `announced_at` later than manifest `updated`, carrier mismatch, or - for clients enforcing the chain-depth rule - chain depth exceeded)                                  |
+| `E_MIGRATION_INVALID`  | error    | manifest      | The `migration_pointer` value is structurally valid JSON but fails semantic checks: successor address equals announcing address, `announced_at` later than manifest `updated`, carrier mismatch, or the successor address is already present in the per-flow `visited_origins` set (a chain cycle; `details.reason = "chain_cycle"`, §10). Reaching the client's automatic chain-depth limit is not a semantic failure and does not produce this diagnostic; per §10 it is a recoverable "pending user action" state resolved by user confirmation. |
 | `E_CONTENT_INDEX_FETCH_FAILED` | error | manifest | The manifest declares `content_root` but the `/content_index.json` fetch failed at the transport level; the client MUST NOT render content under this manifest |
 | `E_CONTENT_INDEX_HASH_MISMATCH` | error | manifest | The SHA-256 digest of the fetched `/content_index.json` response body bytes does not match the manifest's `content_root` value |
 | `E_CONTENT_INDEX_INVALID` | error | manifest | The content index was fetched and hash-verified but fails structural validation: not valid JSON, closed-structure violation, path syntax violation, entry field violation, or exceeds the 1 MiB size cap (§02) |
@@ -245,6 +245,12 @@ The structured diagnostic format for `E_MIGRATION_MISMATCH` SHOULD include in `d
 * `mismatch_field`: which check failed (`publisher_pubkey`, `address`, `origin_pubkey`, or `successor_stage9_failure` when the successor manifest fails any Stage 1 through 9 check independently of the migration-binding fields);
 * `underlying_diagnostic_code` (only when `mismatch_field` is `successor_stage9_failure`): the diagnostic code identifier the successor manifest's pipeline would have reported in isolation, encoded as a string (for example, `"E_ORIGIN_EXPIRED"`, `"E_SIG_VERIFICATION"`, or `"E_TRUST_MISMATCH"`). This is the code identifier only, not the full structured diagnostic record: the successor's own `details` object is not nested inside `underlying_diagnostic_code`. An operator wishing to inspect the successor's full diagnostic record fetches the successor manifest in isolation and observes the diagnostic produced by the standard pipeline. The field is informational; the migration is rejected under `E_MIGRATION_MISMATCH` regardless of the underlying cause.
 
+The structured diagnostic format for `E_MIGRATION_INVALID` SHOULD include in `details`:
+
+* `reason`: a short identifier of which semantic check failed, drawn from `self_pointer` (successor address equals announcing address), `announced_at_after_updated` (`migration_pointer.announced_at` is later than the manifest's `updated`), `carrier_mismatch` (the successor's declared carrier does not match the announcing carrier), and `chain_cycle` (the successor address is already present in the per-flow `visited_origins` set, per §10);
+* `announcing_origin_address`: the address of the announcing origin;
+* `successor_origin_address`: the address declared by `migration_pointer.successor_origin.address`.
+
 The structured diagnostic format for `E_ORIGIN_EXPIRED` SHOULD include in `details`:
 
 * `not_after`: the declared `origin.not_after` value;
@@ -252,7 +258,7 @@ The structured diagnostic format for `E_ORIGIN_EXPIRED` SHOULD include in `detai
 
 The structured diagnostic format for `E_ORIGIN_INVALID` SHOULD include in `details`:
 
-* `reason`: a short identifier of which constraint was violated, drawn from `not_after_not_after_issued_at` (the declared `not_after` is not strictly later than `canary.issued_at`) and `not_after_beyond_5y` (the declared `not_after` is more than 5 years after `canary.issued_at`);
+* `reason`: a short identifier of which constraint was violated, drawn from `not_after_not_later_than_issued_at` (the declared `not_after` is not strictly later than `canary.issued_at`) and `not_after_beyond_5y` (the declared `not_after` is more than 5 years after `canary.issued_at`);
 * `not_after`: the declared `origin.not_after` value;
 * `issued_at`: the declared `canary.issued_at` value.
 

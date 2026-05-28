@@ -253,11 +253,11 @@ The publisher refreshes the canary by performing a publisher ceremony:
 
 4. Sign the manifest with `K_publisher`, as defined in §05.
 
-5. Deploy the new manifest and make the new `K_runtime_priv` available to the publishing infrastructure according to the operator's key-custody procedure.
+5. Transfer the new `K_runtime_priv` to the publishing infrastructure according to the operator's key-custody procedure. Configure the infrastructure to sign new content and transaction documents with the new `K_runtime_priv`. Do not deploy the new manifest yet; the old manifest is still served and the previous `K_runtime` remains the announced runtime key.
 
-6. Deploy the new manifest at `/manifest.json`. Replace, do not amend, the existing manifest.
+6. Deploy the new manifest at `/manifest.json`. Replace, do not amend, the existing manifest. From the instant the new manifest is served, clients verify content and transaction signatures against the new `K_runtime.pub` it announces; the prior configuration step ensures the publishing infrastructure is already signing with the matching private key, so no signature-mismatch window opens across the deploy.
 
-7. Configure the publishing infrastructure to use the new `K_runtime_priv` for signing content and transaction documents. Destroy the previous `K_runtime_priv` according to the operator's key-custody procedure.
+7. Destroy the previous `K_runtime_priv` according to the operator's key-custody procedure.
 
 The frequency of this ceremony is determined by the publisher's chosen `next_expected` interval. A publisher who declares a 30-day interval performs this ceremony approximately every 30 days, with a margin to refresh before reaching `next_expected`.
 
