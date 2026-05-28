@@ -1,4 +1,4 @@
-# 08 — Canary
+# 08 - Canary
 
 The canary is the structure within the manifest by which the publisher attests, on a recurring basis, that the site is operating under publisher control and authorizes the current operational signing key.
 
@@ -42,7 +42,7 @@ This is the key against which the client verifies `content` and `transaction` do
 
 A new manifest with a fresh canary MUST declare a `runtime_pubkey` distinct from the `runtime_pubkey` of the immediately preceding manifest for the same `K_publisher.pub` in the client's publisher history. The publisher generates a new `K_runtime` keypair as part of every rotation ceremony.
 
-If a new manifest presents the same `runtime_pubkey` as the immediately preceding verified manifest for the same `K_publisher.pub`, the client MUST reject the manifest with `E_CANARY_RUNTIME_REUSE` (§11). This ensures that canary freshness is evidence of actual key rotation, not merely a timestamp update with the same operational key. Without this rule, a publisher — or an attacker holding a compromised `K_runtime` — can maintain the same runtime key indefinitely while producing apparently fresh canaries, defeating the rotation guarantee described in §05.
+If a new manifest presents the same `runtime_pubkey` as the immediately preceding verified manifest for the same `K_publisher.pub`, the client MUST reject the manifest with `E_CANARY_RUNTIME_REUSE` (§11). This ensures that canary freshness is evidence of actual key rotation, not merely a timestamp update with the same operational key. Without this rule, a publisher - or an attacker holding a compromised `K_runtime` - can maintain the same runtime key indefinitely while producing apparently fresh canaries, defeating the rotation guarantee described in §05.
 
 ### `issued_at`
 
@@ -130,7 +130,7 @@ The field is optional in v1 because it is operationally heavier than the other c
 
 Because `freshness_proof` is the only protocol-level signal against canary backdating, its absence is itself relevant to the user's risk assessment.
 
-A client MUST signal in chrome whether the current canary includes a `freshness_proof`. The signal MUST be visible in the canary's summary surface — the surface that exposes the canary state (Fresh, Near-expiration, Expired, Invalid, Unavailable) without requiring the user to expand a detail view, drawer, or other collapsed UI affordance. The "summary surface" in this section is the canary-specific instance of the always-visible compact indicator surface defined in §10 "Always-visible compact indicators"; the contents of `freshness_proof` itself, when present, MAY remain in the corresponding "expandable detail surface" (§10). A client MUST NOT hide the presence-or-absence signal exclusively behind an expandable detail surface that is collapsed by default.
+A client MUST signal in chrome whether the current canary includes a `freshness_proof`. The signal MUST be visible in the canary's summary surface - the surface that exposes the canary state (Fresh, Near-expiration, Expired, Invalid, Unavailable) without requiring the user to expand a detail view, drawer, or other collapsed UI affordance. The "summary surface" in this section is the canary-specific instance of the always-visible compact indicator surface defined in §10 "Always-visible compact indicators"; the contents of `freshness_proof` itself, when present, MAY remain in the corresponding "expandable detail surface" (§10). A client MUST NOT hide the presence-or-absence signal exclusively behind an expandable detail surface that is collapsed by default.
 
 The signal MAY be implicit (the proof is shown when present, and a "no freshness proof" indicator is shown when absent) or explicit (a labelled indicator that is always visible). In either form, the summary surface MUST distinguish present from absent at a glance.
 
@@ -222,14 +222,14 @@ A client that has already accepted a manifest with `canary.issued_at = T` for `K
 
 A canary conflict is evidence of a publisher protocol violation. Because both conflicting manifests are signed by the same `K_publisher`, an honest publisher operating within the protocol cannot produce them: the conflict is consistent with `K_publisher` compromise or with serious operator error. The client MUST treat `E_CANARY_CONFLICT` as a fault condition for the publisher identity, not as a recoverable transient error.
 
-The client MUST NOT pick a "winner" between the conflicting manifests by lexicographic comparison of the JCS payload, by payload size, by `runtime_pubkey` value, or by any other deterministic tiebreaker over manifest content. A deterministic tiebreaker would be gameable by an attacker holding `K_publisher_priv` — they could grind irrelevant fields until their forged manifest wins the comparison — and would mask the underlying fault behind a false sense of resolution.
+The client MUST NOT pick a "winner" between the conflicting manifests by lexicographic comparison of the JCS payload, by payload size, by `runtime_pubkey` value, or by any other deterministic tiebreaker over manifest content. A deterministic tiebreaker would be gameable by an attacker holding `K_publisher_priv` - they could grind irrelevant fields until their forged manifest wins the comparison - and would mask the underlying fault behind a false sense of resolution.
 
 The retained manifest accepted before the conflict was observed remains in place for current rendering and anti-downgrade. The later conflicting manifest is rejected. The client MUST surface the conflict as a prominent, not-easily-dismissible chrome warning, analogous to the Changed/mismatch warning defined in §10, and MUST present an explicit user-accessible resolution control as part of that chrome warning. The resolution control MUST offer at least two distinct user actions:
 
 1. **Keep the retained identity.** The user explicitly acknowledges the conflict without abandoning the publisher identity. The chrome warning is cleared from the always-visible position; the conflict is recorded in publisher history and remains visible in the publisher-history detail surface.
 2. **Abandon the retained publisher identity.** The user explicitly chooses to stop trusting the publisher identity that produced the conflicting manifests. The effect on retained state is defined in §10 under "Abandoning a retained publisher identity".
 
-A passive event — content rendering, navigation away from the site, dismissal of an unrelated chrome notice, or any other event not bound to the resolution control — MUST NOT clear the canary-conflict warning. A subsequent successful fetch of a non-conflicting newer manifest does not by itself clear the warning, because the conflict is a historical fault on the publisher identity, not a transient state of the current manifest. The warning persists until the user invokes the resolution control.
+A passive event - content rendering, navigation away from the site, dismissal of an unrelated chrome notice, or any other event not bound to the resolution control - MUST NOT clear the canary-conflict warning. A subsequent successful fetch of a non-conflicting newer manifest does not by itself clear the warning, because the conflict is a historical fault on the publisher identity, not a transient state of the current manifest. The warning persists until the user invokes the resolution control.
 
 This rule does not affect refetching the same manifest. A subsequent fetch returning a manifest with the same JCS-canonical signed payload as the previously verified one is not a conflict, regardless of wire-level JSON formatting differences that JCS normalizes away. Ed25519 signing under the same private key over identical signature inputs is deterministic (RFC 8032), so a same-payload refetch necessarily carries an identical `sig`; the protocol-level criterion is the JCS-canonical signed payload, not the wire bytes or the `sig` value.
 

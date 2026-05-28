@@ -138,7 +138,7 @@ def jcs(obj) -> bytes:
     ASCII-only object keys and integer-only numbers. It is NOT a complete
     RFC 8785 implementation. Before adding vectors that exercise:
       - non-ASCII member names (JCS sorts by UTF-16 code units, not Python's
-        default codepoint order — they diverge for characters above U+FFFF);
+        default codepoint order - they diverge for characters above U+FFFF);
       - numeric edge cases other than non-negative integers (RFC 8785 §3.2.2.3
         reuses ECMA-262 number serialization, which Python's json does not);
       - object members containing characters that Python's json escapes
@@ -539,7 +539,7 @@ def positive_vectors(keys) -> list[dict]:
             "(2026-05-07) the manifest is not yet origin-expired. Exercises the rc.14 "
             "origin-not-after schema acceptance and Stage 5 cross-field semantic checks "
             "(strictly later than canary.issued_at; not more than 5 years after; SHOULD "
-            "later than canary.next_expected — satisfied here)."
+            "later than canary.next_expected - satisfied here)."
         ),
         spec_refs=["§06", "§10"],
         verdict="accept",
@@ -801,7 +801,7 @@ def negative_vectors(keys) -> list[dict]:
     # padded sig
     m_padded = dict(m)
     real_sig_b = b64u_decode(m["sig"])
-    m_padded["sig"] = base64.urlsafe_b64encode(real_sig_b).decode("ascii")  # keeps "=" padding — no rstrip
+    m_padded["sig"] = base64.urlsafe_b64encode(real_sig_b).decode("ascii")  # keeps "=" padding - no rstrip
     out.append(vec(
         "160-base64url-padded",
         kind="manifest",
@@ -861,7 +861,7 @@ def negative_vectors(keys) -> list[dict]:
         },
     ))
 
-    # /manifest.json as content path — schema-level rejection (rc.6 reservation)
+    # /manifest.json as content path - schema-level rejection (rc.6 reservation)
     c_manifest_path = make_content(runtime_priv=rp, path="/manifest.json")
     out.append(vec(
         "171-bind-reserved-manifest-path",
@@ -1247,16 +1247,16 @@ def negative_vectors(keys) -> list[dict]:
 
     # ---- 122-kind-missing-fields (Stage 4, E_KIND_MISSING_FIELDS) ----
     # Document with the top-level sig field omitted. spec_version and kind
-    # are present and well-formed, but sig — one of the three top-level
-    # required fields per §02 — is absent. Stage 4 detects this before
+    # are present and well-formed, but sig - one of the three top-level
+    # required fields per §02 - is absent. Stage 4 detects this before
     # Stage 5 schema would also flag it.
     out.append(vec(
         "122-kind-missing-fields",
         kind="manifest",
         description=(
             "Document with the top-level sig field omitted. spec_version "
-            "and kind are present and well-formed, but sig — one of the "
-            "three top-level required fields per §02 — is absent. Stage 4 "
+            "and kind are present and well-formed, but sig - one of the "
+            "three top-level required fields per §02 - is absent. Stage 4 "
             "kind discrimination fires E_KIND_MISSING_FIELDS."
         ),
         spec_refs=["§02", "§11"],
@@ -1420,7 +1420,7 @@ def negative_vectors(keys) -> list[dict]:
 
     # ---- 138-schema-malformed-unicode (Stage 5, E_SCHEMA_MALFORMED_UNICODE) ----
     # Manifest whose canary.statement contains the JSON escape sequence
-    # \uD800 — a lone high surrogate with no paired low surrogate. RFC 8259
+    # \uD800 - a lone high surrogate with no paired low surrogate. RFC 8259
     # admits the escape syntactically; §04 rejects the resulting isolated
     # surrogate code point at schema validation. Raw bytes are used so the
     # surrogate appears literally in the wire form (Python's UTF-8 encoder
@@ -1430,7 +1430,7 @@ def negative_vectors(keys) -> list[dict]:
         kind="manifest",
         description=(
             "Manifest whose canary.statement contains the JSON escape "
-            "sequence \\uD800 — a lone high surrogate with no paired low "
+            "sequence \\uD800 - a lone high surrogate with no paired low "
             "surrogate. After JSON parsing this yields a string with an "
             "isolated surrogate code point, which §04 rejects as malformed "
             "Unicode at Stage 5 schema validation (before Stage 6 signature "

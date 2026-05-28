@@ -1,4 +1,4 @@
-# 10 — Client behavior
+# 10 - Client behavior
 
 This section defines what a conforming Entangled client does. It specifies the validation pipeline applied to every fetched document, the trust state machine governing publisher identity, the chrome elements that must be present, and the operational details (clock skew tolerance, parser limits, error precedence, refresh policy) referenced by earlier sections.
 
@@ -34,13 +34,13 @@ The pipeline applies to manifest documents, content documents, and transaction d
 
 The client MUST NOT render any document, any block, or any image or other resource referenced by a document, from a site, until a manifest signed by `K_publisher` for that site has been fully verified through the pipeline stages applicable to manifests: signature verification (Stage 6), publisher identity and trust-state resolution (Stage 7), canary validation and anti-downgrade (Stage 8), and carrier origin binding (Stage 9).
 
-Rendering publisher-controlled content prior to manifest verification — even transiently, even as a "preview", even in response to explicit user navigation — is not conformant.
+Rendering publisher-controlled content prior to manifest verification - even transiently, even as a "preview", even in response to explicit user navigation - is not conformant.
 
 This rule is the load-bearing invariant of the Entangled trust model. The publisher trust state, the canary attestation, and the carrier origin binding all anchor on the manifest signature; rendering content without that anchor exposes the user to indistinguishable forged content. The MUST in §05 that "the verifier MUST have a valid manifest for the relevant site before verifying a content document" addresses the verification side of the same invariant; this rule extends it explicitly to the rendering side.
 
 The rule applies symmetrically to content rendering, transaction-response processing for user-visible effect, image fetching, and any other action that turns publisher-controlled bytes into user-perceivable output. Image fetching is further constrained by §03: an image is fetched only after the containing content document has itself been verified.
 
-The rule does not restrict chrome. Chrome elements — origin address, trust-state indicators, "loading" or transport-error reports, the manifest verification progress itself — are client-controlled and may be displayed at any time. The rule covers publisher-controlled content rendering, not chrome.
+The rule does not restrict chrome. Chrome elements - origin address, trust-state indicators, "loading" or transport-error reports, the manifest verification progress itself - are client-controlled and may be displayed at any time. The rule covers publisher-controlled content rendering, not chrome.
 
 ## Pipeline order
 
@@ -277,7 +277,7 @@ Even if the new manifest's signature verifies under the newly presented key, it 
 
 ## Transition rules
 
-### No record → First contact
+### No record -> First contact
 
 When the client completes all applicable validation pipeline stages for a manifest from a site for which it has no previous retained publisher identity, the trust state is First contact. The client creates an observation record for the presented `K_publisher.pub` only after Stage 9 origin binding has succeeded.
 
@@ -287,7 +287,7 @@ The observation record is not yet an external verification. It is a retained obs
 
 The client MUST display the First contact state in chrome and MUST display the PIP so the user can compare it against an out-of-band reference.
 
-### First contact → TOFU pinned
+### First contact -> TOFU pinned
 
 The client MUST NOT transition from First contact to TOFU pinned without an explicit affirmative response from the user to a pinning prompt presented by the client. Successful manifest verification, content rendering, dismissal of the first-contact notice, navigation away from the site, or any other passive event MUST NOT by itself cause the transition. Silent or render-triggered pinning is not conformant.
 
@@ -307,7 +307,7 @@ The notification is informational, not a request for external trust. TOFU pinnin
 
 A client in stateless mode MAY retain the observation only for the current session. In that case, TOFU pinning is session-scoped, MUST be presented as such, and the explicit pinning prompt MAY be omitted in favor of a chrome indicator that the client did not retain the identity.
 
-### First contact or TOFU pinned → Externally verified
+### First contact or TOFU pinned -> Externally verified
 
 The user explicitly confirms `K_publisher.pub` against an out-of-band PIP reference.
 
@@ -315,7 +315,7 @@ The client provides a UI affordance for entering, scanning, or comparing a PIP. 
 
 The client records the verification timestamp.
 
-### Retained identity → Changed/mismatch
+### Retained identity -> Changed/mismatch
 
 A manifest fetched for a site with an existing retained identity presents a different `K_publisher.pub`.
 
@@ -323,7 +323,7 @@ The client MUST NOT silently replace the retained identity. The client MUST ente
 
 This rule applies whether the previous state was TOFU pinned or Externally verified. A changed externally verified identity is especially severe and MUST be presented as a high-risk identity mismatch.
 
-### Changed/mismatch → resolved
+### Changed/mismatch -> resolved
 
 The user resolves Changed/mismatch by one of two actions:
 
@@ -352,7 +352,7 @@ When the user invokes "abandon retained publisher identity" for the publisher ke
 3. dissociate from `P` any authorized origins, including successor origins previously adopted under the publisher profile (§10 "Origin migration"). Those origins are no longer authorized origins for the publisher profile of `P`;
 4. retain the authorization-history entries for any `K_runtime.pub` that was previously authorized under `P` only insofar as they remain useful for evaluating historical content under publisher-history rules in this section. The client MUST NOT use them to verify any new content fetched after the abandonment as if it were current publication for `P`.
 
-After abandonment, a subsequent navigation to any origin that presents a manifest with `publisher_pubkey == P` is treated as First contact. The pinning prompt defined under "First contact → TOFU pinned" applies; passive transitions are forbidden. The user is responsible for deciding whether to re-establish a retained relationship with `P` and SHOULD be reminded, in the First contact prompt, that the same identity was previously abandoned. The client MUST surface, at the First contact prompt or in an adjacent always-visible chrome element on that navigation, that an abandonment record exists for the presented `K_publisher.pub`.
+After abandonment, a subsequent navigation to any origin that presents a manifest with `publisher_pubkey == P` is treated as First contact. The pinning prompt defined under "First contact -> TOFU pinned" applies; passive transitions are forbidden. The user is responsible for deciding whether to re-establish a retained relationship with `P` and SHOULD be reminded, in the First contact prompt, that the same identity was previously abandoned. The client MUST surface, at the First contact prompt or in an adjacent always-visible chrome element on that navigation, that an abandonment record exists for the presented `K_publisher.pub`.
 
 Abandonment is not retraction of historical content. Documents already rendered and stored locally as historical artefacts are not removed by abandonment. The act of abandonment changes the client's future-facing trust state, not the cryptographic validity of past observations.
 
@@ -362,7 +362,7 @@ A client MUST NOT silently re-establish a retained identity for an abandoned `K_
 
 A client that retains trust state across sessions MUST support publisher profiles: a single publisher identity record keyed by `K_publisher.pub`, recognized across all authorized origins for that publisher. Cross-session retention without publisher-profile support fragments the user's identity model, because the same publisher reached at a new authorized origin appears as First contact and requires re-verification at every migration. A cross-session client that does not maintain publisher-profile records is not conformant.
 
-A stateless client — one that retains no trust state across sessions, by user choice or by design — is exempt from publisher-profile support. A stateless client MUST present its statelessness clearly in chrome and treats each navigation as First contact regardless of carrier address.
+A stateless client - one that retains no trust state across sessions, by user choice or by design - is exempt from publisher-profile support. A stateless client MUST present its statelessness clearly in chrome and treats each navigation as First contact regardless of carrier address.
 
 When publisher profiles are supported:
 
@@ -401,11 +401,11 @@ If all checks pass, the client records the successor manifest as the cached curr
 
 While the successor is verified pending, the client MUST NOT auto-navigate to it from the announcing origin's session, MUST NOT migrate cached state to it, and MUST NOT render publisher-controlled content from it under that session. Direct user-initiated navigation to the successor origin's address remains permitted: the cached successor manifest is served as current for that address, and the publisher identity's trust state extends to the navigation, preserving continuity. The verified pending successor is not yet recorded as an Adoption event in publisher history.
 
-The verified pending successor transitions to an **adopted** successor — an authorized origin of the publisher profile, recorded as an Adoption event in publisher history under "Cross-session migration history" below — upon the user-confirmation step defined under "User confirmation" below. The user-confirmation step is MUST for all announcing trust states (Externally verified, TOFU pinned, and First contact); a verified pending successor never transitions to adopted without it.
+The verified pending successor transitions to an **adopted** successor - an authorized origin of the publisher profile, recorded as an Adoption event in publisher history under "Cross-session migration history" below - upon the user-confirmation step defined under "User confirmation" below. The user-confirmation step is MUST for all announcing trust states (Externally verified, TOFU pinned, and First contact); a verified pending successor never transitions to adopted without it.
 
 ### User confirmation
 
-Adoption of a verified pending successor — the transition from verified pending to authorized origin of the publisher profile — requires the user-confirmation step defined in this subsection. The same confirmation gates the related actions of automatically navigating to the successor origin from the announcing origin's session and migrating cached state from the announcing origin to the successor origin. The strength of the requirement depends on the trust state of the publisher identity at the announcing origin:
+Adoption of a verified pending successor - the transition from verified pending to authorized origin of the publisher profile - requires the user-confirmation step defined in this subsection. The same confirmation gates the related actions of automatically navigating to the successor origin from the announcing origin's session and migrating cached state from the announcing origin to the successor origin. The strength of the requirement depends on the trust state of the publisher identity at the announcing origin:
 
 * if the announcing publisher's trust state is **Externally verified** or **TOFU pinned**, the client MUST obtain the user's affirmative confirmation before navigating to the successor origin and before migrating any cached state to it. "Affirmative confirmation" here means the user explicitly activates a dedicated chrome control (a button, key combination, or equivalent affordance whose semantics are unambiguously "accept the migration"); passive events MUST NOT count as affirmation, including but not limited to focus changes, mouseover, scroll, dismissal of unrelated UI, navigation away and back, and timeout-based auto-acceptance. The MUST is on both verification (defined above) and the user-confirmation step in the navigation flow; neither may be skipped, deferred, or assumed by passive event;
 * if the announcing publisher's trust state is **First contact**, the client MUST obtain the user's affirmative confirmation under the same definition as Externally verified and TOFU pinned above. While a First contact identity has not yet been pinned or externally verified, allowing automatic adoption of a successor at First contact would extend the publisher profile to a new origin without any explicit user action, opening a silent-adoption vector under temporary `K_publisher` compromise and across cross-session migration cycles. The confirmation requirement closes this vector at the cost of an extra prompt on First contact navigation.
@@ -428,7 +428,7 @@ If the announcing manifest is replaced by a newer manifest with a different `mig
 
 ### Chain depth and cycle prevention
 
-A `migration_pointer` chain is the sequence of origins reached by following the `migration_pointer` field across successive manifests within a single navigation. Without limits, a publisher could chain announcements `A → B → C → …`, and a client following them automatically would incur the full validation pipeline at every hop while obscuring from the user how many origins were traversed.
+A `migration_pointer` chain is the sequence of origins reached by following the `migration_pointer` field across successive manifests within a single navigation. Without limits, a publisher could chain announcements `A -> B -> C -> ...`, and a client following them automatically would incur the full validation pipeline at every hop while obscuring from the user how many origins were traversed.
 
 A client supporting publisher profiles MUST enforce both of the following rules per navigation:
 
@@ -447,14 +447,14 @@ A `migration_pointer` whose `successor_origin.address` equals `origin.address` i
 
 ### Cross-session migration history
 
-The `visited_origins` set defined under "Chain depth and cycle prevention" is per-flow and per-navigation, not persisted across sessions. A publisher under the same `K_publisher` who alternately announces address `A → B` in one session and `B → A` in a later session can therefore force a client to re-traverse the migration on every fresh navigation, since each new flow begins with an empty `visited_origins`. Even though the user-confirmation requirement under "User confirmation" above surfaces a prompt at each re-traversal regardless of trust state, without cross-session history the prompt is uninformative: the user sees a routine migration dialog with no signal that the same address pair has alternated repeatedly.
+The `visited_origins` set defined under "Chain depth and cycle prevention" is per-flow and per-navigation, not persisted across sessions. A publisher under the same `K_publisher` who alternately announces address `A -> B` in one session and `B -> A` in a later session can therefore force a client to re-traverse the migration on every fresh navigation, since each new flow begins with an empty `visited_origins`. Even though the user-confirmation requirement under "User confirmation" above surfaces a prompt at each re-traversal regardless of trust state, without cross-session history the prompt is uninformative: the user sees a routine migration dialog with no signal that the same address pair has alternated repeatedly.
 
 The vector is most concerning when an attacker has temporarily compromised `K_publisher_priv` and used the window to publish a self-cancelling migration loop: even after the publisher recovers control of the keys, every cached client continues to ping-pong between the two announced addresses on each session until a user explicitly intervenes.
 
 To prevent this vector, a client MUST record migration outcomes in publisher history, keyed by `K_publisher.pub`. The storage backend is implementation-defined; the minimum required state is the Adoption and Replacement events defined below, keyed by `K_publisher.pub`, with timestamps sufficient to evaluate the recall window. The recorded events are:
 
 * **Adoption.** A successor address that the client adopted into the publisher profile under "Successor verification" above. The record MUST preserve the announcing origin address, the successor origin address, the announcement timestamp `migration_pointer.announced_at`, and the local timestamp at adoption.
-* **Replacement.** Recorded in two situations: (a) when an Adoption is recorded for a successor `S`, the address that was the publisher profile's current origin immediately before that Adoption (the announcing origin) is recorded as Replacement at that time; (b) when a previously adopted successor address is itself superseded by a newer migration announcement (per "Anti-downgrade and anti-forgery interaction" above), that address is recorded as Replacement at that time. The dual recording is required so that the cross-session ping-pong vector `A → B → A → B` is detectable in both directions: case (a) ensures the starting origin `A` appears as "previously replaced" the first time the publisher migrates from it, even though `A` was never itself a successor in any earlier event. The Replacement record MUST preserve the replaced address, the replacing address (when known — for case (a) this is the new successor; for case (b) this is the new replacing successor), and the local timestamp at replacement.
+* **Replacement.** Recorded in two situations: (a) when an Adoption is recorded for a successor `S`, the address that was the publisher profile's current origin immediately before that Adoption (the announcing origin) is recorded as Replacement at that time; (b) when a previously adopted successor address is itself superseded by a newer migration announcement (per "Anti-downgrade and anti-forgery interaction" above), that address is recorded as Replacement at that time. The dual recording is required so that the cross-session ping-pong vector `A -> B -> A -> B` is detectable in both directions: case (a) ensures the starting origin `A` appears as "previously replaced" the first time the publisher migrates from it, even though `A` was never itself a successor in any earlier event. The Replacement record MUST preserve the replaced address, the replacing address (when known - for case (a) this is the new successor; for case (b) this is the new replacing successor), and the local timestamp at replacement.
 
 When processing a new migration announcement that names successor address `S` for the publisher profile keyed by `P = K_publisher.pub`, the client MUST consult publisher history for `P` and check whether `S` appears as a previously-replaced successor within a recall window. The recommended recall window is 30 days. A client MAY make the window configurable; the minimum MUST be 7 days. A window of zero (no recall) is not permitted. The recall window MUST NOT exceed 365 days; clients with bounded storage MAY enforce a smaller cap, whether by time or by event count (for example, the most recent 100 migration events per publisher profile, evicting the oldest first), provided the cap remains at or above the 7-day floor.
 
@@ -517,7 +517,7 @@ Historical content MAY be rendered only if all of the following hold:
 * the path binding (§02) succeeds against the path from which the historical content was fetched;
 * the document's `(path, seq, hash)` tuple is present in a content index that the client verified under the manifest that authorized the signing `K_runtime`, or the document was previously rendered by this client under that manifest and the client has retained a record of the rendering.
 
-The fifth condition — publication-existence verification — ensures that historical authorization proves the document was actually published during the authorization window, not merely that it could have been signed. Without this condition, an attacker who exfiltrates a former `K_runtime_priv` can fabricate documents that appear historically authentic but were never published. When the authorizing manifest did not carry `content_root`, and the client has no rendering record for the document, the client MUST NOT render the document as historical content; it MUST reject it with `E_HISTORICAL_NO_PUBLICATION_PROOF` (§11).
+The fifth condition - publication-existence verification - ensures that historical authorization proves the document was actually published during the authorization window, not merely that it could have been signed. Without this condition, an attacker who exfiltrates a former `K_runtime_priv` can fabricate documents that appear historically authentic but were never published. When the authorizing manifest did not carry `content_root`, and the client has no rendering record for the document, the client MUST NOT render the document as historical content; it MUST reject it with `E_HISTORICAL_NO_PUBLICATION_PROOF` (§11).
 
 A client MUST NOT treat a runtime key as historically authorized merely because a server presents an old manifest during the current fetch. Historical authorization is based on publisher history already verified by the client, or on historical-verification rules explicitly defined by a future version. Entangled v1 does not define server-provided historical manifest discovery.
 
@@ -548,7 +548,7 @@ The first retained `K_runtime.pub` under which the document signature verifies i
 
 If no retained runtime key verifies the document, the document is rejected with `E_HISTORICAL_NO_AUTHORIZATION` (§11).
 
-If signature verification succeeds under more than one distinct retained `K_runtime.pub` for the same document — an outcome whose probability under Ed25519 is approximately `2^-256` and which therefore indicates a cryptographic anomaly, an implementation bug, or corruption in the authorization-history store — the client MUST reject the document and surface `W_HISTORICAL_RUNTIME_AMBIGUOUS` (§11). The document is not rendered. Clients SHOULD log the condition for offline analysis.
+If signature verification succeeds under more than one distinct retained `K_runtime.pub` for the same document - an outcome whose probability under Ed25519 is approximately `2^-256` and which therefore indicates a cryptographic anomaly, an implementation bug, or corruption in the authorization-history store - the client MUST reject the document and surface `W_HISTORICAL_RUNTIME_AMBIGUOUS` (§11). The document is not rendered. Clients SHOULD log the condition for offline analysis.
 
 ## Historical content marker
 
@@ -658,7 +658,7 @@ Localized translations of the label are permitted and encouraged. The labeling r
 
 ## PIP display requirements
 
-When the client displays the PIP for user verification — at First contact, during Changed/mismatch resolution, in expandable detail surfaces, or anywhere a user is being asked to compare publisher identity against an out-of-band reference — the client MUST display the complete 24-word phrase.
+When the client displays the PIP for user verification - at First contact, during Changed/mismatch resolution, in expandable detail surfaces, or anywhere a user is being asked to compare publisher identity against an out-of-band reference - the client MUST display the complete 24-word phrase.
 
 The client MUST NOT display only a prefix, only a suffix, only selected words, or any "first-N + last-M" pattern as a substitute for the full PIP. Truncated or partial PIP displays are not conformant. A 24-word BIP-39 PIP encodes the full 256-bit `K_publisher.pub` plus an 8-bit checksum; any display short of the full phrase reduces the work an attacker must do to grind a `K_publisher` whose PIP collides with the displayed prefix or suffix.
 
@@ -703,7 +703,7 @@ When a publisher-supplied label appears in chrome, the client MUST:
 * visually distinguish the label from client-asserted status. The visual treatment MUST be such that the user cannot confuse a publisher-supplied label with client-generated trust state, canary state, warnings, or other client-asserted status indicators;
 * treat the label as opaque text. The chrome renderer MUST NOT interpret in-band markup, terminal control sequences (ANSI, VT, OSC, CSI), or any other escape mechanism in publisher-supplied labels. Schema-level character-class restrictions defined in the field's owning section are necessary but not sufficient.
 
-Other publisher-supplied fields displayed in chrome — `state.purpose` and proposed state values (§07), `canary.statement` and `canary.freshness_proof` (§08) — are governed by the safe-display and presentation rules in their owning sections, which apply the same opacity and distinguishability principles.
+Other publisher-supplied fields displayed in chrome - `state.purpose` and proposed state values (§07), `canary.statement` and `canary.freshness_proof` (§08) - are governed by the safe-display and presentation rules in their owning sections, which apply the same opacity and distinguishability principles.
 
 The chrome separation rule below applies in conjunction with this section: publisher-supplied labels are permitted in chrome but MUST remain visually distinguishable from client-asserted status, and they MUST NOT be allowed to impersonate it.
 

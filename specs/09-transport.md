@@ -1,4 +1,4 @@
-# 09 — Transport
+# 09 - Transport
 
 This section defines the HTTP subset over which Entangled documents are fetched and submitted. The transport profile is intentionally minimal: it specifies what is permitted, what is required, and what is ignored. Behavior outside this profile is non-conformant.
 
@@ -237,7 +237,7 @@ The client SHOULD validate body size before transmission and refuse to submit ov
 
 ### Submit validation timing
 
-A publisher SHOULD NOT early-exit submit validation on the first failing stage. The natural sequential validation path — JSON parse, JCS canonicalization, schema check, `request_state` policy check, `request_hash` computation — exposes the rejecting stage as a server-side timing signal that an attacker probing with crafted submit bodies can sample without authentication. The signal is small per-request but accumulates across probes and can be sufficient to infer publisher-side state (declared `state_policy`, `(namespace, key)` activity, backend availability) that the wire response does not expose.
+A publisher SHOULD NOT early-exit submit validation on the first failing stage. The natural sequential validation path - JSON parse, JCS canonicalization, schema check, `request_state` policy check, `request_hash` computation - exposes the rejecting stage as a server-side timing signal that an attacker probing with crafted submit bodies can sample without authentication. The signal is small per-request but accumulates across probes and can be sufficient to infer publisher-side state (declared `state_policy`, `(namespace, key)` activity, backend availability) that the wire response does not expose.
 
 Conforming publisher implementations SHOULD adopt one of the following disciplines for the submit response path:
 
@@ -298,7 +298,7 @@ The client MUST decode and render the image only if:
 * the decoded media type matches the declared `media_type`;
 * the decoded dimensions match the declared `width` and `height` and satisfy the per-block dimension limits in §03.
 
-A bad image resource — including transport failure, size-limit violation, hash mismatch, decode failure, media-type mismatch, dimension mismatch, or animation in a WebP file (§03) — invalidates the image rendering only. It does not invalidate the containing signed `content` or `transaction` document. The image is rendered as missing or unavailable, while other blocks of the document continue to render normally.
+A bad image resource - including transport failure, size-limit violation, hash mismatch, decode failure, media-type mismatch, dimension mismatch, or animation in a WebP file (§03) - invalidates the image rendering only. It does not invalidate the containing signed `content` or `transaction` document. The image is rendered as missing or unavailable, while other blocks of the document continue to render normally.
 
 ## Headers
 
@@ -439,7 +439,7 @@ Entangled defines a closed whitelist of HTTP status codes. Each has defined sema
 | `429 Too Many Requests`   | Rate limit                      | Publisher rate-limiting the client                                                      |
 | `503 Service Unavailable` | Service temporarily unavailable | Publisher unable to serve, expected to recover                                          |
 
-Status codes outside the whitelist — including `1xx`, `2xx` other than `200`, all `3xx`, and unlisted `4xx` or `5xx` codes (for example `204`, `304`, `418`) — are treated as transport or protocol errors; the client does not interpret HTTP semantics as Entangled semantics, except for `3xx` redirects which are explicitly rejected as defined under "Redirects" below.
+Status codes outside the whitelist - including `1xx`, `2xx` other than `200`, all `3xx`, and unlisted `4xx` or `5xx` codes (for example `204`, `304`, `418`) - are treated as transport or protocol errors; the client does not interpret HTTP semantics as Entangled semantics, except for `3xx` redirects which are explicitly rejected as defined under "Redirects" below.
 
 The error reported to the user reflects an unexpected transport response, not the literal HTTP status meaning.
 

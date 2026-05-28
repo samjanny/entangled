@@ -12,29 +12,29 @@ The corpus is generated deterministically from a fixed set of test seeds. Anyone
 
 ```
 corpus/
-├── README.md          this file
-├── keys.json          public key material derived from fixed test seeds
-├── corpus.json        machine-readable index: vector id, expected verdict, etc.
-├── vectors/
-│   └── <id>/
-│       ├── input.json      (or input.bin for non-JSON inputs)
-│       └── ... extra files such as submit_body.json, image bytes
-└── tools/
-    └── generate.py    deterministic generator
++-- README.md          this file
++-- keys.json          public key material derived from fixed test seeds
++-- corpus.json        machine-readable index: vector id, expected verdict, etc.
++-- vectors/
+|   `-- <id>/
+|       +-- input.json      (or input.bin for non-JSON inputs)
+|       `-- ... extra files such as submit_body.json, image bytes
+`-- tools/
+    `-- generate.py    deterministic generator
 ```
 
 `corpus.json` is the entry point. Every vector is described by:
 
-- `id` — stable identifier, prefixed with a numeric category (001-099 positive, 100-199 single-document negative diagnostics organized by pipeline stage, 200-299 multi-document scenarios such as migration; the full per-stage breakdown is in the "Categories of vectors" table below);
-- `kind` — `manifest`, `content`, or `transaction` (the kind of the primary input document; multi-document scenarios may carry additional documents in `extra_files`);
-- `description` — what the vector exercises;
-- `spec_refs` — the spec sections the vector tests;
-- `input` — relative path to the input bytes of the primary document;
-- `expected.verdict` — `accept` or `reject` (for multi-document scenarios such as migration vectors, the verdict refers to the scenario outcome — e.g., the migration adoption — not necessarily the in-isolation validity of the primary document);
-- `expected.diagnostic` — for rejections, the normative §11 diagnostic code;
-- `expected.diagnostic_details` — for rejections whose §11 diagnostic carries structured `details` (e.g., `E_MIGRATION_MISMATCH` with `mismatch_field` and `underlying_diagnostic_code`), the expected `details` object the implementation should produce;
-- `context` — optional fields needed to apply the vector (fetched path, fetched origin address, prerequisites such as a previously verified manifest, the corresponding submit body for transactions, the address and on-disk path of a successor manifest for migration scenarios, etc.);
-- `extra_files` — additional files in the vector directory (e.g., `submit_body.json` for transactions, `successor_manifest.json` for migration scenarios).
+- `id` - stable identifier, prefixed with a numeric category (001-099 positive, 100-199 single-document negative diagnostics organized by pipeline stage, 200-299 multi-document scenarios such as migration; the full per-stage breakdown is in the "Categories of vectors" table below);
+- `kind` - `manifest`, `content`, or `transaction` (the kind of the primary input document; multi-document scenarios may carry additional documents in `extra_files`);
+- `description` - what the vector exercises;
+- `spec_refs` - the spec sections the vector tests;
+- `input` - relative path to the input bytes of the primary document;
+- `expected.verdict` - `accept` or `reject` (for multi-document scenarios such as migration vectors, the verdict refers to the scenario outcome - e.g., the migration adoption - not necessarily the in-isolation validity of the primary document);
+- `expected.diagnostic` - for rejections, the normative §11 diagnostic code;
+- `expected.diagnostic_details` - for rejections whose §11 diagnostic carries structured `details` (e.g., `E_MIGRATION_MISMATCH` with `mismatch_field` and `underlying_diagnostic_code`), the expected `details` object the implementation should produce;
+- `context` - optional fields needed to apply the vector (fetched path, fetched origin address, prerequisites such as a previously verified manifest, the corresponding submit body for transactions, the address and on-disk path of a successor manifest for migration scenarios, etc.);
+- `extra_files` - additional files in the vector directory (e.g., `submit_body.json` for transactions, `successor_manifest.json` for migration scenarios).
 
 The corpus index also carries a top-level `clock_now` field, in RFC 3339 form. Harnesses MUST mock the implementation's wall clock to this value for the duration of the test run. This is required because canary diagnostics depend on `now` and the corpus uses fixed `issued_at` timestamps; without clock mocking, time-dependent vectors are not reproducible.
 
@@ -80,18 +80,18 @@ Requires Python 3.10+ and the `cryptography` package (for raw Ed25519 RFC 8032 s
 
 | Range | Category |
 |---|---|
-| 001–099 | Positive (must be accepted) |
-| 100–109 | Stage 2 input checks (BOM, UTF-8, byte cap) |
-| 110–119 | Stage 3 JSON parsing (duplicate keys, nesting depth, string length, array length, object keys, malformed JSON) |
-| 120–129 | Stage 4 kind discrimination (spec_version, unknown kind, missing required top-level field) |
-| 130–139 | Stage 5 schema (unknown field, missing required, null literal, unknown block kind, field type, field range, block not permitted in document kind, duplicate uniqueness-required entry, malformed Unicode) |
-| 140–149 | Numeric grammar (float, exponent, overflow) |
-| 150–159 | Stage 6 signature (modified payload, malformed length, non-canonical S, small-order A, non-canonical R, non-canonical A) |
-| 160–169 | Strict base64url (padding, alphabet, whitespace) |
-| 170–179 | Stage 9 binding (path mismatch, reserved path, request_hash, origin binding, origin not_after semantic constraints) |
-| 180–189 | Canary (equal `issued_at` conflict, anti-downgrade, interval-bounds violation, runtime-key reuse) |
-| 190–199 | Unicode and canonicalization (NFD vs NFC) |
-| 200–209 | Migration scenarios (multi-document; successor manifest in `extra_files`) |
+| 001-099 | Positive (must be accepted) |
+| 100-109 | Stage 2 input checks (BOM, UTF-8, byte cap) |
+| 110-119 | Stage 3 JSON parsing (duplicate keys, nesting depth, string length, array length, object keys, malformed JSON) |
+| 120-129 | Stage 4 kind discrimination (spec_version, unknown kind, missing required top-level field) |
+| 130-139 | Stage 5 schema (unknown field, missing required, null literal, unknown block kind, field type, field range, block not permitted in document kind, duplicate uniqueness-required entry, malformed Unicode) |
+| 140-149 | Numeric grammar (float, exponent, overflow) |
+| 150-159 | Stage 6 signature (modified payload, malformed length, non-canonical S, small-order A, non-canonical R, non-canonical A) |
+| 160-169 | Strict base64url (padding, alphabet, whitespace) |
+| 170-179 | Stage 9 binding (path mismatch, reserved path, request_hash, origin binding, origin not_after semantic constraints) |
+| 180-189 | Canary (equal `issued_at` conflict, anti-downgrade, interval-bounds violation, runtime-key reuse) |
+| 190-199 | Unicode and canonicalization (NFD vs NFC) |
+| 200-209 | Migration scenarios (multi-document; successor manifest in `extra_files`) |
 
 Coverage relative to the §11 diagnostic code catalog remains partial. Codes not yet covered in this corpus fall into the following groups:
 

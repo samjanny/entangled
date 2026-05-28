@@ -1,4 +1,4 @@
-# 02 — Document schema
+# 02 - Document schema
 
 This section defines the general schema of Entangled documents: their shared envelope structure, the three document kinds (`manifest`, `content`, `transaction`), and the per-kind schemas for `content` and `transaction`. The `manifest` schema is defined in detail in §06.
 

@@ -1,4 +1,4 @@
-# 04 — Canonicalization
+# 04 - Canonicalization
 
 This section defines how Entangled JSON values are reduced to a deterministic byte sequence for signing and verification.
 
@@ -74,7 +74,7 @@ digit          = %x30-39   ; "0" through "9"
 
 This is the strict subset of RFC 8259 §6 numbers that produces a non-negative integer with no sign, no leading zeros, no decimal point, and no exponent.
 
-The integer's decimal value MUST be in the range `[0, 2^63 − 1]`. Values outside this range are rejected even if a field's own schema would accept a smaller subset; the absolute upper bound is the protocol's, not the field's.
+The integer's decimal value MUST be in the range `[0, 2^63 - 1]`. Values outside this range are rejected even if a field's own schema would accept a smaller subset; the absolute upper bound is the protocol's, not the field's.
 
 ### Parser-level enforcement
 
@@ -82,8 +82,8 @@ Numeric tokens MUST be validated against the integer grammar at the lexical or p
 
 A JSON parser that converts numeric tokens to IEEE 754 binary64 before applying the grammar is non-conforming for Entangled use. Such a parser cannot reliably distinguish:
 
-- `42`, `42.0`, `4.2e1`, and `42E0` — all convert to the same binary64 value;
-- integers above `2^53` — they round silently, so `9007199254740993` becomes `9007199254740992`;
+- `42`, `42.0`, `4.2e1`, and `42E0` - all convert to the same binary64 value;
+- integers above `2^53` - they round silently, so `9007199254740993` becomes `9007199254740992`;
 - `-0` from `+0`.
 
 Implementations MUST use one of:

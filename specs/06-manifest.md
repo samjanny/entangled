@@ -1,4 +1,4 @@
-# 06 — Manifest
+# 06 - Manifest
 
 The manifest is the signed document by which a publisher declares the current authorization state of an Entangled site.
 

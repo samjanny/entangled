@@ -1,4 +1,4 @@
-# 07 — State
+# 07 - State
 
 State is the mechanism by which a publisher asks the client to persist per-user information across visits, without relying on undeclared ambient identifiers such as cookies or browser storage.
 
@@ -57,13 +57,13 @@ Request state is publisher-wide, not endpoint-private.
 
 The client attaches every non-expired consented request-state item for the current publisher to every submit request to that publisher, regardless of which submit endpoint the user is interacting with. There is no endpoint-level scoping in v1.
 
-**Security implication.** Because all non-expired request-state items are attached to every submit, any transaction endpoint receiving a submit also receives every request-state secret — including session tokens, authorization tokens, and any other credentials stored as request state. A publisher operating multiple transaction endpoints with different trust levels MUST assume that every endpoint sees every request-state value. This means that a less-trusted or auxiliary endpoint has access to the same credentials as the publisher's most sensitive endpoint. Publishers MUST NOT store credentials whose exposure must be limited to a single endpoint as request state in v1. Where endpoint-level credential isolation is required, the publisher SHOULD use out-of-band mechanisms or defer the functionality until endpoint-scoped request state is available.
+**Security implication.** Because all non-expired request-state items are attached to every submit, any transaction endpoint receiving a submit also receives every request-state secret - including session tokens, authorization tokens, and any other credentials stored as request state. A publisher operating multiple transaction endpoints with different trust levels MUST assume that every endpoint sees every request-state value. This means that a less-trusted or auxiliary endpoint has access to the same credentials as the publisher's most sensitive endpoint. Publishers MUST NOT store credentials whose exposure must be limited to a single endpoint as request state in v1. Where endpoint-level credential isolation is required, the publisher SHOULD use out-of-band mechanisms or defer the functionality until endpoint-scoped request state is available.
 
 Publishers MUST treat request-mode state as publisher-wide. Sensitive data that should be confined to a specific endpoint or backend MUST NOT be stored as request state in v1.
 
 Endpoint-scoped request state is reserved for a future protocol version.
 
-Examples of appropriate request-state uses — where publisher-wide visibility is acceptable:
+Examples of appropriate request-state uses - where publisher-wide visibility is acceptable:
 
 - session token for submit endpoints where all endpoints share a trust boundary;
 - checkout state;
@@ -322,7 +322,7 @@ Rejecting a state update on consent or storage grounds does not reject the trans
 
 This rule is distinct from rejection of the transaction document itself on schema or policy grounds. The failure taxonomy for state updates is:
 
-* **Schema failure.** A `state_updates` entry that violates the operation schema defined in this section — wrong field set, malformed value, unknown `op` — rejects the entire transaction document during Stage 5 of the validation pipeline (§10).
+* **Schema failure.** A `state_updates` entry that violates the operation schema defined in this section - wrong field set, malformed value, unknown `op` - rejects the entire transaction document during Stage 5 of the validation pipeline (§10).
 * **Policy failure.** A set operation referencing a `(namespace, key)` combination not declared in the current manifest's `state_policy` (see "namespace and key" above) rejects the entire transaction document. The same applies to a set operation whose `value` exceeds the policy's `max_size` or whose `ttl` exceeds the policy's `max_lifetime`.
 * **Consent failure.** The user declines the consent prompt for a set operation, or remembered-consent state does not authorize the operation. The state operation is rejected; the transaction document remains valid and renderable.
 * **Storage failure.** The client cannot commit the state operation because the per-publisher storage cap (see "Storage limits" above) would be exceeded, or a local write fails. The state operation is rejected; the transaction document remains valid and renderable.
@@ -364,7 +364,7 @@ This rule does not change the wire format. The value remains an opaque UTF-8 str
 
 The visual treatment MUST clearly distinguish `client_only` and `request` mode. A user MUST be able to identify, before granting consent, whether the item will be transmitted in future submits.
 
-For request-state items, the client MUST explain that the item will be included in future submit requests to the same publisher — across every submit endpoint under that publisher's identity, not only the current form or endpoint — until it expires, is deleted, or consent is revoked. Request-state scope in Entangled v1 is publisher-wide; endpoint-scoped request state is not part of v1.
+For request-state items, the client MUST explain that the item will be included in future submit requests to the same publisher - across every submit endpoint under that publisher's identity, not only the current form or endpoint - until it expires, is deleted, or consent is revoked. Request-state scope in Entangled v1 is publisher-wide; endpoint-scoped request state is not part of v1.
 
 If the user rejects a set operation, the client MUST NOT commit it.
 
@@ -518,7 +518,7 @@ When the client observes a new manifest authorizing a different `K_runtime` than
 * the client MUST display a chrome notice informing the user that request-state entries from a previous publication cycle have been suspended due to key rotation;
 * if the new manifest's `state_policy` re-declares the same `(namespace, key)` combinations, the publisher MAY install fresh values through new transaction documents signed by the new `K_runtime`; these are independent entries and require fresh consent.
 
-The rationale is that `K_runtime` compromise (§05) allows an attacker to plant request-state items — including session tokens and authorization credentials — with TTLs up to 90 days. Without this rule, such items survive rotation and are transmitted in submit requests to the publisher's backends, extending the effective compromise window far beyond the rotation boundary. Suspending transmit eligibility on rotation ensures that rotation actually bounds the exposure of request-state credentials.
+The rationale is that `K_runtime` compromise (§05) allows an attacker to plant request-state items - including session tokens and authorization credentials - with TTLs up to 90 days. Without this rule, such items survive rotation and are transmitted in submit requests to the publisher's backends, extending the effective compromise window far beyond the rotation boundary. Suspending transmit eligibility on rotation ensures that rotation actually bounds the exposure of request-state credentials.
 
 Client-only state entries are not affected by this rule because they are never transmitted to the publisher.
 

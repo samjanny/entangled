@@ -283,8 +283,8 @@ The canary interval `next_expected - issued_at` (§08) bounds the maximum time d
 
 Recommended floors by threat profile:
 
-* **High-threat** — journalism with sensitive sources, financial services, sites whose readers face physical or legal risk: **7 days**. Aligns with the most aggressive end of the §08-permitted range. Lower bound for operators willing to invest in weekly ceremonies. The 7-day floor keeps the worst-case post-rotation residual exposure (§16 "The compromise window") to approximately one week.
-* **Standard** — all other deployments (most editorial sites, advocacy, professional communications, personal publications): **14 to 30 days**. Balances ceremony overhead against exposure window. The 30-day upper end matches the §08:81 MUST ceiling; intervals longer than 30 days are no longer permitted by §08.
+* **High-threat** - journalism with sensitive sources, financial services, sites whose readers face physical or legal risk: **7 days**. Aligns with the most aggressive end of the §08-permitted range. Lower bound for operators willing to invest in weekly ceremonies. The 7-day floor keeps the worst-case post-rotation residual exposure (§16 "The compromise window") to approximately one week.
+* **Standard** - all other deployments (most editorial sites, advocacy, professional communications, personal publications): **14 to 30 days**. Balances ceremony overhead against exposure window. The 30-day upper end matches the §08:81 MUST ceiling; intervals longer than 30 days are no longer permitted by §08.
 
 A publisher whose content has unequal threat across cycles MAY use shorter intervals during high-risk periods (for example, during active reporting on a sensitive subject) and longer intervals during quieter periods, provided each interval is independently within the §08 bounds and the rotation cadence remains consistent enough that readers do not perceive the canary as broken.
 
@@ -593,9 +593,9 @@ Use this procedure if `K_runtime_priv` may be compromised but `K_origin_priv` an
 
 A `K_runtime` compromise has a bounded effective window even without explicit in-band revocation. The window has three temporal phases:
 
-1. **Pre-discovery exposure** (`t_compromise` → `t_discovery`): the attacker has the key. The publisher does not know. Forged content signed during this phase verifies against the current manifest and is accepted as current publication. Duration is unbounded by the protocol; in practice it is bounded by the publisher's monitoring (§14) and by external indicators of compromise.
-2. **Pre-rotation exposure** (`t_discovery` → `t_rotation_deployed`): the publisher knows but has not yet deployed the rotation manifest. Forged content continues to verify until the new manifest is accepted by each client. The publisher controls this phase by responding quickly; the §7 ceremony can complete within hours given prepared offline ceremony state.
-3. **Post-rotation residual** (`t_rotation_deployed` → ∀ clients have observed the new manifest): the new manifest authorizes a new `K_runtime`, but cached clients that have not refreshed may still accept content signed by the old `K_runtime` as current. This phase is bounded by `min_refresh_interval` (§06) plus the client refresh policy (§10), in the worst case by the previously declared `next_expected` for the old canary (capped at 30 days by §08), plus the §10 300-second clock-skew tolerance.
+1. **Pre-discovery exposure** (`t_compromise` -> `t_discovery`): the attacker has the key. The publisher does not know. Forged content signed during this phase verifies against the current manifest and is accepted as current publication. Duration is unbounded by the protocol; in practice it is bounded by the publisher's monitoring (§14) and by external indicators of compromise.
+2. **Pre-rotation exposure** (`t_discovery` -> `t_rotation_deployed`): the publisher knows but has not yet deployed the rotation manifest. Forged content continues to verify until the new manifest is accepted by each client. The publisher controls this phase by responding quickly; the §7 ceremony can complete within hours given prepared offline ceremony state.
+3. **Post-rotation residual** (`t_rotation_deployed` -> ∀ clients have observed the new manifest): the new manifest authorizes a new `K_runtime`, but cached clients that have not refreshed may still accept content signed by the old `K_runtime` as current. This phase is bounded by `min_refresh_interval` (§06) plus the client refresh policy (§10), in the worst case by the previously declared `next_expected` for the old canary (capped at 30 days by §08), plus the §10 300-second clock-skew tolerance.
 
 The post-rotation residual is the protocol-level upper bound. For a publisher with a 30-day canary interval, the worst-case residual is approximately 30 days; for a 7-day interval, approximately 7 days. This is the operational rationale for the cadence floors in §7 "Choosing canary interval".
 
@@ -604,7 +604,7 @@ The post-rotation residual is the protocol-level upper bound. For a publisher wi
 1. Stop using the compromised runtime key on the publishing infrastructure immediately. Block the key file from being used to sign anything further.
 2. Note the suspected compromise window: `t_compromise` (best estimate), `t_discovery` (now), and the corresponding canary `issued_at` of the manifest under which the compromise occurred. Record these in the operator log.
 3. Generate a new `K_runtime` keypair offline or in a trusted environment.
-4. Compose a fresh canary with a newer `issued_at`. Set `next_expected` short — for high-threat deployments, 7 days from `issued_at` is appropriate even if the deployment normally uses a longer interval. Returning to the regular cadence happens at the subsequent rotation, not this one.
+4. Compose a fresh canary with a newer `issued_at`. Set `next_expected` short - for high-threat deployments, 7 days from `issued_at` is appropriate even if the deployment normally uses a longer interval. Returning to the regular cadence happens at the subsequent rotation, not this one.
 5. Sign a new manifest with `K_publisher_priv` in the offline ceremony environment.
 6. Deploy the new manifest and new runtime key together (atomicity guidance in §7).
 7. Re-sign current content with the new runtime key. Content that was previously published and remains correct does not need to be modified, only re-signed under the new key authorization.
@@ -614,7 +614,7 @@ The post-rotation residual is the protocol-level upper bound. For a publisher wi
 
 ### Out-of-band announcement
 
-Because Entangled v1 has no in-band revocation list, the publisher's out-of-band channels — the same channels used for PIP distribution: Mastodon, Signal, mailing list, conference talks, printed material — are the primary mechanism for informing readers about a `K_runtime` compromise.
+Because Entangled v1 has no in-band revocation list, the publisher's out-of-band channels - the same channels used for PIP distribution: Mastodon, Signal, mailing list, conference talks, printed material - are the primary mechanism for informing readers about a `K_runtime` compromise.
 
 Announce as soon as the rotation is deployed. The announcement SHOULD include:
 
@@ -629,7 +629,7 @@ Announce as soon as the rotation is deployed. The announcement SHOULD include:
 A template:
 
 ```text
-[ENTANGLED RUNTIME KEY COMPROMISE — site.example]
+[ENTANGLED RUNTIME KEY COMPROMISE - site.example]
 
 Publisher PIP: <24 words>
 Compromised K_runtime.pub: <base64url>
@@ -660,7 +660,7 @@ The Entangled protocol cannot retroactively invalidate documents in a reader's a
 * **What is safe**: any content signed before `t_compromise`. Cryptographic validity is unaffected. The publisher identity is unchanged. The reader does not need to abandon the publisher.
 * **What is suspect**: any content signed during [`t_compromise`, `t_discovery`] under the compromised `K_runtime`. The reader's client cannot distinguish publisher-authored from attacker-authored content in this window.
 * **What the reader should do**: clear local cache for the affected period; refetch current content under the new manifest; verify the chrome shows the new `K_runtime.pub` matches the announcement. If the client exposes authorization history, the reader can specifically remove or mark suspect the compromised `K_runtime.pub` entry.
-* **What the reader should not do**: do not abandon the publisher identity unless the announcement also indicates `K_publisher` compromise — that is a different, much more serious incident (§18) that is signalled differently.
+* **What the reader should not do**: do not abandon the publisher identity unless the announcement also indicates `K_publisher` compromise - that is a different, much more serious incident (§18) that is signalled differently.
 
 A reader who declines to take action will continue to see suspect-window content as historical content, with the standard historical-content chrome treatment defined in §10. The publisher's out-of-band announcement is the only signal that elevates the reader's risk assessment of that content above the chrome's default.
 

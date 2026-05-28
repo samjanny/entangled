@@ -1,4 +1,4 @@
-# 01 — Glossary
+# 01 - Glossary
 
 This section defines the vocabulary used throughout the Entangled v1.0 specification. Terms are listed alphabetically. Each entry gives a brief definition, a pointer to the section where the term is defined operationally, and a list of related terms.
 

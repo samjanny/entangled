@@ -96,7 +96,7 @@
     {
       "id": "006-manifest-valid-not-after",
       "kind": "manifest",
-      "description": "Valid manifest declaring origin.not_after = 2027-05-07T00:00:00Z, one year after canary.issued_at and well within the 5-year ceiling. At clock_now (2026-05-07) the manifest is not yet origin-expired. Exercises the rc.14 origin-not-after schema acceptance and Stage 5 cross-field semantic checks (strictly later than canary.issued_at; not more than 5 years after; SHOULD later than canary.next_expected — satisfied here).",
+      "description": "Valid manifest declaring origin.not_after = 2027-05-07T00:00:00Z, one year after canary.issued_at and well within the 5-year ceiling. At clock_now (2026-05-07) the manifest is not yet origin-expired. Exercises the rc.14 origin-not-after schema acceptance and Stage 5 cross-field semantic checks (strictly later than canary.issued_at; not more than 5 years after; SHOULD later than canary.next_expected - satisfied here).",
       "spec_refs": [
         "§06",
         "§10"
@@ -645,7 +645,7 @@
     {
       "id": "122-kind-missing-fields",
       "kind": "manifest",
-      "description": "Document with the top-level sig field omitted. spec_version and kind are present and well-formed, but sig — one of the three top-level required fields per §02 — is absent. Stage 4 kind discrimination fires E_KIND_MISSING_FIELDS.",
+      "description": "Document with the top-level sig field omitted. spec_version and kind are present and well-formed, but sig - one of the three top-level required fields per §02 - is absent. Stage 4 kind discrimination fires E_KIND_MISSING_FIELDS.",
       "spec_refs": [
         "§02",
         "§11"
@@ -734,7 +734,7 @@
     {
       "id": "138-schema-malformed-unicode",
       "kind": "manifest",
-      "description": "Manifest whose canary.statement contains the JSON escape sequence \\uD800 — a lone high surrogate with no paired low surrogate. After JSON parsing this yields a string with an isolated surrogate code point, which §04 rejects as malformed Unicode at Stage 5 schema validation (before Stage 6 signature verification). Conforming parsers accept the JSON escape per RFC 8259 §7; rejection is at the schema layer. E_SCHEMA_MALFORMED_UNICODE.",
+      "description": "Manifest whose canary.statement contains the JSON escape sequence \\uD800 - a lone high surrogate with no paired low surrogate. After JSON parsing this yields a string with an isolated surrogate code point, which §04 rejects as malformed Unicode at Stage 5 schema validation (before Stage 6 signature verification). Conforming parsers accept the JSON escape per RFC 8259 §7; rejection is at the schema layer. E_SCHEMA_MALFORMED_UNICODE.",
       "spec_refs": [
         "§04",
         "§11"

@@ -13,7 +13,7 @@ into normative spec text.
 | `K_publisher` | Publisher root identity key. Offline. Ed25519. Authorizes all server-side keys. |
 | `K_origin` | Carrier endpoint key. Online on the server. Ed25519. For Tor v3, this is the onion service key. |
 | `K_runtime` | Content and transaction signing key. Online on the server. Ed25519. Rotated periodically via canary. |
-| PIP (publisher identity phrase) | BIP39 encoding of `K_publisher.pub` (32 bytes → 24 English words). The user-facing identity anchor. |
+| PIP (publisher identity phrase) | BIP39 encoding of `K_publisher.pub` (32 bytes -> 24 English words). The user-facing identity anchor. |
 
 ## Trust model (high level, pre-spec)
 

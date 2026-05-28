@@ -13,7 +13,7 @@ A site built with Entangled is not a general web application. It is a small set 
 
 There is no JavaScript, no DOM scripting, no HTML, no ambient storage, no cookies, no arbitrary styling, and no publisher-controlled client chrome.
 
-## Pillar A — Threat model
+## Pillar A - Threat model
 
 Entangled addresses two explicitly separated classes of threat.
 
@@ -68,7 +68,7 @@ In particular, Entangled does not provide:
 
 The PIP is a persistent public fingerprint by design. Deniability, where required, is an operational matter involving how `K_publisher` is generated, stored, published, and attributed.
 
-## Pillar B — Trust architecture
+## Pillar B - Trust architecture
 
 Entangled places trust in the publisher identity, not in the address.
 
@@ -181,7 +181,7 @@ For state `Changed / mismatch`:
 
 A client may support publisher profiles that allow a user-confirmed `K_publisher.pub` to be recognized across multiple authorized origins. In that case, migration to a new origin signed by the same externally verified publisher key must not be treated as a mismatch solely because the address changed.
 
-## Pillar C — Client architecture
+## Pillar C - Client architecture
 
 A conforming Entangled client has two architecturally distinct UI surfaces.
 

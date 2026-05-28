@@ -1,4 +1,4 @@
-# 05 — Keys and signing
+# 05 - Keys and signing
 
 This section defines the keys used in Entangled, their roles, the signature inputs for signed objects, and the cryptographic verification chain anchored at `K_publisher`.
 
@@ -50,7 +50,7 @@ The legitimate publisher recovers from `K_origin` compromise by generating a new
 
 **Operational profile.** `K_runtime` is available to the publishing infrastructure. It is used to sign content documents at publication time and transaction documents in response to submits. It is online or deployment-adjacent.
 
-**Compromise impact.** Compromise of `K_runtime` allows an attacker to forge `content` and `transaction` documents that verify against any manifest that authorizes that key. Forgery exposure for content and transaction signatures is bounded by the rotation cadence and by how quickly the publisher can issue a newer manifest authorizing a replacement key. However, state entries installed by transaction documents signed under the compromised `K_runtime` survive rotation: because state entries are retained until their natural `expires_at` (§07), a compromised runtime key can plant request-state items — including session tokens, authorization tokens, or tracking identifiers — with TTLs up to 90 days that persist and are transmitted in submit requests long after the key has been rotated. Rotation of `K_runtime` therefore does not fully bound the compromise window for publishers that use request state. See §07 for the mitigation requirement.
+**Compromise impact.** Compromise of `K_runtime` allows an attacker to forge `content` and `transaction` documents that verify against any manifest that authorizes that key. Forgery exposure for content and transaction signatures is bounded by the rotation cadence and by how quickly the publisher can issue a newer manifest authorizing a replacement key. However, state entries installed by transaction documents signed under the compromised `K_runtime` survive rotation: because state entries are retained until their natural `expires_at` (§07), a compromised runtime key can plant request-state items - including session tokens, authorization tokens, or tracking identifiers - with TTLs up to 90 days that persist and are transmitted in submit requests long after the key has been rotated. Rotation of `K_runtime` therefore does not fully bound the compromise window for publishers that use request state. See §07 for the mitigation requirement.
 
 Compromise or rotation of `K_runtime` does not retroactively make old signatures mathematically invalid. A document signed by an older `K_runtime` may remain cryptographically valid as historical content if the client can verify it against the manifest or publication cycle that authorized that key. It MUST NOT be rendered as current publication after the client has observed a newer manifest authorizing a different current `K_runtime`, except with the client behavior defined in §10.
 
@@ -166,7 +166,7 @@ A signature is valid only if all of the following hold:
 
 - the base64url-decoded encoding is exactly 64 bytes;
 - `R` decodes to a point on the Ed25519 curve under the canonical compressed encoding. Non-canonical encodings of `R` are rejected;
-- `S`, interpreted as a little-endian unsigned integer, satisfies `0 ≤ S < L`, where `L = 2^252 + 27742317777372353535851937790883648493` is the order of the Ed25519 base point. A non-canonical `S` (`S ≥ L`) is rejected;
+- `S`, interpreted as a little-endian unsigned integer, satisfies `0 <= S < L`, where `L = 2^252 + 27742317777372353535851937790883648493` is the order of the Ed25519 base point. A non-canonical `S` (`S >= L`) is rejected;
 - the cofactorless verification equation holds: `[S]B = R + [k]A`, where `B` is the Ed25519 base point, `A` is the validated verification public key, `k = SHA-512(R || A || M) mod L`, and `M` is the signature input constructed as defined in "Signature inputs" below.
 
 A signature whose base64url-decoded length is not exactly 64 bytes is rejected with `E_SIG_MALFORMED` (§11). A signature failing any cryptographic check is rejected with `E_SIG_VERIFICATION` (§11).
@@ -183,7 +183,7 @@ Where a library does not expose a strict mode separately, the implementation MUS
 
 The strict profile is incompatible with older Ed25519 verification implementations that:
 
-- accept non-canonical `S` (`S ≥ L`);
+- accept non-canonical `S` (`S >= L`);
 - accept non-canonical encodings of `R` or `A`;
 - accept small-order public keys without rejection;
 - use the cofactored verification equation.

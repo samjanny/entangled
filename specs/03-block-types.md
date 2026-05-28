@@ -1,4 +1,4 @@
-# 03 — Block types
+# 03 - Block types
 
 This section defines the block types that constitute the rendered content of `content` and `transaction` documents. Each block has a closed schema with declared fields, value ranges, and rendering semantics.
 
@@ -396,7 +396,7 @@ No other media types are permitted in Entangled v1.
 
 `caption` is optional. When present, it is a UTF-8 string. It MUST NOT contain control characters in the range U+0000 through U+001F or U+007F. When absent, the field is omitted. An empty string is not permitted as a substitute.
 
-`alt` MAY be the empty string for purely decorative images, where alternative text would not aid accessibility. This contrasts with `caption`, where the empty string is forbidden — `caption` is omitted entirely when no caption applies.
+`alt` MAY be the empty string for purely decorative images, where alternative text would not aid accessibility. This contrasts with `caption`, where the empty string is forbidden - `caption` is omitted entirely when no caption applies.
 
 All seven of `kind`, `src`, `sha256`, `media_type`, `width`, `height`, and `alt` are required. `caption` is optional. No other top-level fields are permitted.
 
@@ -425,7 +425,7 @@ Failure at any step from 2 to 9 rejects the image resource; the image is rendere
 
 ### No retry on image verification failure
 
-After a failure at any of steps 2–9 above, the client MUST NOT re-fetch the same `src` for the same `image` block within the same document rendering session. The verification failure is a property of the bound triple `(src, sha256, media_type)` declared by the signed document: refetching the same `src` cannot change the signed expectation, and a retry loop adds no information while wasting traffic and exposing the user's browsing pattern to additional observation on the carrier.
+After a failure at any of steps 2-9 above, the client MUST NOT re-fetch the same `src` for the same `image` block within the same document rendering session. The verification failure is a property of the bound triple `(src, sha256, media_type)` declared by the signed document: refetching the same `src` cannot change the signed expectation, and a retry loop adds no information while wasting traffic and exposing the user's browsing pattern to additional observation on the carrier.
 
 A separate user-initiated reload of the containing document, including any document fetched anew under a refreshed manifest, MAY re-issue the image fetch under the verification pipeline above; that is a new rendering session, not a retry within the failed one. A different `image` block referencing a different `src` is not affected by the no-retry rule.
 
@@ -465,7 +465,7 @@ SHA-256 hash verification authenticates the bytes of an image resource against t
 
 Implementations SHOULD use memory-safe image decoders, hardened parsers, sandboxed decoder processes, or other isolation mechanisms appropriate to the deployment environment. The choice among these mitigations is implementation-defined; the protocol does not mandate any specific decoder or sandboxing technology.
 
-The protocol-level rejections in this section — the media-type allowlist, the SVG and animated-format prohibitions, hash verification, dimension limits, and the document-wide pixel budget — are necessary but not sufficient to make decoding fully safe. They reduce the attack surface; they do not eliminate it.
+The protocol-level rejections in this section - the media-type allowlist, the SVG and animated-format prohibitions, hash verification, dimension limits, and the document-wide pixel budget - are necessary but not sufficient to make decoding fully safe. They reduce the attack surface; they do not eliminate it.
 
 ### Limits
 
@@ -581,7 +581,7 @@ A `carrier` target points to a service reachable through an Entangled-supported 
 `url` is a UTF-8 string. It MUST:
 
 * begin with `http://`;
-* have a host that is a valid carrier address for the declared `carrier` — for `tor-v3`, a 56-character onion address followed by `.onion`;
+* have a host that is a valid carrier address for the declared `carrier` - for `tor-v3`, a 56-character onion address followed by `.onion`;
 * not exceed 1 KiB when encoded as UTF-8;
 * contain only valid URL characters per RFC 3986;
 * not contain control characters.
