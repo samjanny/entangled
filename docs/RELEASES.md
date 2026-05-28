@@ -47,6 +47,34 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.22
+
+Date: 2026-05-28
+
+**Lotto 22 - §05:174 small-order R rejection alignment (N63)**
+
+Closes issue #1 on the repository, which reported a factual error in §05:174: the pre-N63 text claimed that the `verify_strict` mode in `ed25519-dalek` does not apply small-order rejection to the signature `R` component, and that the protocol matches that behavior by also accepting small-order `R`. Both clauses are factually wrong: `ed25519-dalek 2.2.0` (`src/verifying.rs`, the `verify_strict` function) explicitly rejects a signature when either `signature_R.is_small_order()` or `self.point.is_small_order()` holds, before evaluating the cofactorless verification equation. An implementation that followed §05:174 literally and used `verify_strict` (the natural choice, since §05 itself names it as the reference) therefore rejected signatures that the spec's prose declared conformant, producing a cross-implementation conformance gap.
+
+The error was introduced at rc.18 N34 (Lotto 8), which added the §05:174 clarification on the basis of a misreading of dalek's source. Subsequent rc audit passes (including a multi-agent verification round) did not catch the error because the verification step compared §05 against itself rather than against the cited library source. The issue was discovered when an independent Rust implementation built against `verify_strict` and observed the divergence in practice.
+
+The fix is Option A from the issue: align the spec to the de facto `verify_strict` behavior. Rejecting small-order `R` is strictly safer (it tightens; it does not weaken), removes the cross-implementation divergence, and matches what the reference library actually produces. The alternative (Option B - keep the protocol intent of accepting small-order `R` and remove the dalek reference) was rejected because the original "intent" was itself based on a misreading; preserving a fictional design rationale would complicate implementer guidance for no security or correctness benefit.
+
+**§05:174 rewrite (N63)** - The paragraph is rewritten. The pre-N63 text said the small-order rejection applies only to `A` and that small-order `R` is accepted. The N63 text makes the small-order rejection apply to both `A` and `R`: a signature whose `R` decodes to a point of order dividing 8 MUST be rejected with `E_SIG_VERIFICATION` (§11), before or alongside the canonical-encoding / `S < L` / cofactorless-equation checks. The paragraph explicitly cites the dalek source location (`signature_R.is_small_order()` in `src/verifying.rs`) so future verification can check the spec against the library directly. A closing sentence motivates the rejection symmetry as required for cross-implementation determinism.
+
+**§05:188 compatibility note extended (N63)** - The "Compatibility note" subsection that enumerates the verification practices the strict profile is incompatible with previously listed "accept small-order public keys without rejection" but did not list "accept signatures whose `R` component is a small-order point". The latter is added as a separate bullet; the existing bullet on `A` is clarified to say "public keys (`A`)" for symmetry with the new bullet on `R`. No further changes to §05.
+
+**Corpus vector 157 (N63)** - New single-document vector `157-sig-small-order-r`: a manifest whose signature `R` component is replaced with the encoded identity point (the same SMALL_ORDER_A pattern that vector 153 uses for the public key `A`). The `S` half of the signature is left at the original valid value; the small-order `R` rejection takes precedence. Expected reject + `E_SIG_VERIFICATION`. The vector is the symmetric pair of vector 153 (small-order `A`) and exercises the N63 rejection rule with the same isolation pattern: the small-order `R` violation is the only live failure at Stage 6, the other strict-profile checks are not triggered.
+
+Distinct error code coverage is unchanged: `E_SIG_VERIFICATION` was already exercised by vectors 150, 152, 153, 154, 155. Vector 157 adds another sub-case of the same code targeting the new small-order `R` rejection rule. Total vectors: 59 -> 60.
+
+**Corpus `rc_target` bump 1.0-rc.21 -> 1.0-rc.22.** This is a real normative tightening (publishers and verifiers that accepted small-order `R` under rc.21 prose are non-conformant under rc.22), parallel to the rc.20 -> rc.21 bump. The byte-identical-conformance claim between rc.21 and rc.22 holds for all signatures whose `R` is not a small-order point (the overwhelmingly typical case); only signatures specifically constructed with small-order `R` change verdict (accept under rc.21 prose -> reject under rc.22 prose), and they were already rejected by any rc.21 implementation built on `verify_strict`.
+
+**Behavioral compatibility.** N63 is a normative tightening that closes a spec-vs-library conformance gap. An rc.21 implementation built on `verify_strict` already rejected small-order `R` and is therefore conformant under rc.22 with no change. An rc.21 implementation that read §05:174 literally and built a custom verifier that accepted small-order `R` is non-conformant under rc.22 and SHOULD switch to the strict profile (which any `verify_strict`-based path implements correctly). No wire-format, schema, or new diagnostic-catalog change.
+
+**Diagnostic catalog summary.** No new error codes. `E_SIG_VERIFICATION` gains a new sub-case (small-order `R` rejection) listed under §05 but using the existing diagnostic.
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. All rc.21 documents validate identically under rc.22 except signatures constructed with small-order `R`, which become rejected.
+
 ### v1.0-rc.21
 
 Date: 2026-05-28

@@ -171,7 +171,7 @@ A signature is valid only if all of the following hold:
 
 A signature whose base64url-decoded length is not exactly 64 bytes is rejected with `E_SIG_MALFORMED` (§11). A signature failing any cryptographic check is rejected with `E_SIG_VERIFICATION` (§11).
 
-The small-order rejection defined under "Public key (`A`) validation" above applies only to verification public keys. The protocol does not reject a signature whose `R` component decodes to a small-order point on the Ed25519 curve: a signature with a small-order `R` is accepted if it passes the canonical-encoding check on `R`, the `S < L` check, and the cofactorless verification equation `[S]B = R + [k]A`. This matches the `verify_strict` mode in `ed25519-dalek`, which does not apply small-order rejection to `R`.
+The small-order rejection defined under "Public key (`A`) validation" above applies to both verification public keys and the signature `R` component. A signature whose `R` component decodes to a small-order point on the Ed25519 curve (a point of order dividing 8) MUST be rejected with `E_SIG_VERIFICATION` (§11), before or alongside the canonical-encoding check on `R`, the `S < L` check, and the cofactorless verification equation `[S]B = R + [k]A`. This matches the `verify_strict` mode in `ed25519-dalek` (`src/verifying.rs`), which rejects a signature when either `signature_R.is_small_order()` or `self.point.is_small_order()` holds, before evaluating the verification equation. The rejection symmetry between `A` and `R` is required for cross-implementation determinism: a signature with small-order `R` would otherwise be accepted by an implementation that read the protocol literally as "no small-order `R` rejection" and rejected by an implementation built on `verify_strict`, producing divergent verdicts on the same wire bytes.
 
 ### Library guidance
 
@@ -185,7 +185,8 @@ The strict profile is incompatible with older Ed25519 verification implementatio
 
 - accept non-canonical `S` (`S >= L`);
 - accept non-canonical encodings of `R` or `A`;
-- accept small-order public keys without rejection;
+- accept small-order public keys (`A`) without rejection;
+- accept signatures whose `R` component is a small-order point;
 - use the cofactored verification equation.
 
 Publishers MUST sign with implementations that produce signatures acceptable under this profile. All current well-maintained Ed25519 signing libraries produce canonical signatures by default; the constraint affects verifiers more than signers.
