@@ -197,13 +197,14 @@ For content and transaction documents, `E_SIG_INVALID_KEY` includes the case whe
 | `W_CANARY_EXPIRED`         | warning  | manifest      | The canary has passed `next_expected`                                                                                                                  |
 | `W_CANARY_GAP`             | warning  | manifest      | A canary gap was previously observed and has not been dismissed by the user                                                                            |
 | `W_CANARY_UNAVAILABLE`     | warning  | manifest      | The current canary state could not be determined; cached content may be available                                                                      |
-| `E_CANARY_RUNTIME_REUSE`   | error    | manifest      | The canary declares the same `runtime_pubkey` as the immediately preceding verified manifest for the same `K_publisher.pub`; key rotation did not occur |
+| `E_CANARY_RUNTIME_REUSE`   | error    | manifest      | The canary declares the same `runtime_pubkey` as a previously verified manifest for the same `K_publisher.pub`; key rotation did not occur. The MUST-level case is reuse against the immediately preceding verified manifest; a SHOULD-level extension for clients maintaining publisher history covers reuse against any previously verified `runtime_pubkey` for the same `K_publisher.pub` (§08, §00). |
 
 The structured diagnostic format for `E_CANARY_RUNTIME_REUSE` SHOULD include in `details`:
 
 * `runtime_pubkey`: the reused key;
-* `previous_issued_at`: the `issued_at` of the preceding manifest that also declared this key;
-* `current_issued_at`: the `issued_at` of the current manifest.
+* `previous_issued_at`: the `issued_at` of the previously verified manifest that also declared this key (for `window_position = 1` this is the immediately preceding manifest; for `window_position >= 2` this is the older history entry that matched);
+* `current_issued_at`: the `issued_at` of the current manifest;
+* `window_position`: an integer >= 1 indicating which entry in the client's publisher history matched. `1` denotes the immediately preceding verified manifest (the MUST-level rejection that all conforming clients perform). A value `>= 2` denotes a deeper history match (the SHOULD-level rejection that clients maintaining runtime-pubkey history perform, per §08), where `2` is the entry before the immediately preceding manifest, `3` is two entries before, and so on. A stateless client that enforces only the MUST emits `window_position = 1`; a stateful client distinguishes its diagnostics by this field so the operator can tell whether the publisher repeated the most recent key (an apparent failure to rotate) or resurrected an older retired key (a violation of the §08 ceremony's destruction step or a sign of broader compromise).
 
 The structured diagnostic format for `E_CANARY_CONFLICT` SHOULD include in `details`:
 

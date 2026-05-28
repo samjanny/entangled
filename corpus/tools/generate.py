@@ -1758,6 +1758,7 @@ def negative_vectors(keys) -> list[dict]:
             "runtime_pubkey": b64u(rp_pub),
             "previous_issued_at": "2026-04-30T00:00:00Z",
             "current_issued_at": "2026-05-07T00:00:00Z",
+            "window_position": 1,
         },
         body_obj=m_184,
         context={
@@ -1766,6 +1767,104 @@ def negative_vectors(keys) -> list[dict]:
         },
         extra_files={
             "prior_manifest.json": m_184_prior_bytes,
+        },
+    ))
+
+    # ---- 185-canary-runtime-reuse-resurrection (Stage 8,
+    #      E_CANARY_RUNTIME_REUSE with window_position >= 2) ----
+    #
+    # Three-manifest A -> B -> A resurrection scenario. The publisher
+    # history (carried in extra_files as prior_manifest_a.json and
+    # prior_manifest_b.json) contains:
+    #   M_A at issued_at 2026-04-23 with runtime_pubkey X (= rp_pub)
+    #   M_B at issued_at 2026-04-30 with runtime_pubkey Y (= runtime_pub_2)
+    # The presented manifest is M_C at issued_at 2026-05-07 with
+    # runtime_pubkey X again (the rp_pub from M_A; not the immediately
+    # preceding M_B's Y). Per §08 immediate-preceding MUST: M_C is
+    # accepted at the MUST level because X != Y. Per §08 SHOULD for
+    # clients maintaining runtime-pubkey history: M_C is rejected
+    # because X is present in publisher history (M_A entry), with
+    # E_CANARY_RUNTIME_REUSE.details.window_position = 2 (the match is
+    # two entries back: M_A is two positions before M_C in the
+    # ordered history M_A -> M_B -> M_C, i.e. M_A is the entry before
+    # the immediately preceding M_B). Stateless clients accept M_C
+    # (per §00 N60 limitation); stateful clients reject. This is the
+    # canonical demonstration vector for the rc.19 N60 SHOULD.
+    #
+    # The corpus verdict records the stateful-client rejection
+    # because that is the SHOULD path; stateless clients diverge by
+    # design and a conformant stateless implementation reporting
+    # accept on this vector is operating within the §00 N60
+    # limitation. The vector's extended context field
+    # `previously_verified_history` is a sequence of prior manifest
+    # paths in publication order (oldest first) used by stateful
+    # clients to populate their runtime-pubkey history before
+    # presenting the vector input.
+    m_185_a = make_manifest(
+        publisher_priv=pp, publisher_pub=pp_pub,
+        origin_pub=op_pub, runtime_pub=rp_pub,
+        issued_at="2026-04-23T00:00:00Z",
+        next_expected="2026-05-23T00:00:00Z",
+        updated="2026-04-23T00:00:00Z",
+    )
+    m_185_a_bytes = json.dumps(
+        m_185_a, separators=(",", ":"), ensure_ascii=False
+    ).encode("utf-8")
+    m_185_b = make_manifest(
+        publisher_priv=pp, publisher_pub=pp_pub,
+        origin_pub=op_pub, runtime_pub=keys["runtime_pub_2"],
+        issued_at="2026-04-30T00:00:00Z",
+        next_expected="2026-05-30T00:00:00Z",
+        updated="2026-04-30T00:00:00Z",
+    )
+    m_185_b_bytes = json.dumps(
+        m_185_b, separators=(",", ":"), ensure_ascii=False
+    ).encode("utf-8")
+    # Presented manifest M_C: resurrects runtime_pubkey X from M_A.
+    # Default issued_at=2026-05-07 is strictly newer than M_B
+    # 2026-04-30 so the immediate-preceding MUST passes (X != Y at
+    # window_position=1); the SHOULD fires at window_position=2.
+    m_185_c = make_manifest(
+        publisher_priv=pp, publisher_pub=pp_pub,
+        origin_pub=op_pub, runtime_pub=rp_pub,
+    )
+    out.append(vec(
+        "185-canary-runtime-reuse-resurrection",
+        kind="manifest",
+        description=(
+            "A -> B -> A resurrection scenario. The publisher history "
+            "(extra_files) contains M_A (issued_at 2026-04-23, "
+            "runtime_pubkey X) and M_B (issued_at 2026-04-30, "
+            "runtime_pubkey Y). The presented manifest M_C at "
+            "clock_now (issued_at 2026-05-07) declares runtime_pubkey "
+            "X again, resurrecting the M_A key after M_B retired it. "
+            "Per §08 immediate-preceding MUST, M_C passes (X != Y). "
+            "Per §08 SHOULD for clients maintaining runtime-pubkey "
+            "history, M_C is rejected as E_CANARY_RUNTIME_REUSE with "
+            "details.window_position = 2 (M_A is two entries back). "
+            "Stateless clients accept (per §00 N60 limitation); the "
+            "corpus verdict records the stateful-client rejection."
+        ),
+        spec_refs=["§08", "§00", "§11"],
+        verdict="reject",
+        diagnostic="E_CANARY_RUNTIME_REUSE",
+        diagnostic_details={
+            "runtime_pubkey": b64u(rp_pub),
+            "previous_issued_at": "2026-04-23T00:00:00Z",
+            "current_issued_at": "2026-05-07T00:00:00Z",
+            "window_position": 2,
+        },
+        body_obj=m_185_c,
+        context={
+            "fetched_origin_address": m_185_c["origin"]["address"],
+            "previously_verified_history": [
+                "vectors/185-canary-runtime-reuse-resurrection/prior_manifest_a.json",
+                "vectors/185-canary-runtime-reuse-resurrection/prior_manifest_b.json",
+            ],
+        },
+        extra_files={
+            "prior_manifest_a.json": m_185_a_bytes,
+            "prior_manifest_b.json": m_185_b_bytes,
         },
     ))
 

@@ -905,7 +905,8 @@
         "diagnostic_details": {
           "runtime_pubkey": "jzFtziEJkbIdjI15I4u3ni3bBa6IFElyyjEmMVSGF7o",
           "previous_issued_at": "2026-04-30T00:00:00Z",
-          "current_issued_at": "2026-05-07T00:00:00Z"
+          "current_issued_at": "2026-05-07T00:00:00Z",
+          "window_position": 1
         }
       },
       "context": {
@@ -914,6 +915,38 @@
       },
       "extra_files": [
         "prior_manifest.json"
+      ]
+    },
+    {
+      "id": "185-canary-runtime-reuse-resurrection",
+      "kind": "manifest",
+      "description": "A -> B -> A resurrection scenario. The publisher history (extra_files) contains M_A (issued_at 2026-04-23, runtime_pubkey X) and M_B (issued_at 2026-04-30, runtime_pubkey Y). The presented manifest M_C at clock_now (issued_at 2026-05-07) declares runtime_pubkey X again, resurrecting the M_A key after M_B retired it. Per §08 immediate-preceding MUST, M_C passes (X != Y). Per §08 SHOULD for clients maintaining runtime-pubkey history, M_C is rejected as E_CANARY_RUNTIME_REUSE with details.window_position = 2 (M_A is two entries back). Stateless clients accept (per §00 N60 limitation); the corpus verdict records the stateful-client rejection.",
+      "spec_refs": [
+        "§08",
+        "§00",
+        "§11"
+      ],
+      "input": "vectors/185-canary-runtime-reuse-resurrection/input.json",
+      "expected": {
+        "verdict": "reject",
+        "diagnostic": "E_CANARY_RUNTIME_REUSE",
+        "diagnostic_details": {
+          "runtime_pubkey": "jzFtziEJkbIdjI15I4u3ni3bBa6IFElyyjEmMVSGF7o",
+          "previous_issued_at": "2026-04-23T00:00:00Z",
+          "current_issued_at": "2026-05-07T00:00:00Z",
+          "window_position": 2
+        }
+      },
+      "context": {
+        "fetched_origin_address": "dkptfyethnbfsj7qsxscia4w6lg4yssjca2gdrqlk457qav2lkna4xqd.onion",
+        "previously_verified_history": [
+          "vectors/185-canary-runtime-reuse-resurrection/prior_manifest_a.json",
+          "vectors/185-canary-runtime-reuse-resurrection/prior_manifest_b.json"
+        ]
+      },
+      "extra_files": [
+        "prior_manifest_a.json",
+        "prior_manifest_b.json"
       ]
     },
     {
