@@ -772,6 +772,8 @@ def negative_vectors(keys) -> list[dict]:
         diagnostic="E_SUBMIT_BUDGET",
         diagnostic_details={
             "component": "state",
+            "declared_bytes": 66879,
+            "budget_bytes": 53248,
         },
         body_obj=m_143,
         context={"fetched_origin_address": m_143["origin"]["address"]},

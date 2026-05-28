@@ -295,7 +295,9 @@
         "verdict": "reject",
         "diagnostic": "E_SUBMIT_BUDGET",
         "diagnostic_details": {
-          "component": "state"
+          "component": "state",
+          "declared_bytes": 66879,
+          "budget_bytes": 53248
         }
       },
       "context": {

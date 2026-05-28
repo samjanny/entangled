@@ -85,7 +85,9 @@ Requires Python 3.10+ and the `cryptography` package (for raw Ed25519 RFC 8032 s
 | 110-119 | Stage 3 JSON parsing (duplicate keys, nesting depth, string length, array length, object keys, malformed JSON) |
 | 120-129 | Stage 4 kind discrimination (spec_version, unknown kind, missing required top-level field) |
 | 130-139 | Stage 5 schema (unknown field, missing required, null literal, unknown block kind, field type, field range, block not permitted in document kind, duplicate uniqueness-required entry, malformed Unicode, field-specific length cap) |
-| 140-149 | Numeric grammar (float, exponent, overflow); Stage 5 semantic (submit budget state overflow) |
+| 140-142 | Numeric grammar (float, exponent, overflow) |
+| 143     | Stage 5 semantic - submit-budget state-policy aggregate overflow |
+| 144-149 | (reserved) |
 | 150-159 | Stage 6 signature (modified payload, malformed length, non-canonical S, small-order A, non-canonical R, non-canonical A, missing-key context) |
 | 160-169 | Strict base64url (padding, alphabet, whitespace) |
 | 170-179 | Stage 9 binding (path mismatch, reserved path, request_hash, origin binding, origin not_after semantic constraints including both `reason` values, manifest.updated future-skew) |
