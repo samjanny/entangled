@@ -362,7 +362,7 @@ Changing a content document at the same path creates a new signed object, but En
 
 ### Out-of-cycle content correction at indexed paths
 
-When the manifest carries `content_root` (§06 rc.19 N45) and a path is listed in `/content_index.json`, the path is *frozen* between canary ceremonies: serving a different `seq` or body hash than the index declares is non-conformant (§10:614). A publisher who must correct an indexed-path document between ceremonies (typo, factual error, legal request, security correction) has three options, in increasing weight:
+When the manifest carries `content_root` (§06 rc.19 N45) and a path is listed in `/content_index.json`, the path is *frozen* between canary ceremonies: serving a different `seq` or body hash than the index declares is non-conformant (§10:616). A publisher who must correct an indexed-path document between ceremonies (typo, factual error, legal request, security correction) has three options, in increasing weight:
 
 1. **Defer the correction to the next scheduled canary ceremony.** Appropriate for non-critical corrections where waiting until the next scheduled rotation is acceptable. The current content remains served unchanged until the ceremony.
 
@@ -393,7 +393,7 @@ The canary interval `next_expected - issued_at` (§08) bounds the maximum time d
 Recommended floors by threat profile:
 
 * **High-threat** - journalism with sensitive sources, financial services, sites whose readers face physical or legal risk: **7 days**. Aligns with the most aggressive end of the §08-permitted range. Lower bound for operators willing to invest in weekly ceremonies. The 7-day floor keeps the worst-case post-rotation residual exposure (§16 "The compromise window") to approximately one week.
-* **Standard** - all other deployments (most editorial sites, advocacy, professional communications, personal publications): **14 to 30 days**. Balances ceremony overhead against exposure window. The 30-day upper end matches the §08:81 MUST ceiling; intervals longer than 30 days are no longer permitted by §08.
+* **Standard** - all other deployments (most editorial sites, advocacy, professional communications, personal publications): **14 to 30 days**. Balances ceremony overhead against exposure window. The 30-day upper end matches the §08:89 MUST ceiling; intervals longer than 30 days are no longer permitted by §08.
 
 A publisher whose content has unequal threat across cycles MAY use shorter intervals during high-risk periods (for example, during active reporting on a sensitive subject) and longer intervals during quieter periods, provided each interval is independently within the §08 bounds and the rotation cadence remains consistent enough that readers do not perceive the canary as broken.
 
@@ -596,7 +596,7 @@ If exact atomicity is impossible, deploy in a maintenance window and expect some
 
 ### Rollback procedure for partial deployment failure
 
-Multi-origin deployments are not protocol-atomic: each origin's manifest is served independently and clients fetch from one origin at a time. If a deployment to N origins succeeds on k origins and fails on N-k, the publisher is in a divergent state where some clients see the new manifest with `issued_at = t_new` and others continue to see the prior manifest with `issued_at = t_old`. Because anti-downgrade (§08:65) is cumulative per `K_publisher.pub`, any client that has observed the new `t_new` will reject subsequent fetches from origins still serving the old `t_old` as a downgrade attempt.
+Multi-origin deployments are not protocol-atomic: each origin's manifest is served independently and clients fetch from one origin at a time. If a deployment to N origins succeeds on k origins and fails on N-k, the publisher is in a divergent state where some clients see the new manifest with `issued_at = t_new` and others continue to see the prior manifest with `issued_at = t_old`. Because anti-downgrade (§08:71) is cumulative per `K_publisher.pub`, any client that has observed the new `t_new` will reject subsequent fetches from origins still serving the old `t_old` as a downgrade attempt.
 
 This means the publisher cannot simply "undeploy" the partial rollout by reverting the k successful origins to `t_old`: the clients that have observed `t_new` will reject the reverted manifest as a downgrade. The only protocol-conformant resolution paths are forward.
 
@@ -609,7 +609,7 @@ Rollback procedure:
 
 A genuine downgrade rollback (revert all origins to `t_old`) is not possible under the protocol's anti-downgrade rule for the same `K_publisher.pub`. The only way to recover from a deployment whose outcome the publisher needs to repudiate is forward rotation with a new manifest that the publisher chooses to deploy.
 
-The asymmetry between "deploy forward" (cheap, reversible only by another forward deploy) and "rollback" (impossible at the protocol level) is the operational consequence of the §08:65 anti-downgrade guarantee. Publishers SHOULD treat each multi-origin manifest deploy as a one-way commitment: the deploy succeeds across all origins or the publisher is committed to forward-resolving the divergence.
+The asymmetry between "deploy forward" (cheap, reversible only by another forward deploy) and "rollback" (impossible at the protocol level) is the operational consequence of the §08:71 anti-downgrade guarantee. Publishers SHOULD treat each multi-origin manifest deploy as a one-way commitment: the deploy succeeds across all origins or the publisher is committed to forward-resolving the divergence.
 
 Pre-deploy mitigations: deploy the new manifest to a *staging origin* first (a separate origin under the same `K_publisher.pub` that is not advertised to readers; deploys to staging exercise the deploy pipeline without committing the publisher's reader-facing origins). Staging deploys SHOULD use a `migration_pointer`-only path so they are visible to test clients but do not commit reader-facing publisher history.
 

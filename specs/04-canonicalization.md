@@ -146,6 +146,7 @@ To eliminate this ambiguity, every JSON string field whose value Entangled requi
 The fields subject to this rule are, non-exhaustively:
 
 * `canary.statement` (§08);
+* `canary.freshness_proof` (§08);
 * `meta.title` of content documents (§02);
 * `navigation` entry `label` fields in the manifest (§06);
 * `state_policy` entry `purpose` fields (§07);
