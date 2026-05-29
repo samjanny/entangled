@@ -47,6 +47,24 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.31
+
+Date: 2026-05-29
+
+**Lotto 31 - empty-array and nested-link diagnostic codes (AMB-13, AMB-14)**
+
+Closes issues #14 (AMB-13) and #15 (AMB-14). Pins the diagnostic code for two Stage 5 schema rejections the catalog did not clearly cover. No wire-format, schema, signature-input, or new-code change; `spec_version` remains `"1.0"`. Each amends an existing §11 catalog row's description and adds a corpus vector; no codes are added or removed.
+
+**AMB-13 / #14: empty mandatory array.** Several arrays MUST contain at least one element (content `blocks`, `list.items`, `submit_form.fields`, `select.options`, inline content). An empty-but-present array is *under* the minimum, which neither `E_SCHEMA_FIELD_LENGTH` ("exceeds its specific length limit", over a maximum) nor the prior `E_SCHEMA_REQUIRED_FIELD` ("a required field is absent", a present array is not absent) cleanly covered. Pinned to `E_SCHEMA_REQUIRED_FIELD`: the required (first) element is absent, one code across all mandatory arrays. The §11 `E_SCHEMA_REQUIRED_FIELD` row description is amended to read "A required field is absent, or a mandatory array does not contain the minimum number of required elements (...)".
+
+**AMB-14 / #15: nested inline link.** §03:654 and §03:703 forbid an inline `link` element inside a `link.label` or `submit_form.label`. The violation is an element of an enumerated kind appearing where that kind is not permitted (a permission rule), so it is pinned to `E_SCHEMA_BLOCK_NOT_PERMITTED`, not `E_SCHEMA_ENUM_VIOLATION` (which covers a value outside a closed value set, e.g. `carrier`, `mode`, `feedback.variant`). The §11 `E_SCHEMA_BLOCK_NOT_PERMITTED` row description is amended to "A block or inline element of an enumerated kind appears in a position that does not permit that kind. For example, a `submit_form` block in a `transaction` document, or an inline `link` element inside a `link.label` or `submit_form.label` (...)".
+
+**Corpus.** Two new negative vectors, both signed correctly so the schema violation is the only live Stage 5 violation: `146-schema-empty-array` (content `blocks: []` -> `E_SCHEMA_REQUIRED_FIELD`) and `147-schema-nested-link` (a `link` block whose `label` contains an inline `link` element -> `E_SCHEMA_BLOCK_NOT_PERMITTED`). No existing vector input bytes change; the count moves 65 -> 67; `corpus.json` `rc_target` moves `1.0-rc.30` -> `1.0-rc.31`.
+
+**Behavioral compatibility.** Both rejections were already required (the documents are malformed); this rc pins which Stage 5 code reports them. The Rust reference implementation already emits both pinned codes; the Java reference implementation emits `E_SCHEMA_FIELD_LENGTH`/`_SYNTAX` (empty array) and `E_SCHEMA_ENUM_VIOLATION` (nested link) and is corrected in lockstep (entangled-api-java).
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. Two existing diagnostic-catalog row descriptions are broadened; no schema, signature-input, or code-set change.
+
 ### v1.0-rc.30
 
 Date: 2026-05-29
