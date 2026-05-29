@@ -59,7 +59,7 @@ Stage 2.  Byte-level checks
 Stage 3.  JSON parsing
             - parser-enforced limits:
               - nesting depth: max 16
-              - string length: max 100 KiB
+              - string length: max 100 KiB (UTF-8 wire bytes)
               - array length: max 10000
               - object keys: max 256 per object
             - duplicate object member names: rejected
@@ -907,7 +907,7 @@ The client enforces, during JSON parsing in stage 3:
 | Limit                  | Value   |
 | ---------------------- | ------- |
 | Nesting depth          | 16      |
-| String length          | 100 KiB |
+| String length          | 100 KiB (UTF-8 wire bytes) |
 | Array length           | 10000   |
 | Object keys per object | 256     |
 

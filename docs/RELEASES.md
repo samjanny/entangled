@@ -47,6 +47,24 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.30
+
+Date: 2026-05-29
+
+**Lotto 30 - 100 KiB string cap counted in UTF-8 wire bytes (AMB-15)**
+
+Closes issue #16 (AMB-15). Pins the counting unit of the Stage 3 per-string 100 KiB parse cap, which the spec stated as "100 KiB" without naming a unit. No wire-format, schema, signature-input, diagnostic-catalog, or behavior change for conforming documents under the cap; `spec_version` remains `"1.0"`. The pin removes a verdict divergence at the boundary between two conforming implementations.
+
+A string near the 100 KiB cap that contains multi-byte or non-BMP characters is counted differently by a UTF-8-byte counter and a UTF-16-code-unit counter (a non-BMP code point is 4 UTF-8 bytes but 2 UTF-16 code units). One implementation rejected at the byte count, another accepted at the code-unit count, for identical wire bytes. The spec is pinned to **UTF-8 wire bytes**: "KiB" is a byte unit, the canonical document encoding is UTF-8 (section 04), and counting UTF-16 code units is a language-VM-internal artifact that would make the cap depend on the implementation language.
+
+**Spec edits.** The unit is made explicit at all three places the cap appears: section 02 ("individual string fields MUST NOT exceed 100 KiB ... The 100 KiB count is in UTF-8-encoded wire bytes ..., not in UTF-16 code units or Unicode code points"), the section 10 Stage 3 parser-limit list, and the section 10 Stage 3 limits table.
+
+**Corpus.** New negative vector `116-parse-string-length-utf8-unit`: a `code_block` content of 30000 U+1F600 code points = 120000 UTF-8 wire bytes (over the 102400 cap) but 60000 UTF-16 code units (under it). Verdict `reject`, diagnostic `E_PARSE_STRING_LENGTH`. An implementation counting UTF-8 bytes rejects it; one counting UTF-16 code units would wrongly accept, so the vector pins the unit. The body stays under the 1 MiB Stage 2 cap so Stage 3 fires; U+1F600 is not a control character and is already NFC, so no earlier check pre-empts the parse cap. No existing vector input bytes change; the count moves 64 -> 65; `corpus.json` `rc_target` moves `1.0-rc.29` -> `1.0-rc.30`.
+
+**Behavioral compatibility.** No accept/reject change for any document whose strings are within the cap under either counting; only the boundary case (a near-cap string with multi-byte/non-BMP characters) is now pinned. A conforming implementation counts UTF-8 wire bytes. The Rust reference implementation already counts UTF-8 bytes (`s.len()` on the parsed string); the Java reference implementation counts UTF-16 code units and is corrected in lockstep (entangled-api-java).
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. One parse-limit unit is made explicit; no diagnostic-catalog, schema, or signature-input change.
+
 ### v1.0-rc.29
 
 Date: 2026-05-29

@@ -359,7 +359,7 @@ The 256-block limit on transaction documents is tighter than the 1024-block limi
 The following limits apply to all Entangled documents on the wire:
 
 * the total document MUST NOT exceed 1 MiB;
-* individual string fields MUST NOT exceed 100 KiB unless a stricter or more specific limit is defined for that field;
+* individual string fields MUST NOT exceed 100 KiB unless a stricter or more specific limit is defined for that field. The 100 KiB count is in UTF-8-encoded wire bytes (the document's canonical encoding per §04), not in UTF-16 code units or Unicode code points;
 * arrays MUST NOT exceed 10000 elements unless a stricter limit is defined;
 * JSON nesting depth MUST NOT exceed 16.
 
