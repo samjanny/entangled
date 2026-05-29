@@ -154,9 +154,9 @@ A public key encoded as a 32-byte octet string is valid only if all of the follo
 - the encoding decodes to a point on the Ed25519 curve under the canonical compressed encoding. Non-canonical encodings are rejected;
 - the decoded point is not a small-order point. A point of order dividing 8 (the cofactor) is rejected.
 
-A public key failing any of these checks causes the document being verified under that key to be rejected as a signature failure, reported as `E_SIG_VERIFICATION` (§11) with diagnostic details indicating the public-key rejection.
+A public key value that fails canonical decoding or the small-order rejection causes a document verified under that key to be rejected as `E_SIG_VERIFICATION` (§11), with diagnostic details indicating the public-key rejection. The same canonical-decoding and small-order rejections apply structurally to `K_origin.pub` even though `K_origin` does not verify any document in v1: a non-canonical or small-order `origin.origin_pubkey` causes the manifest to be rejected at Stage 9 (origin binding) with `E_BIND_ORIGIN` (§11).
 
-This rule applies to `K_publisher.pub` and `K_runtime.pub`. It also applies to `K_origin.pub` for carrier profiles whose endpoint key is Ed25519, including Tor v3.
+This rule applies to `K_publisher.pub` and `K_runtime.pub` (enforced when a document is verified under the key, `E_SIG_VERIFICATION`), and to `K_origin.pub` for carrier profiles whose endpoint key is Ed25519, including Tor v3 (enforced structurally at Stage 9 origin binding, `E_BIND_ORIGIN`).
 
 ### Signature (`R || S`) validation
 

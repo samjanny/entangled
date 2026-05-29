@@ -47,6 +47,24 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.33
+
+Date: 2026-05-29
+
+**Lotto 33 - K_origin.pub small-order enforcement mechanism (AMB-17)**
+
+Closes issue #18 (AMB-17). Pins the stage and diagnostic code by which the section 05 public-key strict profile (canonical encoding, small-order rejection) is enforced on `K_origin.pub`. No wire-format, schema, signature-input, or new-code change; `spec_version` remains `"1.0"`.
+
+Section 05:159 says the strict profile "also applies to `K_origin.pub`" for Tor v3, but the enforcement clause 05:157 anchored rejection to "the document being verified under that key" -- and `K_origin` verifies no document in v1 (05:33), so the rule had no trigger or code for `K_origin.pub`. This was pinned to **Stage 9 origin binding, `E_BIND_ORIGIN`**: 05:157 is rewritten to give non-signing keys an explicit structural trigger, stating that a non-canonical or small-order `origin.origin_pubkey` causes the manifest to be rejected at Stage 9 origin binding with `E_BIND_ORIGIN`, and the rule statement now names the enforcement point for each key role. The section 11 `E_BIND_ORIGIN` row is extended to include the `origin.origin_pubkey` strict-profile failure.
+
+The practical impact in v1 is limited -- `K_origin` never verifies a signature, so a small-order origin key is not directly exploitable for forgery; the concern is conformance and defense-in-depth.
+
+**Corpus.** New negative vector `179-bind-origin-small-order-pubkey`: a manifest whose `origin.origin_pubkey` is the encoded identity point (small-order), with `origin.address` derived from that same key so the Tor v3 address-to-key binding matches and the only violation is the small-order origin key. Verdict `reject`, diagnostic `E_BIND_ORIGIN`. Signed correctly by `K_publisher` so the small-order origin key is the only live violation. No existing vector input bytes change; the count moves 68 -> 69; `corpus.json` `rc_target` moves `1.0-rc.32` -> `1.0-rc.33`.
+
+**Behavioral compatibility.** Section 05:159 already mandated the strict profile for `K_origin.pub`; this rc gives it a concrete stage and code. The Rust reference implementation already enforces it at Stage 9 with `E_BIND_ORIGIN` (`validate_origin_pubkey_strict` in origin binding); the Java reference implementation does not enforce it on `K_origin.pub` (it routes the strict profile through signature verification, which `K_origin` never reaches) and is corrected in lockstep (entangled-api-java).
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. Section 05:157 is rewritten to give non-signing keys an enforcement trigger and one diagnostic-catalog row is broadened; no schema, signature-input, or code-set change.
+
 ### v1.0-rc.32
 
 Date: 2026-05-29
