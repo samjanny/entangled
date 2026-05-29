@@ -47,6 +47,25 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.36
+
+Date: 2026-05-29
+
+**Corpus: dedicated state-update codes E_STATE_VALUE_SIZE and E_STATE_TTL (148, 149)**
+
+Adds conformance coverage for the two transaction state-update hard-range checks to which §11 assigns dedicated codes, which the corpus left uncovered. No spec text, schema, signature-input, or new-code change; `spec_version` remains `"1.0"`. A transaction's `state_updates` array is validated standalone at Stage 5 (no manifest `state_policy` needed), so these are single-document transaction vectors.
+
+**Corpus.** Two new negative vectors:
+
+- `148-state-value-size`: a transaction whose `state_updates` set `value` is 4097 raw UTF-8 bytes, one over the 4096-byte protocol hard ceiling (§07:170). Rejected with E_STATE_VALUE_SIZE (§11:286), the dedicated state code, not the generic E_SCHEMA_FIELD_LENGTH.
+- `149-state-ttl`: a transaction whose `state_updates` set `ttl` is 7776001 seconds, one over the 7776000-second (90-day) hard upper bound (§07:279). Rejected with E_STATE_TTL (§11:287), not the generic E_SCHEMA_FIELD_RANGE.
+
+Both signed by `K_runtime`; in each the targeted field is the only live violation. No existing vector input bytes change; the count moves 71 -> 73; `corpus.json` `rc_target` moves `1.0-rc.35` -> `1.0-rc.36`. The corpus README state-coverage note and the 146-149 category row are updated accordingly.
+
+**Behavioral compatibility.** §11:286-287 and §07 already define these codes and bounds; this rc only adds vectors. The Rust reference implementation already emits them (`validate_state_updates_standalone` in `validation/state.rs`: E_STATE_VALUE_SIZE for the value ceiling, E_STATE_TTL for the ttl hard range); the Java reference implementation emitted the generic E_SCHEMA_FIELD_LENGTH / E_SCHEMA_FIELD_RANGE and is corrected in lockstep (entangled-api-java).
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. No spec text, schema, signature-input, or code-set change; the change is corpus-only (two new vectors).
+
 ### v1.0-rc.35
 
 Date: 2026-05-29
