@@ -47,6 +47,20 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.34
+
+Date: 2026-05-29
+
+**Corpus: E_BIND_REQUEST_ID isolation vector (173)**
+
+Adds conformance coverage for the Stage 9 transaction `request_id` binding (`E_BIND_REQUEST_ID`, §11), which the corpus previously left uncovered. No wire-format, schema, signature-input, or new-code change; `spec_version` remains `"1.0"`. The vector exercises behavior the specification already mandates (§02:298 and §09:139: the transaction's `request_id` MUST equal the `request_id` the client placed in the submit body).
+
+**Corpus.** New negative vector `173-bind-request-id-mismatch`: a transaction whose `request_id` (`BAECAwQFBgcICQoLDA0ODw`) differs from the one the client placed in the submit body (`AAECAwQFBgcICQoLDA0ODw`), with `in_response_to` matching the submit path and `request_hash` matching the recorded (untampered) submit body, so the `request_id` binding is the only live Stage 9 violation. Verdict `reject`, diagnostic `E_BIND_REQUEST_ID`. Signed correctly by `K_runtime`. This corrects an earlier corpus README note that treated `E_BIND_REQUEST_ID` as not exercisable in isolation from `E_BIND_REQUEST_HASH`: the transaction's `request_id` is an independent copied field, not part of the hashed submit body, so a `request_id`-only mismatch leaves `request_hash` matching and isolates cleanly. `E_BIND_RESPONSE_PATH` remains the one uncovered Stage 9 binding sub-code (isolable but deferred). No existing vector input bytes change; the count moves 69 -> 70; `corpus.json` `rc_target` moves `1.0-rc.33` -> `1.0-rc.34`.
+
+**Behavioral compatibility.** Sections 02:298 and 09:139 already mandate the transaction `request_id` binding; this rc only adds a vector. The Rust reference implementation already enforces it at Stage 9 with `E_BIND_REQUEST_ID` (transaction binding in `binding.rs`); the Java reference implementation does not compare the transaction `request_id` against the submit body (`Stage9Binding.transaction` checks `in_response_to` and `request_hash` only) and is corrected in lockstep (entangled-api-java).
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. No spec text, schema, signature-input, or code-set change; the change is corpus-only (one new vector) plus the corpus README correction.
+
 ### v1.0-rc.33
 
 Date: 2026-05-29
