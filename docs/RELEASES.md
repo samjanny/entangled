@@ -47,6 +47,26 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.28
+
+Date: 2026-05-29
+
+**Lotto 28 - origin.carrier and origin.address rejection codes (AMB-10, AMB-11)**
+
+Closes issues #11 (AMB-10) and #12 (AMB-11) on the repository. Both pin a Stage 5 rejection code that the normative text left open and that two conforming implementations could otherwise disagree on for identical wire bytes. No wire-format, schema, signature-input, JCS, NFC, byte-cap, or new-code change; `spec_version` remains `"1.0"`. The diagnostic catalog gains one example under an existing code; no codes are added or removed. The reference implementation already produces both pinned codes (its `Carrier` serde enum yields the enum-violation code on an unknown variant, and its `OnionAddress` newtype rejects a non-lowercase body at Stage 5 field deserialization), so this rc aligns the spec to existing behavior with no implementation change.
+
+Like the first-wave AMBs, both are schema-dispatch ambiguities surfaced by reading the spec fresh: the text said the manifest MUST be rejected but did not pin which Stage 5 code reports the rejection.
+
+**AMB-10 / issue #11: bad `origin.carrier` value.** Section 06 requires `origin.carrier` to be exactly `tor-v3` but did not name the code for a syntactically valid non-member (for example `"i2p"`). `E_SCHEMA_FIELD_SYNTAX` (a string violating its declared syntax: slug, base64url, RFC 3339, path) does not fit; `carrier` is a closed value set, and a valid string outside it is the textbook enumerated-set violation, the same class as an unknown state-policy `mode` or transaction `feedback` `variant` already listed under `E_SCHEMA_ENUM_VIOLATION`. Section 06 now states that a non-`tor-v3` `carrier` (and `migration_pointer.successor_origin.carrier`) is rejected at Stage 5 as `E_SCHEMA_ENUM_VIOLATION`, and the section 11 `E_SCHEMA_ENUM_VIOLATION` catalog row adds `carrier` to its examples.
+
+**AMB-11 / issue #12: non-canonical (uppercase) `origin.address`.** Section 06 lists "56-character lowercase base32 ... `.onion`" as the `origin.address` field format but then deferred "exact validation" to section 05, whose Stage 9 binding step (key derivation and fetched-vs-declared comparison) folds in the canonical-form requirement. This left it open whether an uppercase-base32 `origin.address` is a Stage 5 field-syntax failure (`E_SCHEMA_FIELD_SYNTAX`) or a Stage 9 binding failure (`E_BIND_ORIGIN`) - a stage AND code divergence on identical wire bytes. Section 06 now states that the lowercase-base32 / 56-character / `.onion` shape is a declared field syntax validated at Stage 5 as `E_SCHEMA_FIELD_SYNTAX`, that case is part of the canonical wire form (one canonical encoding per address, like the fixed `sha-256:` prefix and base64url alphabets elsewhere), and that the section 05 Stage 9 binding operates on an already-canonical address and covers only key derivation and the fetched-vs-declared comparison (failing as `E_BIND_ORIGIN`). This keeps the Stage 5 / Stage 9 separation that AMB-05 established and does not re-mix the two layers.
+
+**Corpus.** Two new negative vectors in the Stage 5 origin-field range: `144-schema-carrier-enum-violation` (`carrier: "i2p"` -> `E_SCHEMA_ENUM_VIOLATION`) and `145-schema-address-uppercase-syntax` (uppercase base32 `origin.address` -> `E_SCHEMA_FIELD_SYNTAX`). Both manifests are re-signed over the mutated payload so the signature verifies and the schema violation is the only live Stage 5 violation; vector 145 is distinct from vector 175 (`E_BIND_ORIGIN`), which exercises a genuine key-derivation mismatch with both addresses lowercase. No existing vector input bytes change; the count moves 62 -> 64; `corpus.json` `rc_target` moves `1.0-rc.27` -> `1.0-rc.28`.
+
+**Behavioral compatibility.** Both rejections were already required by section 06 (the manifest MUST be rejected); this rc only pins which Stage 5 code reports them. A conforming implementation that already rejected these manifests now reports `E_SCHEMA_ENUM_VIOLATION` (carrier) and `E_SCHEMA_FIELD_SYNTAX` (address) at Stage 5. The reference implementation at samjanny/entangled-api already produces exactly these codes and stages, so it needs no change beyond the `SPEC_REVISION` bump.
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. No schema, signature-input, JCS, NFC, byte-cap, or transport change; one example string is added to an existing diagnostic-catalog row and two Stage 5 rejection codes are pinned in section 06.
+
 ### v1.0-rc.27
 
 Date: 2026-05-29

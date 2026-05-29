@@ -114,6 +114,8 @@ Entangled v1 fully specifies only:
 
 A conforming Entangled v1.0 client MUST reject any manifest whose `origin.carrier` is not exactly `"tor-v3"`.
 
+`carrier` is a closed value set whose only v1.0 member is `"tor-v3"`. A syntactically valid string outside that set (for example `"i2p"`) is an enumerated-set violation, not a string-syntax violation: it is rejected at Stage 5 as `E_SCHEMA_ENUM_VIOLATION` (§11), the same code used for an unknown state-policy `mode` or transaction `feedback` `variant`. The same rule applies to `migration_pointer.successor_origin.carrier`.
+
 The values `"i2p"` and `"yggdrasil"` are reserved for draft carrier profiles. They are not v1.0-conformant values, and a v1.0 client MUST reject manifests declaring them, until their address-to-key binding rules are specified byte-for-byte under a future protocol version.
 
 Note: implementations MAY experimentally support additional carrier profiles outside Entangled v1.0 conformance, for example for prototyping or research. Such support is not part of v1.0 validation, MUST NOT be enabled by default in a v1.0-conformant client, and does not change the rejection rule above for v1.0 conformance.
@@ -122,7 +124,7 @@ Note: implementations MAY experimentally support additional carrier profiles out
 
 `address` is the canonical carrier address at which the site is reachable.
 
-For `tor-v3`, this is the 56-character lowercase base32 onion address followed by `.onion`.
+For `tor-v3`, this is the 56-character lowercase base32 onion address followed by `.onion`. This lowercase-base32, 56-character, `.onion`-suffixed shape is a declared field syntax: a value that deviates from it, including one that uses uppercase base32 letters, is rejected at Stage 5 as `E_SCHEMA_FIELD_SYNTAX` (§11), before signature verification and before any Stage 9 binding. Case is part of the canonical wire form here, the same way the lowercase `sha-256:` prefix and base64url alphabets are fixed elsewhere; there is exactly one canonical encoding of a given address and a non-canonical literal in the signed `origin.address` field is a syntax violation.
 
 The value MUST NOT include:
 
@@ -138,7 +140,7 @@ Valid shape:
 abcdefghijklmnopqrstuvwxyz234567abcdefghijklmnopqrstuvwxyz234567.onion
 ```
 
-The exact Tor v3 address validation and key binding rules are defined in §05.
+The exact Tor v3 address validation and key binding rules are defined in §05. Those are Stage 9 binding checks (key derivation from the address, and the fetched-vs-declared address comparison) and operate on an `origin.address` that has already passed the Stage 5 field-syntax check above; they do not re-judge the syntactic canonicality of the literal. A Stage 9 origin-binding failure is `E_BIND_ORIGIN` (§11) and is distinct from the Stage 5 `E_SCHEMA_FIELD_SYNTAX` rejection of a non-canonical literal.
 
 ### `origin.origin_pubkey`
 
