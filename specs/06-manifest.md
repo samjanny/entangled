@@ -170,6 +170,10 @@ Constraints when present:
 
 A manifest carrying `origin.not_after` outside these constraints is rejected as `E_ORIGIN_INVALID` (§11).
 
+The 5-year ceiling is evaluated per manifest, relative to that manifest's own `canary.issued_at`. Each manifest's `origin.not_after` is checked against the `canary.issued_at` carried in the same signed manifest payload; the check does not refer to any prior manifest's `canary.issued_at` or to a first-declared `not_after`. When the publisher rotates the canary, the new manifest carries a later `canary.issued_at`, and the 5-year window slides forward with it: the publisher MAY re-issue `origin.not_after` up to 5 years from the new `canary.issued_at`. The same origin block re-published across successive rotations may therefore carry a `not_after` whose absolute instant advances with each rotation, and the effective lifetime of a continuously-rotated origin is not bounded by any single ceiling.
+
+This is intentional. The ceiling bounds the maximum window during which a compromised `K_origin` can serve cached clients of an *unrotated* origin: the window is anchored to the most recent canary the client can have verified, so a stale origin that stops rotating cannot extend its `not_after` past 5 years from its last `issued_at`. A publisher that keeps rotating is, by construction, demonstrating liveness with each new `canary.issued_at`, and the protocol does not cap how long a live, continuously-rotated origin may remain authoritative. A publisher seeking a bounded total origin lifetime regardless of rotation enforces that as an operational policy (it simply stops advancing `not_after` past its chosen absolute instant); the protocol does not impose it.
+
 #### Client behavior
 
 When `origin.not_after` is present and the client's clock (subject to the clock-skew tolerance in §10) is strictly later than the declared instant, the manifest is treated as origin-expired:

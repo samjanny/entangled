@@ -646,6 +646,14 @@ Before changing `state_policy`, review whether the change:
 
 A mode change from `client_only` to `request` is privacy-sensitive and should be treated as a new consent surface.
 
+### Sizing max_size with wire headroom
+
+`max_size` (07) is a raw UTF-8 byte length: it caps the value's own UTF-8 bytes, not the value's JSON-escaped length on the wire. The two differ when a value contains characters JSON must escape - the double-quote, the backslash, and control characters in U+0000 through U+001F. A double-quote or backslash costs 2 wire bytes; a control character costs 6 (`\u00XX`). A value at its raw `max_size` can therefore be up to roughly 6 times larger on the wire than its `max_size` number.
+
+The Stage 5 submit-budget check (`E_SUBMIT_BUDGET`, 09 "Submit body budget partition") evaluates a manifest's aggregate request-mode `max_size` as a raw-byte envelope bound. It is a necessary condition: it accepts a policy whose values, kept well-formed, fit the budget. It is not sufficient. At submit time the client measures the actual JSON-escaped wire bytes of the retained values, and a `set` whose retained state would overflow the partition is rejected at runtime with `E_STATE_TRANSMIT_BUDGET` (07 "Request-state transmit budget") even when the policy passed the Stage 5 check.
+
+Operators should size `max_size` with headroom relative to the expected value content for any request-mode item that can hold values with escaped characters - control bytes, quotes, backslashes, or non-BMP code points. For values that are known to be escape-free (base64url tokens, slugs, hex digests), the raw `max_size` and the wire contribution coincide and no headroom is needed. For free-form text or binary-bearing values, leave margin so that the worst-case escaped wire form of a maximally-filled value still fits alongside the form fields, or the client will reject the `set` at runtime.
+
 ## 11. Submit endpoint operation
 
 Submit bodies are unsigned user input.

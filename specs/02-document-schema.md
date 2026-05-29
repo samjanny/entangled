@@ -222,6 +222,8 @@ The content index is a JSON object with exactly one top-level field: `entries`. 
 
 `entries` is a JSON object whose keys are content paths and whose values are entry objects.
 
+An empty `entries` map (`{"entries":{}}`) is permitted and is a meaningful state, not a semantic violation. It asserts that the publisher has committed to no content paths under `content_root`: the `content_root` commitment is in force, but no path is currently protected by it. A manifest MAY declare `content_root` and serve an empty content index; the `content_root` commitment is independent of whether any paths are currently indexed. A client MUST accept an empty `entries` map as structurally and semantically valid. Under an empty index, every content path on the site is an unindexed path and behaves as in a manifest without `content_root` (see "Content index semantics" below); the `content_root` hash binding still binds the exact bytes of the empty index, so a `K_runtime`-only attacker cannot substitute a non-empty index.
+
 Each key MUST satisfy the path syntax defined for content document `path` values in this section, including the reservations of `/manifest.json` and `/content_index.json`.
 
 Each entry object has exactly two fields:
