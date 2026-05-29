@@ -47,6 +47,26 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.26
+
+Date: 2026-05-29
+
+**Lotto 26 - content_index document_kind for content-index diagnostics**
+
+Adds `content_index` as a fifth value of the structured-diagnostic `document_kind` enum and reassigns the three `E_CONTENT_INDEX_*` codes from `manifest` to `content_index`. No wire-format, schema, signature-input, JCS, NFC, byte-cap, or new-code change; `spec_version` remains `"1.0"`. The diagnostic catalog gains one `document_kind` value and changes the `document_kind` column of three existing rows; no codes are added or removed.
+
+The `/content_index.json` resource is not an Entangled signed document; it is a `K_publisher`-committed JSON resource fetched alongside the manifest (§09, §02). Diagnostics raised against it (`E_CONTENT_INDEX_FETCH_FAILED`, `E_CONTENT_INDEX_HASH_MISMATCH`, `E_CONTENT_INDEX_INVALID`) were catalogued with `document_kind = "manifest"`, which conflated the content-index resource with the manifest and gave a caller inspecting `document_kind` no way to route content-index failures distinctly. The closed four-value `document_kind` enum had no value for this resource.
+
+**Section 11 `document_kind` enum extension.** `document_kind` gains the value `content_index`, labelling diagnostics raised against the `/content_index.json` resource. The enum remains closed; this adds one member (`manifest`, `content`, `transaction`, `content_index`, `none`). The "exactly one of" sentence in the image-diagnostics subsection is updated to list the five values.
+
+**Section 11 catalog rows.** The `document_kind` column of `E_CONTENT_INDEX_FETCH_FAILED`, `E_CONTENT_INDEX_HASH_MISMATCH`, and `E_CONTENT_INDEX_INVALID` changes from `manifest` to `content_index`. The per-document content codes `E_CONTENT_SEQ_MISSING`, `E_CONTENT_SEQ_ROLLBACK`, `E_CONTENT_SEQ_UNCOMMITTED`, and `E_CONTENT_HASH_MISMATCH` are unchanged: they pertain to a content document verified against the index and keep `document_kind = "content"`.
+
+**Corpus.** No vector input bytes change and no vector targets an `E_CONTENT_INDEX_*` code, so `corpus/tools/generate.py` produces a byte-equal `vectors/` tree. The only generated change is `corpus.json` `rc_target` `1.0-rc.25` -> `1.0-rc.26`.
+
+**Behavioral compatibility.** No accept/reject verdict changes and no wire bytes change. The only change is the reported `document_kind` string on the three content-index diagnostics: a conforming implementation reports `content_index` rather than `manifest` for them. The reference implementation at samjanny/entangled-api already emitted `content_index` for these diagnostics (its `DocumentKindLabel::ContentIndex` and the L-1 regression test); this rc aligns the spec catalog to that behavior, so the implementation needs no change beyond the `SPEC_REVISION` bump.
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. The diagnostic catalog change is reporting-layer only; document wire bytes and the verification path are identical to rc.25.
+
 ### v1.0-rc.25
 
 Date: 2026-05-29
