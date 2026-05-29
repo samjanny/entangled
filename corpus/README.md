@@ -90,7 +90,8 @@ Requires Python 3.10+ and the `cryptography` package (for raw Ed25519 RFC 8032 s
 | 144-145 | Stage 5 origin field (carrier enum violation, non-canonical address syntax) |
 | 146-147 | Stage 5 schema (empty mandatory array, nested inline link) |
 | 148-149 | Stage 5 transaction state_updates (value over the 4096-byte hard ceiling, ttl outside 300..7776000) |
-| 150-159 | Stage 6 signature (modified payload, malformed length, non-canonical S, small-order A, non-canonical R, non-canonical A, missing-key context, small-order R) |
+| 150-157 | Stage 6 signature (modified payload, malformed length, non-canonical S, small-order A, non-canonical R, non-canonical A, missing-key context, small-order R) |
+| 158     | Stage 5 link target (carrier URL host not a valid tor-v3 onion address) |
 | 160-169 | Strict base64url (padding, alphabet, whitespace) |
 | 170-179 | Stage 9 binding (path mismatch, reserved path, request_hash, request_id, origin binding, origin not_after semantic constraints including both `reason` values, manifest.updated future-skew) |
 | 180-189 | Canary (equal `issued_at` conflict, anti-downgrade, interval-bounds violation, issued_at future-skew, runtime-key reuse) |

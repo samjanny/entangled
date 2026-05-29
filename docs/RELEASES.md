@@ -47,6 +47,20 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.37
+
+Date: 2026-05-29
+
+**Corpus: carrier link target URL onion-host validation (158)**
+
+Adds conformance coverage for the §03 carrier link target URL host rule, which the corpus left uncovered. No spec text, schema, signature-input, or new-code change; `spec_version` remains `"1.0"`. §03:584 already requires a `carrier` (`kind = "carrier"`) link target URL to have a host that is a valid carrier address for the declared carrier -- for tor-v3, a 56-character onion address followed by `.onion` -- and rejects a non-conforming host at Stage 5 with E_SCHEMA_FIELD_SYNTAX.
+
+**Corpus.** New negative vector `158-link-carrier-url-non-onion-host`: a content document with a link block whose carrier target URL is `http://example.com/path`, a clearnet host rather than a tor-v3 onion address. The URL is otherwise well-formed (http:// scheme, RFC 3986 characters, within the 1 KiB cap), so the non-onion host is the only live Stage 5 violation. Verdict `reject`, diagnostic E_SCHEMA_FIELD_SYNTAX. Signed by `K_runtime`. No existing vector input bytes change; the count moves 73 -> 74; `corpus.json` `rc_target` moves `1.0-rc.36` -> `1.0-rc.37`. The corpus README category table gains a row for the link-target check.
+
+**Behavioral compatibility.** §03:584 already mandates the onion host; this rc only adds a vector. The Rust reference implementation already enforces it (`validate_carrier_url` extracts the URL authority host and validates it as a tor-v3 onion address in `validation/inline.rs`); the Java reference implementation checked only the `http://` scheme, length, and control characters of the carrier URL and is corrected in lockstep (entangled-api-java).
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. No spec text, schema, signature-input, or code-set change; the change is corpus-only (one new vector).
+
 ### v1.0-rc.36
 
 Date: 2026-05-29
