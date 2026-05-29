@@ -47,6 +47,26 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.32
+
+Date: 2026-05-29
+
+**Lotto 32 - malformed canary timestamp is Stage 8 E_CANARY_INVALID (AMB-16)**
+
+Closes issue #17 (AMB-16). Pins the stage and diagnostic code for a syntactically or calendrically malformed `canary.issued_at` / `canary.next_expected`: Stage 8 `E_CANARY_INVALID`, not a generic Stage 5 schema code. No wire-format, schema, signature-input, or new-code change; `spec_version` remains `"1.0"`.
+
+Section 08 already lists "invalid timestamp syntax" by name as a canary Invalid-state condition, which is Stage 8 territory; but the stage and code for a malformed canary timestamp were not pinned, and an implementation that deserializes the timestamp at Stage 5 would report it there as `E_SCHEMA_FIELD_SYNTAX`/`E_SCHEMA_FIELD_RANGE` instead. Pinned to **Stage 8 `E_CANARY_INVALID`**: the spec text (section 08) directly assigns this failure to the canary Invalid state.
+
+This is the first resolution in the AMB series where the spec text favors the reading the Rust reference implementation does **not** currently take: Rust deserializes the canary timestamps into a typed value at Stage 5, so a malformed one fails there as a schema code; the Java reference implementation already reports `E_CANARY_INVALID` at Stage 8. The Rust implementation is realigned in lockstep (a dedicated entangled-api patch routes a malformed canary timestamp to the Stage 8 canary-Invalid path and reconciles an internal inconsistency where a wrong-shape timestamp mapped to `E_SCHEMA_FIELD_SYNTAX` but an out-of-range month mapped to `E_SCHEMA_FIELD_RANGE`).
+
+**Spec edit.** The section 11 `E_CANARY_INVALID` row description is broadened to state that a syntactically or calendrically invalid `issued_at`/`next_expected` is reported here at Stage 8, not as a generic Stage 5 schema code, citing the section 08 canary Invalid state.
+
+**Corpus.** New negative vector `186-canary-malformed-timestamp`: a manifest whose `canary.next_expected` is `"garbage"` (a valid JSON string, not the RFC 3339 form), signed correctly so the pipeline reaches Stage 8 where the malformed canary timestamp is the only live violation. Verdict `reject`, diagnostic `E_CANARY_INVALID`. Distinct from vector 182 (interval-bound `E_CANARY_INVALID`). No existing vector input bytes change; the count moves 67 -> 68; `corpus.json` `rc_target` moves `1.0-rc.31` -> `1.0-rc.32`.
+
+**Behavioral compatibility.** The document is rejected either way; this rc pins the stage and code. A conforming implementation reports `E_CANARY_INVALID` at Stage 8 for a malformed canary timestamp. The Rust reference implementation is updated to match (see above); the Java reference implementation already matches.
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. One diagnostic-catalog row description is broadened; no schema, signature-input, or code-set change.
+
 ### v1.0-rc.31
 
 Date: 2026-05-29
