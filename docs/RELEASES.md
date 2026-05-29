@@ -47,6 +47,24 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.27
+
+Date: 2026-05-29
+
+**Lotto 27 - exact-decimal integer serialization above 2^53**
+
+Pins the canonical serialization of Entangled integers to exact decimal across the whole admitted range `[0, 2^63 - 1]`, including integers above `2^53`, overriding the IEEE 754 binary64 interpretation the JCS profile would otherwise apply. No wire-format, schema, signature-input, NFC, byte-cap, or diagnostic-catalog change; `spec_version` remains `"1.0"`. This is a clarification: it makes a serialization rule explicit that the reference implementation already follows.
+
+Section 04 specified deterministic number serialization "following the ECMAScript number-to-string rules for IEEE 754 double-precision values within the I-JSON range" (04:23) and admitted integers up to `2^63 - 1` (04:77), but it gave no serialization-output rule for integers in `(2^53, 2^63 - 1]`, which have no exact binary64 representation. The parser-level discussion at 04:83-86 is input-scoped (it forbids a binary64-first parser from accepting an over-2^53 token and silently rounding it) and does not pin the output side. Two conforming implementations could therefore serialize the same admitted integer differently (exact decimal vs binary64-rounded), producing divergent canonical bytes and incompatible signatures for the same document. A `content.seq` value is an unbounded `u64` in the schema, so the band is reachable.
+
+**Section 04 integer serialization rule.** A new "Integer serialization" subsection states that the canonical serialization of an Entangled integer is its exact shortest decimal form across the whole `[0, 2^63 - 1]` range, including above `2^53`, and that such an integer MUST NOT be routed through a binary64 conversion for serialization. The grammar already forbids the corresponding input forms; this pins the output side so two conforming implementations produce identical canonical bytes (and identical signature input).
+
+**Corpus.** New positive vector `007-content-valid-large-seq`: a content document with `seq = 9007199254740993` (`2^53 + 1`, the smallest integer with no binary64 representation), signed by `K_runtime` over the exact-decimal canonical form. A conforming verifier accepts it; an implementation that serializes the seq through a binary64 double emits `9007199254740992` and fails signature verification. The corpus count moves 61 -> 62; no existing vector input bytes change; `corpus.json` `rc_target` moves `1.0-rc.26` -> `1.0-rc.27`.
+
+**Behavioral compatibility.** No accept/reject verdict changes for any rc.26 document and no wire bytes change. The rule pins behavior the reference implementation at samjanny/entangled-api already follows (it serializes integers as exact decimal via the native u64 path, with no binary64 conversion), so the implementation needs no change beyond the `SPEC_REVISION` bump. An implementation that had chosen a binary64 serialization path for the supra-2^53 band is non-conformant under this rule, as it always was against the 04:83-86 parser rule on the input side.
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. No schema, signature-input definition, NFC, byte-cap, transport, or diagnostic-catalog change; the canonical-bytes rule is made explicit for a range the grammar already admitted.
+
 ### v1.0-rc.26
 
 Date: 2026-05-29

@@ -76,6 +76,12 @@ This is the strict subset of RFC 8259 §6 numbers that produces a non-negative i
 
 The integer's decimal value MUST be in the range `[0, 2^63 - 1]`. Values outside this range are rejected even if a field's own schema would accept a smaller subset; the absolute upper bound is the protocol's, not the field's.
 
+### Integer serialization
+
+The canonical serialization of an Entangled integer is its exact shortest decimal form: the digits of its exact value, with no sign, no leading zeros, no decimal point, and no exponent (matching the integer grammar above). This applies across the whole admitted range `[0, 2^63 - 1]`, including integers above `2^53`.
+
+This rule overrides, for Entangled integers, the IEEE 754 binary64 interpretation that the ECMAScript number-to-string reference in the JCS profile above would otherwise apply within the I-JSON range. The I-JSON / RFC 8785 number profile is defined for binary64 values and exactly represents integers only up to `2^53`; an integer in `(2^53, 2^63 - 1]` (for example a `content.seq` value in that band) has no binary64 representation and MUST NOT be routed through a binary64 conversion for serialization. A conforming implementation serializes such an integer as its exact decimal digits, so that two conforming implementations produce identical canonical bytes (and therefore identical signature input) for the same document. The grammar above already forbids the input forms a binary64 round-trip could otherwise introduce (`9007199254740993` MUST NOT be accepted on the wire and then re-emitted as `9007199254740992`); this rule pins the corresponding output side.
+
 ### Parser-level enforcement
 
 Numeric tokens MUST be validated against the integer grammar at the lexical or parse level, before any conversion to a numeric type.
