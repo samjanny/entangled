@@ -47,6 +47,30 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.29
+
+Date: 2026-05-29
+
+**Lotto 29 - Expired-canary precedence: Stage 10 render-block, not Stage 8 halt (AMB-12)**
+
+Closes issue #13 (AMB-12). Pins where the Expired canary determination sits in the first-failing-stage error-precedence model: it is a Stage 10 render-block, not a Stage 8 pipeline rejection. No wire-format, schema, signature-input, JCS, NFC, byte-cap, diagnostic-catalog, or vector-input change; `spec_version` remains `"1.0"`. This aligns the section 10 prose with the existing corpus and the reference implementation; no implementation change.
+
+Section 10 "Error precedence" is strict (the first stage that fails determines the reported diagnostic; later stages are not executed), and section 10 said Stage 8 "produces one of the five canary states", of which Expired is one. It did not say whether the Expired determination *halts* the pipeline at Stage 8. Two readings followed: (A) Expired is a Stage 8 pipeline failure reporting `E_CANARY_EXPIRED`, halting before Stage 9; (B) Expired is not a pipeline rejection but a Stage 10 render-block, so the pipeline runs through Stage 9 and a co-occurring earlier failure (for example a Stage 9 `E_ORIGIN_EXPIRED`) is reported first. On a manifest that is simultaneously canary-Expired and origin-expired the two readings report different diagnostics at different stages for identical wire bytes. This is distinct from AMB-09 (rc.23), which fixed only the *severity* of `E_CANARY_EXPIRED` and left the section 08:183 behavior unchanged; it did not address precedence or pipeline placement.
+
+**Reading (B) is pinned.** Three reasons, in order of weight:
+
+1. The corpus already encodes it. Migration vector `200-migration-successor-origin-expired` carries a successor that is both canary-Expired (`next_expected` 2026-05-01, past `clock_now`) and origin-expired (`origin.not_after` 2026-05-01), and its expected `underlying_diagnostic_code` is `E_ORIGIN_EXPIRED` (Stage 9). That code is reachable only if the Expired determination at Stage 8 does not halt the pipeline. Under reading (A) the vector would be unsatisfiable.
+2. The section 08:185 per-session user-override distinguishes a render-block from a pipeline rejection: a render-block is user-overridable; a Stage 8 pipeline rejection (such as `E_CANARY_INVALID`, which has no override) is not. Treating Expired as a Stage 8 halt would contradict the override semantics.
+3. It keeps the Stage 8 / Stage 9 separation that AMB-05 established, rather than re-mixing the two layers.
+
+**Section 10 edits.** The Stage 8 pipeline-diagram entry and the Stage 8 prose now state that Stage 8 halts the pipeline only on a canary *rejection* (`E_CANARY_INVALID`, `E_CANARY_DOWNGRADE`, `E_CANARY_CONFLICT`, `E_CANARY_RUNTIME_REUSE`), and that the Expired state is computed, carried forward, and applied as the section 08:183 render-block at Stage 10, so the pipeline continues through Stage 9 and an earlier or Stage 9 failure is reported first under error precedence. The Stage 10 prose now states that the Expired render-block (with the section 08:185 override) is applied there, distinct from a pipeline rejection because the document reached Stage 10 and the block is user-overridable.
+
+**Corpus.** No vector input bytes change and no vector is added: vector 200 already encoded reading (B), and the change is section 10 prose. `corpus/README.md` is corrected, where it previously described reading (A): the "Stage 9 origin lifecycle" coverage note no longer says the Expired state "stops the pipeline before Stage 9", and a note records that the `E_CANARY_EXPIRED` runtime emission point is a Stage 10 render-block (needing the render-state schema extension to exercise directly, not a `reject` vector). `corpus.json` `rc_target` moves `1.0-rc.28` -> `1.0-rc.29`.
+
+**Behavioral compatibility.** No accept/reject verdict changes; no wire bytes change. The reference implementation at samjanny/entangled-api already follows reading (B): its `verify_canary` computes the canary state (including Expired) and returns it for the pipeline to carry forward, halting only on a structural `E_CANARY_INVALID`; the Expired render-block and the section 08:185 override live in the embedding client. It passes the rc.29 corpus unchanged.
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. The change is precedence/placement prose in section 10 plus a corpus-README correction; no diagnostic-catalog, schema, or vector-byte change.
+
 ### v1.0-rc.28
 
 Date: 2026-05-29

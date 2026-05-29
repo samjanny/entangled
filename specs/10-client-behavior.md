@@ -97,10 +97,15 @@ Stage 7.  Publisher identity and trust state resolution
 
 Stage 8.  Canary and anti-downgrade resolution
             - for manifests: compute canary state from `issued_at` and `next_expected`
-            - reject invalid canaries
+            - reject a structurally invalid canary (E_CANARY_INVALID), a
+              downgrade (E_CANARY_DOWNGRADE), an equal-issued_at conflict
+              (E_CANARY_CONFLICT), or runtime-key reuse (E_CANARY_RUNTIME_REUSE,
+              §08) -- these halt the pipeline at Stage 8 per error precedence
+            - the Expired canary state is NOT a Stage 8 pipeline rejection: it
+              is computed and carried forward. It is applied as a render-block
+              at Stage 10 (see Stage 10 and §08:183), so the pipeline continues
+              to Stage 9 and any earlier-stage failure is reported first
             - apply anti-downgrade against publisher history
-            - verify runtime-key rotation: reject with E_CANARY_RUNTIME_REUSE
-              if `runtime_pubkey` matches the immediately preceding manifest (§08)
 
 Stage 9.  Path and origin binding
             - for manifest: carrier origin binding, such as Tor v3 address derivation
@@ -186,13 +191,15 @@ For manifest documents, the manifest-specific identity pre-check above has alrea
 
 **Stage 8: canary and anti-downgrade resolution** produces one of the five canary states defined in §08 and applies anti-downgrade rules based on publisher history.
 
+Stage 8 halts the pipeline (under error precedence) only on a canary *rejection*: a structurally invalid canary (`E_CANARY_INVALID`), a downgrade (`E_CANARY_DOWNGRADE`), an equal-`issued_at` conflict (`E_CANARY_CONFLICT`), or runtime-key reuse (`E_CANARY_RUNTIME_REUSE`). The **Expired** canary state is not a pipeline rejection: it is a computed state carried forward to Stage 10, where it is applied as the §08:183 render-block. The pipeline therefore continues through Stage 9, and if an earlier-stage or Stage 9 failure also holds (for example a co-occurring `E_ORIGIN_EXPIRED`), that failure is the first-failing-stage diagnostic reported under error precedence. This distinction is load-bearing: the Expired render-block carries the §08:185 per-session user-override, whereas a Stage 8 pipeline rejection (such as `E_CANARY_INVALID`) does not; treating Expired as a Stage 8 halt would both contradict the override semantics and change the reported diagnostic for a manifest that is simultaneously canary-Expired and origin-expired.
+
 **Stage 9: path and origin binding** prevents path-substitution and origin-substitution attacks.
 
 For manifests, Stage 9 also evaluates the optional `origin.not_after` field defined in §06. When present, a manifest whose declared `not_after` is strictly earlier than the client's clock (subject to the clock-skew tolerance defined under "Clock skew tolerance" below; the rejection formula is `current_time > not_after + 300 seconds`, strict) is rejected as `E_ORIGIN_EXPIRED`. This check runs after carrier origin binding succeeds and uses only fields already validated at Stage 5. A manifest carrying an `origin.not_after` whose value violates the semantic constraints in §06 (`not_after` not strictly later than `canary.issued_at`, or more than 5 years after `canary.issued_at`) is rejected at Stage 5 as `E_ORIGIN_INVALID`; these are cross-field semantic checks per the Stage 5 definition above.
 
 For manifests carrying a present `migration_pointer`, Stage 9 additionally performs the successor-verification and chain-depth checks specified under "Origin migration" below.
 
-**Stage 10: render or report** is where the client either commits the document to rendering/processing or surfaces an error to the user.
+**Stage 10: render or report** is where the client either commits the document to rendering/processing or surfaces an error to the user. It is also where the Expired canary state computed at Stage 8 is applied as the §08:183 render-block: a manifest that passed every pipeline stage but whose canary is Expired is not rendered as current content (the content area is blank or a client-generated placeholder), subject to the §08:185 per-session user-override. This render-block is distinct from a pipeline rejection: the document reached Stage 10 (no earlier stage failed), and the block is user-overridable, unlike a Stage 8 `E_CANARY_INVALID` rejection.
 
 ## Persistence ordering
 
