@@ -47,6 +47,20 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.35
+
+Date: 2026-05-29
+
+**Corpus: NFC enforcement on submit_form labels (192)**
+
+Adds conformance coverage for the §04 NFC requirement on submit_form labels, which the corpus left uncovered. No spec text, schema, signature-input, or new-code change; `spec_version` remains `"1.0"`. §04:159 already names the submit_form form-level labels and `submit_form.fields[*].label` / `.options[*].label` as user-visible fields subject to NFC, and §04:167 rejects a non-NFC value with E_SCHEMA_FIELD_SYNTAX at schema validation, before signature verification.
+
+**Corpus.** New negative vector `192-unicode-nfd-submit-label`: a content document whose `submit_form.submit_label` is in NFD ("Cafe" + U+0301 combining acute) rather than the precomposed NFC form. Every other field is valid and NFC, so the NFD submit_label is the only live Stage 5 violation. Verdict `reject`, diagnostic E_SCHEMA_FIELD_SYNTAX. Signed correctly by `K_runtime`. No existing vector input bytes change; the count moves 70 -> 71; `corpus.json` `rc_target` moves `1.0-rc.34` -> `1.0-rc.35`.
+
+**Behavioral compatibility.** §04:159 already mandates NFC for these labels; this rc only adds a vector. The Rust reference implementation already enforces it (`check_nfc` on `submit_form.submit_label`, `submit_form.fields[].label`, and the option labels in `validation/blocks.rs`); the Java reference implementation applied the NFC check to other user-visible text fields but not to the three submit_form labels, and is corrected in lockstep (entangled-api-java).
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. No spec text, schema, signature-input, or code-set change; the change is corpus-only (one new vector).
+
 ### v1.0-rc.34
 
 Date: 2026-05-29
