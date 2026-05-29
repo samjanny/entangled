@@ -47,6 +47,28 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.25
+
+Date: 2026-05-29
+
+**Lotto 25 - migration_pointer successor address-to-key binding diagnostic**
+
+Adds a closed `details.reason` value for the existing `E_MIGRATION_INVALID` code so that the section 06 announcement-internal successor binding check has a normative diagnostic identifier. No wire-format, schema, signature-input, JCS, NFC, byte-cap, or new-code change; `spec_version` remains `"1.0"`. The diagnostic catalog gains one closed-enum `reason` value; no codes are added or removed.
+
+Section 06:383 already requires, for Tor v3, that `successor_origin.address` decodes to a public key equal to `successor_origin.origin_pubkey` (the same address-to-key binding rule as for the top-level `origin`, per section 05), and that the client verify this before treating the announcement as valid. This is an announcement-internal check on the two declared fields of the `migration_pointer`; it does not fetch the successor and is evaluated when the announcing manifest is validated. It is distinct from the section 10 fetch-time successor checks, which compare the fetched successor manifest's own `origin` fields against the announced `successor_origin` and fail as `E_MIGRATION_MISMATCH`.
+
+Before this rc, the section 06:383 binding failure had no diagnostic identifier: the `E_MIGRATION_INVALID` `details.reason` vocabulary in section 11 was a closed set (`self_pointer`, `announced_at_after_updated`, `carrier_mismatch`, `chain_cycle`) with no value for the successor binding, while the `address` / `origin_pubkey` `mismatch_field` values under `E_MIGRATION_MISMATCH` belong to the section 10 fetch-time check, a different stage. An implementation enforcing 06:383 therefore had no conformant way to report it.
+
+**Section 11 `reason` vocabulary extension.** `details.reason` for `E_MIGRATION_INVALID` gains the closed value `successor_key_mismatch`: "for Tor v3, `migration_pointer.successor_origin.address` does not decode to a public key equal to `migration_pointer.successor_origin.origin_pubkey`; the announcement-internal address-to-key binding of section 06". The `E_MIGRATION_INVALID` catalog row is extended to list this case. The reason vocabulary remains closed; this adds one member.
+
+**Section 06 cross-reference.** Section 06:383 is extended to state that the binding failure is `E_MIGRATION_INVALID` with `details.reason = "successor_key_mismatch"`, that it is announcement-internal (no successor fetch), and that it is distinct from the section 10 fetch-time `E_MIGRATION_MISMATCH` checks.
+
+**Corpus.** New vector `202-migration-successor-key-mismatch` (single manifest, announcement-internal): the `successor_origin.address` is the onion address of `origin_pub_2` while the declared `successor_origin.origin_pubkey` is `origin_pub`, so the address does not decode to the declared key. Verdict `reject`, diagnostic `E_MIGRATION_INVALID`, `details.reason = "successor_key_mismatch"`. No existing vector input bytes change; the `vectors/` tree gains one directory and the corpus count moves 60 -> 61. The `200-209` category note in `corpus/README.md` is extended to mention the new reason. `corpus.json` `rc_target` moves `1.0-rc.24` -> `1.0-rc.25`.
+
+**Behavioral compatibility.** The section 06:383 binding requirement is unchanged; this rc only gives its failure a diagnostic identifier. A client that already enforced 06:383 now reports it as `E_MIGRATION_INVALID` / `successor_key_mismatch` instead of an implementation-chosen code. The reference implementation at samjanny/entangled-api implements the check at this rc (it was previously unenforced at the announcement level). No rc.24 document's accept/reject verdict changes except that an announcement whose successor binding is inconsistent, previously not checked at announcement time by that implementation, is now rejected at validation rather than only at the section 10 fetch step.
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. No schema, signature-input, JCS, NFC, byte-cap, or transport change. One closed-enum `details.reason` value is added to an existing diagnostic code.
+
 ### v1.0-rc.24
 
 Date: 2026-05-29

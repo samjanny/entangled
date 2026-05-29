@@ -380,7 +380,7 @@ It has exactly three fields: `carrier`, `address`, and `origin_pubkey`. These th
 
 `successor_origin.address` MUST differ from `origin.address`. A migration_pointer that points back to the announcing origin is ill-formed.
 
-For Tor v3, the client MUST verify, before treating the announcement as valid, that `successor_origin.address` decodes to a public key equal to `successor_origin.origin_pubkey` (the same binding rule as for `origin`, defined in §05).
+For Tor v3, the client MUST verify, before treating the announcement as valid, that `successor_origin.address` decodes to a public key equal to `successor_origin.origin_pubkey` (the same binding rule as for `origin`, defined in §05). This is an announcement-internal check on the two declared fields of `successor_origin`; it does not require fetching the successor and is evaluated when the announcing manifest is validated. A failure is rejected as `E_MIGRATION_INVALID` (§11) with `details.reason = "successor_key_mismatch"`. It is distinct from the fetch-time successor checks in §10 ("Origin migration"), which compare the fetched successor manifest's own `origin` fields against the announced `successor_origin` and fail as `E_MIGRATION_MISMATCH`.
 
 ### `announced_at`
 

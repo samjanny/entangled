@@ -93,7 +93,7 @@ Requires Python 3.10+ and the `cryptography` package (for raw Ed25519 RFC 8032 s
 | 170-179 | Stage 9 binding (path mismatch, reserved path, request_hash, origin binding, origin not_after semantic constraints including both `reason` values, manifest.updated future-skew) |
 | 180-189 | Canary (equal `issued_at` conflict, anti-downgrade, interval-bounds violation, issued_at future-skew, runtime-key reuse) |
 | 190-199 | Unicode and canonicalization (NFD vs NFC) |
-| 200-209 | Migration scenarios (multi-document; successor manifest in `extra_files`; successor_stage9_failure under `E_MIGRATION_MISMATCH`, chain-cycle under `E_MIGRATION_INVALID`) |
+| 200-209 | Migration scenarios (successor_stage9_failure under `E_MIGRATION_MISMATCH`, chain-cycle and announcement-internal successor_key_mismatch under `E_MIGRATION_INVALID`; multi-document scenarios carry the successor manifest in `extra_files`) |
 
 Coverage relative to the §11 diagnostic code catalog remains partial. Codes not yet covered in this corpus fall into the following groups:
 
