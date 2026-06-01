@@ -403,9 +403,13 @@ If the user accepts this option:
 
 * subsequent set operations matching the same publisher, namespace, key, and mode MAY be committed without further prompting;
 * the new operation MUST remain within the bounds declared by the current manifest's `state_policy`;
-* changes to the stored value are permitted under remembered consent;
+* changes to the stored value are permitted under remembered consent, subject to the request-mode value-change disclosure below;
 * changes to namespace, key, or mode require a new consent decision;
 * the client MUST provide a user-accessible mechanism to revoke remembered consent.
+
+Remembered consent binds the scope `(K_publisher.pub, namespace, key, mode)`; it does not bind the value. A later set operation committed under remembered consent may therefore install a value the user never saw at consent time. For a `client_only` item this value never leaves the device. For a `request`-mode item the value is auto-attached to every future submit to the publisher (see "Retrieval for submits"), so a silent value substitution - for example by a `K_runtime`-only attacker operating within a valid runtime window (§05), who cannot forge `K_publisher` but can sign transaction documents carrying set operations - would inject an attacker-chosen value, such as a tracking identifier or an authorization token, into all future submits without the user ever seeing it.
+
+To bound this, when a set operation committed under remembered consent for a `request`-mode item would change the stored value (the new value differs byte-for-byte from the currently stored value), the client MUST NOT apply the change silently. The client MUST either require a lightweight user re-affirmation before committing the new value, or commit the new value and surface a visible chrome notification that the auto-attached value changed; in either case the client MUST identify the publisher, namespace, and key and present a safe representation of the new value under the safe-display rules above, and the notification MUST NOT be dismissable by a passive event. This requirement is in addition to the namespace/key/mode change rule above: it applies to a value change within an unchanged scope, which that rule does not cover. A `client_only` item, whose value is never transmitted to the publisher, does not require this disclosure; a value change to a remembered `client_only` item MAY be committed silently.
 
 The client MUST NOT remember consent across publishers. Each `K_publisher.pub` is a distinct consent scope.
 

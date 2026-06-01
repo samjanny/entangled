@@ -47,6 +47,22 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.40
+
+Date: 2026-06-01
+
+**Lotto 40 - remembered-consent value-change disclosure for request-mode state (AMB-21)**
+
+Closes issue #22 (AMB-21). Remembered consent under §07 binds the scope `(K_publisher.pub, namespace, key, mode)` and does not bind the value; a later `set` under remembered consent could therefore change the stored value with no reprompt and no notification. For a `request`-mode item, whose value is auto-attached to every future submit to the publisher, a `K_runtime`-only attacker (transaction-signing key compromised, publisher key intact) operating within a valid runtime window could silently substitute that value - a tracking identifier or an injected authorization token - into all future submits, while the consent UI, designed to show the value at consent time, never showed the new one. The consent scope key includes the mode but not the value, so the namespace/key/mode reprompt rule did not cover a value change within an unchanged scope. No wire-format, schema, signature-input, diagnostic-catalog, or new-code change; `spec_version` remains `"1.0"`.
+
+**Resolution.** §07 ("Remembered consent") now requires that when a `set` operation committed under remembered consent for a `request`-mode item would change the stored value (the new value differs byte-for-byte from the currently stored value), the client MUST NOT apply the change silently: it MUST either require a lightweight user re-affirmation before committing the new value, or commit it and surface a visible, not-passively-dismissible chrome notification that the auto-attached value changed, in either case identifying the publisher, namespace, and key and presenting a safe representation of the new value under the §07 safe-display rules. The requirement is additional to the namespace/key/mode reprompt rule and covers value changes within an unchanged scope. A `client_only` item, whose value is never transmitted, is exempt and MAY change silently. §00 ("Limitations") is updated so the policy-widening simplification note (§00:174) states that, unlike the policy bounds, a `request`-mode value change is disclosed per §07.
+
+**Corpus.** No vector change. Remembered consent, submit-flow attachment, and the chrome consent/notification surface are client-runtime behavior that the current single-document validation vector schema does not model (see the deferred State and submit-flow notes in `corpus/README.md`); no vector exercises this path. `corpus.json` `rc_target` moves `1.0-rc.39` -> `1.0-rc.40`; vector input bytes are unchanged.
+
+**Behavioral compatibility.** This is a normative addition to client consent behavior. The two reference implementations are validation-only libraries and model neither remembered consent nor the submit-flow attachment, so neither changes; the requirement governs the consent/runtime layer (the future `entangled-client`). The Rust and Java `SPEC_REVISION` constants and the CI corpus-checkout ref are bumped to `1.0-rc.40` when the tag is cut.
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. No change to the wire format, schema, signature input, JCS, NFC, byte caps, or diagnostic codes; the change is normative client-behavior text in §07 and §00.
+
 ### v1.0-rc.39
 
 Date: 2026-06-01
