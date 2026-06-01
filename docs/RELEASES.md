@@ -47,6 +47,30 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.38
+
+Date: 2026-06-01
+
+**Lotto 38 - state-update op and migration_pointer announcement-internal stage pins (AMB-18, AMB-19)**
+
+Closes issues #19 (AMB-18) and #20 (AMB-19). Both pin where a Stage 5 closed-schema rejection is reported, which the normative text left open and on which two conforming implementations could otherwise diverge for identical wire bytes. No wire-format, schema, signature-input, JCS, NFC, byte-cap, or new-code change; `spec_version` remains `"1.0"`. The diagnostic catalog is reworded under existing codes; no codes are added or removed.
+
+**AMB-18 / #19: unknown `op` or malformed state-update operation form.** A `state_updates` entry with an unknown `op` value, or one missing a required field for its operation form (a `set` missing `value` or `ttl`, a `delete` missing `key`), is rejected at Stage 5. §11:288 catalogued the dedicated `E_STATE_OP` code for "an unknown `op` value or ... missing required fields", but both reference implementations route the Stage 5 schema failure to the generic closed-schema codes and reserve `E_STATE_OP` for later-phase state-operation processing. rc.38 pins that reading: an unknown `op` (a value outside the closed set `{set, delete}`) is `E_SCHEMA_ENUM_VIOLATION` and a missing operation-form field is `E_SCHEMA_REQUIRED_FIELD`, both at Stage 5. The §07 state-update failure taxonomy now states this, and the §11 `E_STATE_OP` row is reworded to describe only the later state-operation processing phase (applying a schema-valid `set`/`delete` against the store). The Rust reference already does this (an unknown `op` is a serde closed-enum miss mapped to `E_SCHEMA_ENUM_VIOLATION`; `E_STATE_OP` is emitted in the store-application path); the Java reference also already does this (unknown `op` to `E_SCHEMA_ENUM_VIOLATION`, missing field to `E_SCHEMA_REQUIRED_FIELD` at Stage 5; `E_STATE_OP` declared but unreached). No implementation change.
+
+**AMB-19 / #20: migration_pointer announcement-internal check stage.** The announcement-internal `migration_pointer` semantic checks - `self_pointer` (successor address equals announcing address), `carrier_mismatch`, `announced_at_after_updated`, and the `successor_key_mismatch` address-to-key binding (§06) - were placed at different stages by §10:453 (Stage 5 for the self-pointer) and the §11 `E_MIGRATION_INVALID` catalog row (listed under the "Binding diagnostics (Stage 9)" heading). The two reference implementations diverged: Rust evaluates all four at Stage 5, Java evaluated all migration semantic checks at Stage 9. On a manifest where such a violation co-occurs with a later-stage failure, the two implementations reported different diagnostics for identical wire bytes. rc.38 pins Stage 5: the four announcement-internal reasons are closed-schema cross-field checks on the announcing manifest alone, the same class as the `origin.not_after` checks reported as `E_ORIGIN_INVALID` (Stage 5 since AMB-05, rc.23); only `chain_cycle`, which requires the per-flow `visited_origins` set, is a Stage 9 / §10 check. §10:453 is generalized to the four reasons, the §11 `E_MIGRATION_INVALID` row is annotated with the stage split, and a stage note after the binding details states the precedence. The Rust reference already does this; the Java reference is corrected in lockstep to evaluate the four announcement-internal checks at Stage 5 (entangled-api-java).
+
+**Corpus.** Three new negative vectors:
+
+- `163-state-op-unknown`: a transaction whose `state_updates` entry carries `op = "replace"`, a value outside `{set, delete}`. Rejected at Stage 5 as `E_SCHEMA_ENUM_VIOLATION` (AMB-18), not `E_STATE_OP`. The other fields are valid, so the unknown `op` is the only live violation.
+- `164-state-op-missing-field`: a transaction whose `set` operation omits the required `ttl` field. Rejected at Stage 5 as `E_SCHEMA_REQUIRED_FIELD` (AMB-18), not `E_STATE_OP`.
+- `203-migration-self-pointer-precedence`: an announcing manifest with a `self_pointer` `migration_pointer` (`successor_origin.address` equals `origin.address`) that is also tampered after signing so its Stage 6 signature fails. Under §10 first-failing-stage precedence the Stage 5 `self_pointer` is reported first: `E_MIGRATION_INVALID` with `details.reason = "self_pointer"`, not the Stage 6 `E_SIG_VERIFICATION`. This pins the AMB-19 stage cross-implementation (a Stage 9 reading would report `E_SIG_VERIFICATION`).
+
+`163` and `164` are signed by `K_runtime`, `203` by `K_publisher`. No existing vector input bytes change; the count moves 74 -> 77; `corpus.json` `rc_target` moves `1.0-rc.37` -> `1.0-rc.38`. The corpus README category table gains rows for the state-op and self-pointer-precedence vectors, and the State and Migration coverage notes are updated.
+
+**Behavioral compatibility.** AMB-18 is spec-text alignment to existing behavior in both reference implementations; no implementation change. AMB-19 changes the Java reference implementation's stage for the four announcement-internal `migration_pointer` checks (Stage 9 to Stage 5) so it agrees with the Rust reference and the pinned spec; the reported diagnostic code (`E_MIGRATION_INVALID`) and `details.reason` are unchanged, only the stage at which they fire. For a manifest whose only violation is one of these reasons, the verdict and code are identical under either stage; the observable change is confined to manifests where such a reason co-occurs with a later-stage failure, where Stage 5 now wins precedence. The Rust reference and Java reference `SPEC_REVISION` constants and the CI corpus-checkout ref are bumped to `1.0-rc.38` when the tag is cut.
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. No spec text changes the wire format, schema, signature input, JCS, NFC, or byte caps; no diagnostic codes are added or removed. The changes are three new corpus vectors, spec wording that pins the existing reading, and a Java reference stage correction.
+
 ### v1.0-rc.37
 
 Date: 2026-05-29
