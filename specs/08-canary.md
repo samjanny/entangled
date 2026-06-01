@@ -208,6 +208,8 @@ The client MUST display the unavailable state in the chrome and MUST NOT use cac
 
 If a cached manifest exists from a prior session, the client MAY display previously cached content with explicit indication that it is cached and that the current canary state cannot be verified.
 
+The Unavailable state, and the optional cached-content rendering above, apply only while the most recent cached manifest's canary deadline has not passed. If the client holds a cached manifest for the site whose canary `next_expected` is at or before the verified current time - that is, the Expired condition above holds for the cached manifest - the client MUST compute Expired (the render-block and per-session override defined above), not Unavailable, even when the live manifest fetch fails. A failed fetch does not relax a canary deadline the client can already see has passed: a missed, client-observable deadline is a publisher commitment failure, not a transport condition. This is the same time-independent lower-bound Expired determination defined in §10 (the expiry timestamp is at or before the verified-time reference), and it takes precedence over Unavailable so that a coerced or compromised carrier cannot downgrade an Expired render-block to cached-content rendering simply by withholding the manifest fetch.
+
 The unavailable state is distinguished in display from invalid: unavailable indicates network or transport conditions, not a security failure.
 
 ## Anti-downgrade enforcement

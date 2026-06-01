@@ -47,6 +47,22 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.39
+
+Date: 2026-06-01
+
+**Lotto 39 - cached-manifest-expired takes precedence over canary Unavailable (AMB-20)**
+
+Closes issue #21 (AMB-20). A coerced or compromised carrier could blunt the warrant canary's headline protection - the hard render-block on an Expired canary (§08:183) - by withholding the manifest fetch. The client then computed the Unavailable state (which MAY render cached content with a "stale" marker) rather than Expired, even when its own cached manifest's `next_expected` had already passed. The spec did not reconcile the two facts a clock-equipped client holds at once: its cached manifest's deadline is now in the past, and the live fetch is Unavailable. No wire-format, schema, signature-input, diagnostic-catalog, or new-code change; `spec_version` remains `"1.0"`.
+
+**Resolution.** §08 ("Unavailable") and §10 (canary state behavior) now state that the Unavailable state, and its optional cached-content rendering, apply only while the most recent cached manifest's canary deadline has not passed. If the client holds a cached manifest for the publisher whose canary `next_expected` is at or before the verified current time - the §08 Expired condition - the client MUST compute Expired (the default render-block and the §08:185 per-session override), not Unavailable, even when the live manifest fetch fails. A failed fetch does not relax a deadline the client can already see has passed; this is the same time-independent lower-bound Expired determination §10 already defines for the freshness-unverified case, now stated to take precedence over Unavailable so a carrier cannot coast past the committed deadline by dropping the manifest.
+
+**Corpus.** No vector change. Per `corpus/README.md`, the canary render-block states (Expired, Unavailable) are not pipeline accept/reject verdicts but Stage 10 render-state determinations that need the deferred render-state vector-schema extension; the cached-manifest-vs-failed-fetch precedence is in that deferred surface. `corpus.json` `rc_target` moves `1.0-rc.38` -> `1.0-rc.39`; vector input bytes are unchanged.
+
+**Behavioral compatibility.** This tightens the default Unavailable posture. The two reference implementations are validation-only libraries: the Rust `compute_canary_state` derives Fresh/Near-expiration/Expired from `issued_at`/`next_expected`/`now` for a canary in hand, and neither implementation models the failed-live-fetch-with-cached-manifest path (that is the future `entangled-client` / transport layer), so neither changes. The Rust and Java `SPEC_REVISION` constants and the CI corpus-checkout ref are bumped to `1.0-rc.39` when the tag is cut.
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. No change to the wire format, schema, signature input, JCS, NFC, byte caps, or diagnostic codes; the change is normative client-behavior text in §08 and §10.
+
 ### v1.0-rc.38
 
 Date: 2026-06-01
