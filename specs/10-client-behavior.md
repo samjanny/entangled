@@ -159,6 +159,15 @@ This rule is normative. A client that reports a "signature invalid" error on a d
 
 If a stage detects multiple violations within itself, for example schema validation finding two fields out of range, the client MAY report all of them within that stage, but MUST NOT proceed to subsequent stages.
 
+A client that reports a single diagnostic per document MUST, when more than one of the following manifest Stage 5 checks would fail on identical wire bytes, select the reported diagnostic in this order, so the code is deterministic across implementations:
+
+1. the `manifest.updated` future-skew check (`E_SCHEMA_FIELD_SYNTAX`, §06);
+2. the `state_policy` submit-budget satisfiability aggregate (`E_SUBMIT_BUDGET`, §07);
+3. the `origin.not_after` vs `canary.issued_at` constraints (`E_ORIGIN_INVALID`, §06);
+4. the announcement-internal `migration_pointer` semantic checks (`E_MIGRATION_INVALID`, §06/§10).
+
+Co-occurrences among the other independent per-field type, range, syntax, and length checks retain the within-stage latitude above. This ordering is a reporting-precedence rule only; it does not change which documents are accepted or rejected, and a client that reports all within-stage violations is unaffected.
+
 ## Stage details
 
 **Stage 1: transport-level checks** are defined in §09. Status codes outside the whitelist, redirect responses, malformed `Content-Type`, missing required headers, or response-body retrieval failure fail at this stage.

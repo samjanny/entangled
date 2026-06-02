@@ -47,6 +47,24 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.45
+
+Date: 2026-06-02
+
+**Lotto 45 - intra-Stage-5 manifest diagnostic reporting order (AMB-28)**
+
+Closes issue #29 (AMB-28). Pins, for a client that reports a single diagnostic, the order in which a manifest's co-occurring Stage 5 cross-field checks are reported, so the diagnostic code is deterministic across implementations for identical wire bytes. No wire-format, schema, signature-input, JCS, NFC, byte-cap, diagnostic-catalog, or new-code change; `spec_version` remains `"1.0"`. This is a reporting-precedence rule; it does not change any accept/reject verdict.
+
+**Issue.** §10:72-81 lists the Stage 5 checks as an unordered bundle and §10:160 permits reporting all within-stage violations. A manifest can simultaneously trigger more than one Stage 5 cross-field check, for example `state_policy` over the submit budget (`E_SUBMIT_BUDGET`) and `origin.not_after <= canary.issued_at` (`E_ORIGIN_INVALID`), or a future-skewed `manifest.updated` (`E_SCHEMA_FIELD_SYNTAX`) co-occurring with either. The two reference implementations evaluated these in different orders (Rust: future-skew, then budget, then origin; Java: origin, then budget, with future-skew last) and each reports a single first-failing diagnostic, so they emitted different codes for identical bytes. The corpus avoided this by giving each affected vector a single live violation.
+
+**Resolution.** §10 (Error precedence) now pins, for a single-diagnostic client, the reporting order among these manifest Stage 5 checks: (1) `manifest.updated` future-skew (`E_SCHEMA_FIELD_SYNTAX`), (2) `state_policy` submit-budget aggregate (`E_SUBMIT_BUDGET`), (3) `origin.not_after` vs `canary.issued_at` (`E_ORIGIN_INVALID`), (4) announcement-internal `migration_pointer` (`E_MIGRATION_INVALID`). Co-occurrences among the other independent per-field checks retain the §10:160 within-stage latitude. The Rust reference already follows this order; the Java reference is corrected in lockstep by reordering its manifest Stage 5 calls (`manifest.updated` future-skew and the `state_policy` budget aggregate now precede the `origin.not_after` check).
+
+**Corpus.** One new negative vector `159-stage5-budget-origin-precedence`: a manifest carrying both the over-budget `state_policy` of vector 143 and `origin.not_after` equal to `canary.issued_at`. It deliberately has two live Stage 5 violations to pin the precedence; verdict `reject`, diagnostic `E_SUBMIT_BUDGET` (`details.component = "state"`). No existing vector input bytes change; the count moves 85 -> 86; `corpus.json` `rc_target` moves `1.0-rc.44` -> `1.0-rc.45`. The corpus README gains a row for the precedence vector.
+
+**Behavioral compatibility.** No verdict changes; both implementations already rejected such a manifest. The change is the Java diagnostic for the co-occurrence (now matches the Rust reference and the pinned order). The reorder does not affect any single-violation vector. The Rust and Java `SPEC_REVISION` constants and the CI corpus-checkout ref are bumped to `1.0-rc.45` when the tag is cut.
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. No change to the wire format, schema, signature input, JCS, NFC, byte caps, or diagnostic codes; the change is a §10 reporting-precedence rule, one new corpus vector, and a Java reference reorder.
+
 ### v1.0-rc.44
 
 Date: 2026-06-02
