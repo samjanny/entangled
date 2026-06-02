@@ -158,6 +158,8 @@ A public key value that fails canonical decoding or the small-order rejection ca
 
 This rule applies to `K_publisher.pub` and `K_runtime.pub` (enforced when a document is verified under the key, `E_SIG_VERIFICATION`), and to `K_origin.pub` for carrier profiles whose endpoint key is Ed25519, including Tor v3 (enforced structurally at Stage 9 origin binding, `E_BIND_ORIGIN`).
 
+`K_runtime.pub` is additionally enforced structurally on the manifest that declares it: a `canary.runtime_pubkey` that fails canonical decoding or the small-order rejection causes the manifest to be rejected at Stage 8 canary validation as `E_CANARY_INVALID` (§08), with `details.reason = "public_key_rejected"`. This is defense in depth: it rejects a manifest declaring an unusable runtime key at canary-validation time rather than waiting for the failure to surface as `E_SIG_VERIFICATION` on the first content or transaction document verified under that key.
+
 ### Signature (`R || S`) validation
 
 A signature is a 64-byte octet string parsed as `R` (32 bytes) followed by `S` (32 bytes). The wire encoding is base64url over the 64-byte octet string, as specified for the `sig` field in §02.

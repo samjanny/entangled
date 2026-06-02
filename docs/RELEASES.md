@@ -47,6 +47,24 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.46
+
+Date: 2026-06-02
+
+**Lotto 46 - structural rejection of a small-order canary.runtime_pubkey at Stage 8 (AMB-23)**
+
+Closes issue #24 (AMB-23). Pins that a manifest whose `canary.runtime_pubkey` fails the §05 public-key strict profile (non-canonical encoding or small-order point) is rejected structurally at Stage 8 canary validation as `E_CANARY_INVALID`, rather than being accepted until the failure surfaces as `E_SIG_VERIFICATION` on the first content/transaction document verified under that key. No wire-format, schema, signature-input, JCS, NFC, byte-cap, or new-code change; `spec_version` remains `"1.0"`.
+
+**Issue.** §05:157-159 enforced the public-key strict profile structurally only for `origin.origin_pubkey` (Stage 9, `E_BIND_ORIGIN`); for `K_runtime.pub` it said the failure surfaces when a document is verified under the key (`E_SIG_VERIFICATION`). A manifest is signed under `K_publisher`, not `K_runtime`, so a manifest declaring a small-order or non-canonical `canary.runtime_pubkey` was accepted by the Java reference and rejected at Stage 8 (`E_CANARY_INVALID`) by the Rust reference, which added a defensive strict-profile check. The two references returned opposite verdicts for identical wire bytes.
+
+**Resolution (defense-in-depth, consistent with AMB-17 for origin_pubkey).** §05 now enforces the strict profile on `K_runtime.pub` structurally on the declaring manifest as well: a `canary.runtime_pubkey` that fails canonical decoding or the small-order rejection causes the manifest to be rejected at Stage 8 as `E_CANARY_INVALID` with `details.reason = "public_key_rejected"`. §08 adds this to the canary Invalid conditions. The Rust reference already does this; the Java reference is corrected in lockstep to apply the strict-profile check to `canary.runtime_pubkey` at Stage 8.
+
+**Corpus.** One new negative vector `187-canary-runtime-pubkey-small-order`: a manifest whose `canary.runtime_pubkey` is the encoded Ed25519 identity point (a small-order point, the encoding family of vectors 153/179), otherwise valid and re-signed under the real `K_publisher`. Verdict `reject`, diagnostic `E_CANARY_INVALID` with `details.field_path = "canary.runtime_pubkey"` and `details.reason = "public_key_rejected"`. No existing vector input bytes change; the count moves 86 -> 87; `corpus.json` `rc_target` moves `1.0-rc.45` -> `1.0-rc.46`. The corpus README canary row is updated.
+
+**Behavioral compatibility.** This makes the Java reference reject a manifest it previously accepted (one declaring an unusable runtime key), matching the Rust reference and the strengthened §05/§08. A manifest with a valid `runtime_pubkey` is unaffected. The Rust reference is unchanged. The Rust and Java `SPEC_REVISION` constants and the CI corpus-checkout ref are bumped to `1.0-rc.46` when the tag is cut.
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. No change to the wire format, schema, signature input, JCS, NFC, byte caps, or diagnostic codes; the change is a §05/§08 strengthening, one new corpus vector, and a Java reference strict-profile check on `canary.runtime_pubkey`.
+
 ### v1.0-rc.45
 
 Date: 2026-06-02
