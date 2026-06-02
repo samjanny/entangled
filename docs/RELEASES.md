@@ -47,6 +47,24 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.42
+
+Date: 2026-06-02
+
+**Lotto 42 - migration reverse-cycle ordered after successor verification (AMB-26)**
+
+Closes issue #27 (AMB-26). Pins the order, within the migration-resolution flow, of the second-hop `chain_cycle` check relative to successor verification, which the spec implied but did not state explicitly enough that the two reference implementations agreed. No wire-format, schema, signature-input, JCS, NFC, byte-cap, diagnostic-catalog, or new-code change; `spec_version` remains `"1.0"`.
+
+**Issue.** In an `A -> B -> A` reverse cycle where the fetched successor `B` both fails its own verification (for example `B`'s `origin.not_after` is past, so `B`'s pipeline reports `E_ORIGIN_EXPIRED`) and announces a `migration_pointer` back to the announcing origin `A`, the Java reference peeked `B`'s onward `migration_pointer` and reported `E_MIGRATION_INVALID` (`chain_cycle`) before running `B`'s pipeline, while the Rust reference runs `B`'s pipeline and the publisher/binding continuity checks first and reports `E_MIGRATION_MISMATCH` (`mismatch_field = "successor_stage9_failure"`, `underlying_diagnostic_code = "E_ORIGIN_EXPIRED"`). Per §10:398-405, a fetched successor becomes a verified pending successor only after it passes its own pipeline and the continuity checks, and only then is its own onward announcement processed; the Rust ordering matches the spec.
+
+**Resolution.** §10 (Visited-origin cycle rejection) now states explicitly that the chain-cycle check on a fetched successor's own onward `migration_pointer` is evaluated only after the successor passes its full pipeline and the publisher/binding continuity checks, so a broken successor surfaces `E_MIGRATION_MISMATCH` first. The Java reference is corrected in lockstep: the early reverse-cycle peek in `Stage9Binding.verifySuccessor` is removed and the second-hop `chain_cycle` determination is performed after the successor pipeline and continuity checks. The Rust reference already follows this ordering.
+
+**Corpus.** One new negative vector `204-migration-broken-successor-reverse-cycle`: an announcing manifest `A` whose successor `B` (in `extra_files/successor_manifest.json`) has a past `origin.not_after` and a `migration_pointer` back to `A`. Verdict `reject`, diagnostic `E_MIGRATION_MISMATCH` with `details.mismatch_field = "successor_stage9_failure"` and `underlying_diagnostic_code = "E_ORIGIN_EXPIRED"`. Pairs with 200 (broken successor, no back-pointer) and 201 (valid successor with back-pointer -> `chain_cycle`). No existing vector input bytes change; the count moves 81 -> 82; `corpus.json` `rc_target` moves `1.0-rc.41` -> `1.0-rc.42`. The corpus README migration row is updated.
+
+**Behavioral compatibility.** The verdict was already `reject` in both implementations for this input; the change is the reported diagnostic (Java now reports `E_MIGRATION_MISMATCH`, matching the Rust reference and §10). Vectors 200 and 201 are unaffected (200 has no successor back-pointer; 201's successor passes its pipeline, so the second-hop `chain_cycle` still fires). The Rust reference is unchanged. The Rust and Java `SPEC_REVISION` constants and the CI corpus-checkout ref are bumped to `1.0-rc.42` when the tag is cut.
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. No change to the wire format, schema, signature input, JCS, NFC, byte caps, or diagnostic codes; the change is a §10 ordering clarification, one new corpus vector, and a Java reference ordering fix.
+
 ### v1.0-rc.41
 
 Date: 2026-06-02
