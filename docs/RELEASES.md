@@ -47,6 +47,24 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.43
+
+Date: 2026-06-02
+
+**Lotto 43 - out-of-range state set ttl above u32::MAX is E_STATE_TTL (AMB-27)**
+
+Closes issue #28 (AMB-27). Pins that a `state_updates` `set` `ttl` outside the `300..7776000` hard range is the dedicated `E_STATE_TTL` regardless of the value's magnitude, which the spec already mandates (§11:289, §07:279) but on which the Rust reference diverged for a corpus-uncovered band. No wire-format, schema, signature-input, JCS, NFC, byte-cap, diagnostic-catalog, or new-code change; `spec_version` remains `"1.0"`. No spec text change is required; the spec already assigns the code.
+
+**Issue.** A set `ttl` that is a conforming 64-bit integer (§04 integer domain `[0, 2^63-1]`) above `u32::MAX`, for example `5000000000`, is far outside the `300..7776000` bound and must be reported as `E_STATE_TTL` (§11:289). The Java reference does this (it reads `ttl` as an arbitrary-precision integer and range-checks it). The Rust reference typed the parsed `ttl` as `u32`, so a value above `u32::MAX` failed deserialization with a generic integer-width error mapped to `E_SCHEMA_FIELD_RANGE` before the dedicated `E_STATE_TTL` hard-range check ran. The two references rejected at the same Stage 5 with different diagnostic codes for the over-`u32` band; they already agreed across `(7776000, u32::MAX]` (both `E_STATE_TTL`).
+
+**Resolution.** The Rust reference's parsed set `ttl` field is widened from `u32` to `i64` (the §04 integer domain) so a conforming integer above `u32::MAX` deserializes and the dedicated `E_STATE_TTL` hard-range check (`STATE_TTL_HARD_RANGE`, also widened to `i64`) governs, matching the Java reference and §11:289. The parallel `min_refresh_interval` over-`u32` case (a manifest field with no dedicated code) legitimately remains `E_SCHEMA_FIELD_RANGE`. The Java reference is unchanged.
+
+**Corpus.** One new negative vector `169-state-ttl-over-u32`: a transaction whose `state_updates` set `ttl` is `5000000000` (above `u32::MAX`, outside the hard range). Verdict `reject`, diagnostic `E_STATE_TTL`. Validated standalone at Stage 5; pairs with `149` (`ttl` `7776001`, within `u32`; same code). No existing vector input bytes change; the count moves 82 -> 83; `corpus.json` `rc_target` moves `1.0-rc.42` -> `1.0-rc.43`. The corpus README state-band row is updated.
+
+**Behavioral compatibility.** The verdict was already `reject` in both implementations; the change is the Rust diagnostic for the over-`u32` band (now `E_STATE_TTL`, matching the Java reference and the spec). The widening of the parsed `StateUpdateOp::Set.ttl` field type is an internal type change in the Rust crate and is recorded in its CHANGELOG when the next crate release is cut. The Rust and Java `SPEC_REVISION` constants and the CI corpus-checkout ref are bumped to `1.0-rc.43` when the tag is cut.
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. No change to the wire format, schema, signature input, JCS, NFC, byte caps, or diagnostic codes; the change is one new corpus vector and a Rust reference type widening so the dedicated code governs.
+
 ### v1.0-rc.42
 
 Date: 2026-06-02
