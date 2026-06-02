@@ -32,7 +32,7 @@ Entangled is easy to mistake for a static-site generator or a signed-page scheme
 
 | Approach | Active content for readers | Identity anchored to | Content tied to a stable publisher identity | Reader must trust the server |
 |---|---|---|---|---|
-| **Entangled** | None; closed document grammar, no script | An offline key, shown as a PIP and verified out of band | Yes; every document is signed, and identity survives address or host changes | No; the client verifies signatures and identity |
+| **Entangled** | None; closed document grammar, no script | An offline key, shown as a PIP and verified out of band | Yes; every document is signed, and identity survives address or host changes | No; you confirm the PIP out of band once, then the client verifies every document against that pinned identity, so a hostile server cannot impersonate the publisher |
 | Plain web site | Full (HTML + JavaScript) | A domain and its CA (TLS) | No | Yes |
 | Static site over HTTPS | Full (still HTML + JS in a browser) | A domain and its CA (TLS) | No | Yes |
 | Signed HTML (e.g. Signed Exchanges) | Full (still HTML + JS in a browser) | A certificate bound to a domain | To a certificate and domain, not to a stable publisher key | Partly; signing limits tampering, but the active-content surface remains |
