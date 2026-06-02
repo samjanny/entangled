@@ -13,6 +13,33 @@ A site built with Entangled is not a general web application. It is a small set 
 
 There is no JavaScript, no DOM scripting, no HTML, no ambient storage, no cookies, no arbitrary styling, and no publisher-controlled client chrome.
 
+## What Entangled is for
+
+Entangled is for publishing small, verifiable, mostly-static documents over carriers such as Tor onion services, without exposing readers to a browser-like active content surface.
+
+It is not a website framework, not a social network protocol, and not a general application runtime.
+
+Example use cases:
+
+- a journalist publishing signed updates over rotating onion addresses;
+- a whistleblowing organization publishing tamper-evident notices;
+- a small collective distributing verified documents without trusting the server;
+- an archive that wants stable publisher identity independent of hosting.
+
+## How Entangled compares
+
+Entangled is easy to mistake for a static-site generator or a signed-page scheme. The real difference is what a reader's client is allowed to execute, and what the publisher's identity is anchored to.
+
+| Approach | Active content for readers | Identity anchored to | Content tied to a stable publisher identity | Reader must trust the server |
+|---|---|---|---|---|
+| **Entangled** | None; closed document grammar, no script | An offline key, shown as a PIP and verified out of band | Yes; every document is signed, and identity survives address or host changes | No; the client verifies signatures and identity |
+| Plain web site | Full (HTML + JavaScript) | A domain and its CA (TLS) | No | Yes |
+| Static site over HTTPS | Full (still HTML + JS in a browser) | A domain and its CA (TLS) | No | Yes |
+| Signed HTML (e.g. Signed Exchanges) | Full (still HTML + JS in a browser) | A certificate bound to a domain | To a certificate and domain, not to a stable publisher key | Partly; signing limits tampering, but the active-content surface remains |
+| IPFS | Depends on the gateway or browser, usually full | A content address (CID); a stable publisher identity is not part of plain CID semantics and is added through layers such as IPNS, DNSLink, or app-level signatures | Integrity is content-addressed by CID; binding to a stable publisher identity needs an added naming or signing layer | For integrity no; for rendering yes |
+
+This is a difference in goals, not a ranking: the other approaches target general, interactive web applications, which Entangled deliberately does not.
+
 ## Pillar A - Threat model
 
 Entangled addresses two explicitly separated classes of threat.
@@ -437,11 +464,11 @@ Implementation versions are independent.
 
 ## Current status
 
-Entangled is experimental.
+Entangled is a pre-v1 security protocol.
 
-The protocol is currently being specified and prototyped. The current design should be treated as a work in progress until a stable v1.0 specification and conformance corpus are published.
+It has a complete specification, a normative conformance corpus, and two reference implementations ([Rust](https://github.com/samjanny/entangled-api), [Java](https://github.com/samjanny/entangled-api-java)) kept in lockstep with the spec through that corpus. Across the release-candidate cycle the wire format is stable: a document valid under one `1.0-rc.N` stays valid under later ones.
 
-Do not rely on Entangled for high-risk operational use yet.
+"Pre-v1" here means two specific things: the v1.0 specification is not yet frozen, and it has not had an independent security audit. Until both are done, Entangled is suitable for review, implementation, and experimentation, but you should not yet stake high-risk operational safety on it.
 
 ## Repository structure
 
