@@ -100,6 +100,8 @@ Implementations MUST use one of:
 
 A document containing a numeric token that fails the integer grammar is rejected with `E_SCHEMA_NON_INTEGER` (§11). The diagnostic's `stage` field reflects the implementation stage at which the violation was detected; the protocol-level meaning is constant.
 
+Because the numeric-grammar stage is implementation-defined, the numeric-grammar diagnostic does not participate in first-failing-stage precedence (§11) against the structural Stage 3 parser limits (nesting depth, array length, object key count, per-string length). When a non-conforming numeric token co-occurs with a structural Stage 3 limit violation in the same document, the client reports the Stage 3 limit code (`E_PARSE_NESTING_DEPTH`, `E_PARSE_ARRAY_LENGTH`, `E_PARSE_OBJECT_KEYS`, or `E_PARSE_STRING_LENGTH`), not `E_SCHEMA_NON_INTEGER`: the structural limit is the lower-numbered stage and bounds the work a parser performs, so it takes precedence.
+
 ## No duplicate member names
 
 Every JSON object in an Entangled document, including nested objects, MUST have unique member names. A document containing duplicate member names at any object level MUST be rejected during JSON parsing, before schema validation and before canonicalization.

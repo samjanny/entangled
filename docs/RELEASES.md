@@ -47,6 +47,29 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.44
+
+Date: 2026-06-02
+
+**Lotto 44 - Stage 3 parser limit precedes numeric grammar (AMB-29)**
+
+Closes issue #30 (AMB-29). Pins the precedence between a structural Stage 3 parser-limit violation and a non-conforming numeric token when both co-occur in one document. No wire-format, schema, signature-input, JCS, NFC, byte-cap, diagnostic-catalog, or new-code change; `spec_version` remains `"1.0"`.
+
+**Issue.** §04:87 requires the integer grammar to be validated "at the lexical or parse level, before any conversion", and §04:101 states the numeric-grammar diagnostic's `stage` is the implementation stage at which it was detected. §11:15 orders errors by first-failing stage. When a non-conforming numeric token (a float/exponent, or an integer above `2^63-1`) co-occurs with a structural Stage 3 limit (nesting depth, array length, object keys, per-string length), the two were in tension: the Rust reference ran its raw-byte numeric scan before the structural-limit walk and reported `E_SCHEMA_NON_INTEGER` (Stage 5), while the Java reference enforced the structural limits during parsing (Stage 3) and reported the `E_PARSE_*` code. Same `reject` verdict, different code and stage.
+
+**Resolution.** §04 now states that the numeric-grammar diagnostic does not participate in first-failing-stage precedence against the structural Stage 3 parser limits: when a non-conforming numeric token co-occurs with a Stage 3 limit violation, the lower-numbered Stage 3 limit code is reported, not `E_SCHEMA_NON_INTEGER`. The Java reference already does this. The Rust reference is corrected in lockstep to run its structural-limit walk (`walk_limits`) before its numeric-grammar scan (`enforce_integer_grammar`).
+
+**Corpus.** Two new negative vectors:
+
+- `117-parse-nesting-depth-with-float`: a 20-level nested array (over the 16-level cap) whose innermost value is `1.5`. `E_PARSE_NESTING_DEPTH`.
+- `118-parse-array-length-with-float`: a 10001-element `blocks` array (over the 10000-element cap) one element of which is `1.5`. `E_PARSE_ARRAY_LENGTH`.
+
+Both pair with 111/113 (same limits, a conforming value at the violation site) and 140 (a float with no Stage 3 limit -> `E_SCHEMA_NON_INTEGER`). No existing vector input bytes change; the count moves 83 -> 85; `corpus.json` `rc_target` moves `1.0-rc.43` -> `1.0-rc.44`. The corpus README parse-band row is updated.
+
+**Behavioral compatibility.** The verdict was already `reject` in both implementations; the change is the Rust diagnostic for the co-occurrence (now the Stage 3 `E_PARSE_*` code, matching the Java reference and §04). A document with a non-conforming numeric token and no Stage 3 limit violation still reports `E_SCHEMA_NON_INTEGER` (vector 140, unchanged). The Java reference is unchanged. The Rust and Java `SPEC_REVISION` constants and the CI corpus-checkout ref are bumped to `1.0-rc.44` when the tag is cut.
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. No change to the wire format, schema, signature input, JCS, NFC, byte caps, or diagnostic codes; the change is a §04 precedence clarification, two new corpus vectors, and a Rust reference ordering fix.
+
 ### v1.0-rc.43
 
 Date: 2026-06-02
