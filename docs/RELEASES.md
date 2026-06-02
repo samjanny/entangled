@@ -47,6 +47,24 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.47
+
+Date: 2026-06-02
+
+**Lotto 47 - NFC pinned to a Unicode baseline with an assigned-only gate (AMB-24)**
+
+Closes issue #25 (AMB-24). Pins the Unicode version against which the §04 NFC requirement on user-visible strings is evaluated, and adds an assigned-only gate, so two conforming implementations that link different Unicode Character Database (UCD) versions cannot disagree on a string's accept/reject verdict. No wire-format, schema, signature-input, JCS, byte-cap, diagnostic-catalog, or new-code change; `spec_version` remains `"1.0"`.
+
+**Issue.** §04 required NFC "as defined by Unicode Standard Annex #15" without pinning a Unicode version. NFC depends on the normalizer's UCD version: for a combining mark assigned in a newer Unicode version (for example U+0897, assigned in Unicode 16.0, canonical combining class 230), an implementation whose UCD knows it reorders the string and rejects it as non-NFC, while an implementation whose UCD predates it treats it as an unknown combining-class-0 starter and accepts it. The Rust reference (UCD 17.0) rejected such a string; the Java reference (UCD 15.0, the JDK 21 baseline) accepted it. Verdict-level divergence on identical wire bytes.
+
+**Resolution.** §04 now pins the baseline to the Unicode 15.0 Character Database and adds an assigned-only gate: a user-visible string MUST contain only code points assigned in Unicode 15.0, and a code point unassigned in 15.0 (permanently reserved, or assigned only in a later version) is rejected with `E_SCHEMA_FIELD_SYNTAX` before the NFC check. Unicode normalization stability guarantees the NFC form of an assigned code point never changes in a later version, so once unassigned-at-baseline code points are rejected, every implementation computes the same NFC result for the remaining baseline-assigned code points regardless of its UCD version. The Rust reference already rejected U+0897 (via NFC) and now also implements the assigned-only gate, using a static Unicode 15.0 assigned-range table (`validation/unicode_assigned.rs`) generated from `Character.isDefined` so it matches the Java baseline by construction. The Java reference implements the gate via `Character.isDefined` (JDK 21 = Unicode 15.0), with a test-suite probe that fails loudly if the JDK moves off Unicode 15.0.
+
+**Corpus.** One new negative vector `193-string-unassigned-codepoint`: a manifest whose `canary.statement` contains U+0378, a code point reserved (unassigned) in Unicode 15.0. U+0378 has combining class 0 and no decomposition, so it passes the NFC check itself; only the assigned-only gate rejects it (distinct from 190-192, which exercise NFC on assigned characters). Verdict `reject`, diagnostic `E_SCHEMA_FIELD_SYNTAX`. No existing vector input bytes change; the count moves 87 -> 88; `corpus.json` `rc_target` moves `1.0-rc.46` -> `1.0-rc.47`. The corpus README unicode-band row is updated.
+
+**Behavioral compatibility.** This makes both implementations reject user-visible strings containing code points unassigned in Unicode 15.0 (previously the Java reference accepted some, and both accepted permanently-reserved code points). Strings using only Unicode 15.0 code points are unaffected, and their NFC verdict is unchanged. The Rust reference adds an assigned-set data module but no external dependency. The Rust and Java `SPEC_REVISION` constants and the CI corpus-checkout ref are bumped to `1.0-rc.47` when the tag is cut.
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. No change to the wire format, schema, signature input, JCS, byte caps, or diagnostic codes; the change is a §04 Unicode-baseline pin plus assigned-only gate, one new corpus vector, and the assigned-only-gate implementation in both reference libraries.
+
 ### v1.0-rc.46
 
 Date: 2026-06-02
