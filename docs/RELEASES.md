@@ -47,6 +47,31 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.41
+
+Date: 2026-06-02
+
+**Lotto 41 - link target URL RFC 3986 character set and null-in-array diagnostic (AMB-22, AMB-25)**
+
+Closes issues #23 (AMB-22) and #26 (AMB-25). Both pin a Stage 5 rejection the spec already mandates but on which the two reference implementations diverged for corpus-uncovered inputs; the Java reference under-enforced both and is corrected, the Rust reference already conformed. No wire-format, schema, signature-input, JCS, NFC, byte-cap, or new-code change; `spec_version` remains `"1.0"`. The §11 catalog gains two clarifying examples; no codes are added or removed.
+
+**AMB-22 / #23: link target URL RFC 3986 character set.** §03:586 (carrier `url`) and §03:616 (citation `url`) require the URL to contain only valid RFC 3986 characters. A `url` carrying a byte outside the RFC 3986 unreserved/reserved set (for example `<`, a space, or any byte `>= 0x80`), or a malformed percent-encoded triplet (for example `%ZZ`), is rejected at Stage 5 as `E_SCHEMA_FIELD_SYNTAX`. The Rust reference already enforces this (`validation/inline.rs validate_url_common`); the Java reference checked only the scheme, the 1 KiB cap, and control characters, accepting a disallowed character, and is corrected in lockstep to scan the full RFC 3986 character set and percent-encoding (`schema/Inline.java`). The §11 `E_SCHEMA_FIELD_SYNTAX` row gains the link-target-`url` example.
+
+**AMB-25 / #26: null literal as an array element.** §04:47 forbids a `null` literal at any position; §11 assigns it `E_SCHEMA_NULL_VALUE`. A `null` as an array element (for example content `blocks:[null]`) is `E_SCHEMA_NULL_VALUE`, like a `null` object member. The Rust reference already does this (its `schema_prepass` walks arrays); the Java reference detected `null` only at object members (`Closed.check`) and reported an array-element `null` as `E_SCHEMA_FIELD_TYPE`, and is corrected in lockstep to reject a `null` at any position in the whole-document Stage 5 pre-pass (`schema/DocumentSchema.scanNumericGrammar`). The §11 `E_SCHEMA_NULL_VALUE` row is amended to state "at any position in the document, including as an array element".
+
+**Corpus.** Four new negative vectors:
+
+- `165-link-citation-url-bad-char`: a citation `url` `https://example.org/a<b` (`<` outside RFC 3986). `E_SCHEMA_FIELD_SYNTAX`.
+- `166-link-citation-url-bad-percent`: a citation `url` `https://x.org/%ZZ` (malformed percent triplet). `E_SCHEMA_FIELD_SYNTAX`.
+- `167-link-carrier-url-bad-char`: a carrier `url` with a valid 56-character onion host and a `<` in the path. `E_SCHEMA_FIELD_SYNTAX`.
+- `168-schema-null-array-element`: a content document with `blocks:[null]`. `E_SCHEMA_NULL_VALUE`.
+
+All signed by `K_runtime`; each carries a single live violation. No existing vector input bytes change; the count moves 77 -> 81; `corpus.json` `rc_target` moves `1.0-rc.40` -> `1.0-rc.41`. The corpus README category table is updated.
+
+**Behavioral compatibility.** The spec already mandated both behaviors; this rc adds vectors and corrects the Java reference to match the spec and the Rust reference. The Rust reference is unchanged (it already produces both codes). For a conforming document neither code fires; the observable change is confined to the previously-divergent malformed inputs, where the Java verdict/code now matches the Rust reference. The Rust and Java `SPEC_REVISION` constants and the CI corpus-checkout ref are bumped to `1.0-rc.41` when the tag is cut.
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. No change to the wire format, schema, signature input, JCS, NFC, or byte caps; no diagnostic codes are added or removed. The changes are four new corpus vectors, two §11 catalog clarifications, and a Java reference under-enforcement fix.
+
 ### v1.0-rc.40
 
 Date: 2026-06-01
