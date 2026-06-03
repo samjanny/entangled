@@ -47,6 +47,27 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.48
+
+Date: 2026-06-03
+
+**Conformance corpus expansion: trust state, undeclared state, content index, richer accepts, and exact boundaries**
+
+Expands the conformance corpus from 88 to 108 vectors to exercise pipeline areas that previously had no coverage. No change to the specification text, wire format, schema, signature input, JCS, byte caps, or diagnostic catalog; `spec_version` remains `"1.0"`. The corpus `rc_target` moves `1.0-rc.47` -> `1.0-rc.48`. No existing vector input bytes change.
+
+**Corpus.** Twenty new vectors across four areas:
+
+- **Stage 7 trust state (210-214).** `E_TRUST_MISMATCH` and `E_TRUST_USER_REJECTED` for a manifest presenting a different `K_publisher.pub` than the identity retained for the site (signed correctly under the second key, so the Stage 6 identity pre-check is the live failure, not signature verification), plus `I_TRUST_FIRST_CONTACT`, `I_TRUST_TOFU_PINNED`, and `I_TRUST_VERIFIED` as accept verdicts carrying a Stage 7 info code. A second publisher identity (`publisher_2`) is added to `keys.json`.
+- **Undeclared state (220-221).** `E_STATE_UNDECLARED` for a transaction whose `state_updates` set or delete references a `(namespace, key)` not declared by the manifest `state_policy`, resolved through `context.previously_verified` against vector 002.
+- **Content index and sequencing (230-235).** `E_CONTENT_INDEX_HASH_MISMATCH`, `E_CONTENT_INDEX_INVALID`, `E_CONTENT_SEQ_MISSING`, `E_CONTENT_SEQ_ROLLBACK`, `E_CONTENT_SEQ_UNCOMMITTED`, and `E_CONTENT_HASH_MISMATCH`, with the served index in `extra_files` and `content_root` in `context`. `E_CONTENT_INDEX_FETCH_FAILED` stays deferred as a transport failure.
+- **Richer accepts and exact boundaries (010-016).** A fuller manifest (state_policy + origin.not_after + navigation), a valid transaction with set and delete state updates, a successfully adopted migration, and four inclusive-limit accepts pinned at their exact boundary (state ttl 7776000, state value 4096 bytes, origin.not_after at the 5-year ceiling, canary interval at the 7-day minimum), each paired with the existing one-past-the-limit reject.
+
+The corpus README categories and coverage notes are updated for each area.
+
+**Behavioral compatibility.** The new vectors test existing protocol rules; no rule changed. The reference implementations close the in-scope gaps (undeclared state and content index) to pass the expanded corpus; the Stage 7 trust-state machine remains out of scope for the Rust `entangled-core` crate, which reports vectors 210-211 as out of scope rather than failures. The Rust and Java `SPEC_REVISION` constants and the CI corpus-checkout ref are bumped to `1.0-rc.48` when the tag is cut.
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. No change to the wire format, schema, signature input, JCS, byte caps, or diagnostic codes; the change is a conformance-corpus expansion only.
+
 ### v1.0-rc.47
 
 Date: 2026-06-02
