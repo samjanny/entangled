@@ -615,6 +615,188 @@ def positive_vectors(keys) -> list[dict]:
         },
     ))
 
+    # =====================================================================
+    # Richer accept baselines and exact-boundary accepts. The existing
+    # accept vectors (001-007) are minimal; these exercise fuller documents
+    # and pin each inclusive limit at its exact boundary value, paired with
+    # the existing one-past-the-limit reject vectors.
+    # =====================================================================
+
+    # 010: a full manifest combining a populated state_policy, origin.not_after
+    # within the 5-year ceiling, and a populated navigation array. The minimal
+    # accept (001) has none of these together.
+    m_full = make_manifest(
+        publisher_priv=pp, publisher_pub=pp_pub,
+        origin_pub=op_pub, runtime_pub=rp_pub,
+        not_after="2027-05-07T00:00:00Z",
+        state_policy=[
+            {
+                "namespace": "session",
+                "key": "auth",
+                "mode": "request",
+                "max_size": 512,
+                "max_lifetime": 86400,
+                "purpose": "Authenticate submit requests after login.",
+            },
+        ],
+    )
+    m_full["navigation"] = [
+        {"label": "Home", "path": "/"},
+        {"label": "Articles", "path": "/articles"},
+    ]
+    del m_full["sig"]
+    m_full["sig"] = sign(pp, CTX_MANIFEST, m_full)
+    out.append(vec(
+        "010-manifest-valid-full",
+        kind="manifest",
+        description="Valid manifest combining a populated state_policy entry, an origin.not_after one year ahead (within the 5-year ceiling), and a populated navigation array. Exercises a fuller accept than the minimal 001. Signed by K_publisher.",
+        spec_refs=["§02", "§06", "§07"],
+        verdict="accept",
+        body_obj=m_full,
+        context={"fetched_origin_address": m_full["origin"]["address"]},
+    ))
+
+    # 011: a valid transaction carrying both a set and a delete state update,
+    # each against a (namespace, key) declared by manifest 002's state_policy.
+    # The accept counterpart to the undeclared-reference rejects (220, 221).
+    t_state_ok, _ = make_transaction(
+        runtime_priv=rp,
+        state_updates=[
+            {"op": "set", "namespace": "session", "key": "auth",
+             "value": "token-value", "ttl": 86400},
+            {"op": "delete", "namespace": "ui", "key": "lang"},
+        ],
+    )
+    out.append(vec(
+        "011-transaction-valid-state-updates",
+        kind="transaction",
+        description="Valid transaction carrying a set on (session, auth) and a delete on (ui, lang), both declared by the manifest 002 state_policy. The set value and ttl are within bounds. Accept counterpart to the undeclared-reference rejects (220, 221). Signed by K_runtime; context.previously_verified points at 002 to resolve the declared set.",
+        spec_refs=["§07", "§09"],
+        verdict="accept",
+        body_obj=t_state_ok,
+        context={
+            "expected_runtime_pubkey": b64u(rp_pub),
+            "previously_verified": "vectors/002-manifest-valid-state-policy/input.json",
+        },
+    ))
+
+    # 012: a migration that is adopted successfully. The announcing manifest
+    # points at a successor whose own manifest is valid at clock_now (canary
+    # fresh, origin not expired) and binds correctly to the successor address.
+    # The accept counterpart to the migration rejects (200-204).
+    op_pub_2_ok = keys["origin_pub_2"]
+    successor_addr_ok = onion_address(op_pub_2_ok)
+    successor_ok = make_manifest(
+        publisher_priv=pp, publisher_pub=pp_pub,
+        origin_pub=op_pub_2_ok, runtime_pub=rp_pub,
+        not_after="2027-05-07T00:00:00Z",
+    )
+    successor_ok_bytes = json.dumps(
+        successor_ok, separators=(",", ":"), ensure_ascii=False
+    ).encode("utf-8")
+    announcing_ok = make_manifest(
+        publisher_priv=pp, publisher_pub=pp_pub,
+        origin_pub=op_pub, runtime_pub=rp_pub,
+        migration_pointer={
+            "successor_origin": {
+                "carrier": "tor-v3",
+                "address": successor_addr_ok,
+                "origin_pubkey": b64u(op_pub_2_ok),
+            },
+            "announced_at": "2026-05-07T00:00:00Z",
+        },
+    )
+    out.append(vec(
+        "012-migration-successor-adopted",
+        kind="manifest",
+        description="Migration adopted successfully. The announcing manifest at the original origin carries a migration_pointer to a successor origin; the successor manifest (in extra_files) is signed by the same K_publisher, binds to the successor address by the Tor v3 derivation, and is itself valid at clock_now (canary fresh, origin not expired). The migration adoption outcome is accept. Accept counterpart to the migration rejects (200-204).",
+        spec_refs=["§06", "§10"],
+        verdict="accept",
+        body_obj=announcing_ok,
+        context={
+            "fetched_origin_address": announcing_ok["origin"]["address"],
+            "successor_origin_address": successor_addr_ok,
+            "successor_manifest_path": "vectors/012-migration-successor-adopted/successor_manifest.json",
+        },
+        extra_files={"successor_manifest.json": successor_ok_bytes},
+    ))
+
+    # 013-016: exact-boundary accepts. Each inclusive limit is accepted at its
+    # exact boundary value; the paired reject vector sits one step past it.
+
+    # 013: state set ttl at exactly 7776000 (the inclusive upper bound, §07:279).
+    # Pairs with 149 (ttl 7776001, reject).
+    t_ttl_max, _ = make_transaction(
+        runtime_priv=rp,
+        state_updates=[{"op": "set", "namespace": "session", "key": "data",
+                        "value": "ok", "ttl": 7776000}],
+    )
+    out.append(vec(
+        "013-state-ttl-max-boundary",
+        kind="transaction",
+        description="Transaction whose state set ttl is exactly 7776000 seconds, the inclusive upper bound (§07:279). Validated standalone at Stage 5 like 148/149. Accept boundary paired with 149 (ttl 7776001, reject). Signed by K_runtime.",
+        spec_refs=["§07"],
+        verdict="accept",
+        body_obj=t_ttl_max,
+        context={"expected_runtime_pubkey": b64u(rp_pub)},
+    ))
+
+    # 014: state set value at exactly 4096 UTF-8 bytes (the inclusive ceiling,
+    # §07:264). Pairs with 148 (value 4097, reject).
+    t_value_max, _ = make_transaction(
+        runtime_priv=rp,
+        state_updates=[{"op": "set", "namespace": "session", "key": "data",
+                        "value": "x" * 4096, "ttl": 86400}],
+    )
+    out.append(vec(
+        "014-state-value-max-boundary",
+        kind="transaction",
+        description="Transaction whose state set value is exactly 4096 raw UTF-8 bytes, the inclusive protocol ceiling (§07:264). Validated standalone at Stage 5. Accept boundary paired with 148 (value 4097, reject). Signed by K_runtime.",
+        spec_refs=["§07"],
+        verdict="accept",
+        body_obj=t_value_max,
+        context={"expected_runtime_pubkey": b64u(rp_pub)},
+    ))
+
+    # 015: origin.not_after at exactly the 5-year ceiling. Per §06:171 the
+    # ceiling is 157680000 seconds (exactly 1825 days) after canary.issued_at;
+    # from issued_at 2026-05-07T00:00:00Z that is 2031-05-06T00:00:00Z (the
+    # leap day 2028-02-29 in the window shifts the calendar date back one day
+    # from a naive five-calendar-year addition). Pairs with 177 (beyond 5y,
+    # reject).
+    m_not_after_max = make_manifest(
+        publisher_priv=pp, publisher_pub=pp_pub,
+        origin_pub=op_pub, runtime_pub=rp_pub,
+        not_after="2031-05-06T00:00:00Z",
+    )
+    out.append(vec(
+        "015-origin-not-after-max-boundary",
+        kind="manifest",
+        description="Manifest whose origin.not_after is exactly 157680000 seconds (the 5-year ceiling, §06:171) after canary.issued_at 2026-05-07T00:00:00Z, which is 2031-05-06T00:00:00Z. The bound is inclusive, so the exact ceiling is accepted. Accept boundary paired with 177 (one past the ceiling, reject). Signed by K_publisher.",
+        spec_refs=["§06"],
+        verdict="accept",
+        body_obj=m_not_after_max,
+        context={"fetched_origin_address": m_not_after_max["origin"]["address"]},
+    ))
+
+    # 016: canary interval at exactly the 7-day minimum (604800 seconds,
+    # §08:86). issued_at 2026-05-07, next_expected 2026-05-14. Pairs with 182
+    # (6-day interval, reject).
+    m_interval_min = make_manifest(
+        publisher_priv=pp, publisher_pub=pp_pub,
+        origin_pub=op_pub, runtime_pub=rp_pub,
+        next_expected="2026-05-14T00:00:00Z",
+    )
+    out.append(vec(
+        "016-canary-interval-min-boundary",
+        kind="manifest",
+        description="Manifest whose canary interval (next_expected - issued_at) is exactly 7 days (604800 seconds), the inclusive minimum (§08:86): issued_at 2026-05-07, next_expected 2026-05-14. Accept boundary paired with 182 (6-day interval, reject). Signed by K_publisher.",
+        spec_refs=["§08"],
+        verdict="accept",
+        body_obj=m_interval_min,
+        context={"fetched_origin_address": m_interval_min["origin"]["address"]},
+    ))
+
     return out
 
 

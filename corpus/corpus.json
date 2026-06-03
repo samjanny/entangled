@@ -128,6 +128,121 @@
       }
     },
     {
+      "id": "010-manifest-valid-full",
+      "kind": "manifest",
+      "description": "Valid manifest combining a populated state_policy entry, an origin.not_after one year ahead (within the 5-year ceiling), and a populated navigation array. Exercises a fuller accept than the minimal 001. Signed by K_publisher.",
+      "spec_refs": [
+        "§02",
+        "§06",
+        "§07"
+      ],
+      "input": "vectors/010-manifest-valid-full/input.json",
+      "expected": {
+        "verdict": "accept"
+      },
+      "context": {
+        "fetched_origin_address": "dkptfyethnbfsj7qsxscia4w6lg4yssjca2gdrqlk457qav2lkna4xqd.onion"
+      }
+    },
+    {
+      "id": "011-transaction-valid-state-updates",
+      "kind": "transaction",
+      "description": "Valid transaction carrying a set on (session, auth) and a delete on (ui, lang), both declared by the manifest 002 state_policy. The set value and ttl are within bounds. Accept counterpart to the undeclared-reference rejects (220, 221). Signed by K_runtime; context.previously_verified points at 002 to resolve the declared set.",
+      "spec_refs": [
+        "§07",
+        "§09"
+      ],
+      "input": "vectors/011-transaction-valid-state-updates/input.json",
+      "expected": {
+        "verdict": "accept"
+      },
+      "context": {
+        "expected_runtime_pubkey": "jzFtziEJkbIdjI15I4u3ni3bBa6IFElyyjEmMVSGF7o",
+        "previously_verified": "vectors/002-manifest-valid-state-policy/input.json"
+      }
+    },
+    {
+      "id": "012-migration-successor-adopted",
+      "kind": "manifest",
+      "description": "Migration adopted successfully. The announcing manifest at the original origin carries a migration_pointer to a successor origin; the successor manifest (in extra_files) is signed by the same K_publisher, binds to the successor address by the Tor v3 derivation, and is itself valid at clock_now (canary fresh, origin not expired). The migration adoption outcome is accept. Accept counterpart to the migration rejects (200-204).",
+      "spec_refs": [
+        "§06",
+        "§10"
+      ],
+      "input": "vectors/012-migration-successor-adopted/input.json",
+      "expected": {
+        "verdict": "accept"
+      },
+      "context": {
+        "fetched_origin_address": "dkptfyethnbfsj7qsxscia4w6lg4yssjca2gdrqlk457qav2lkna4xqd.onion",
+        "successor_origin_address": "fkhd5flqvbfahfdt7wb3oydc6tltevzfbxogmiaqumezea6qww7rjhid.onion",
+        "successor_manifest_path": "vectors/012-migration-successor-adopted/successor_manifest.json"
+      },
+      "extra_files": [
+        "successor_manifest.json"
+      ]
+    },
+    {
+      "id": "013-state-ttl-max-boundary",
+      "kind": "transaction",
+      "description": "Transaction whose state set ttl is exactly 7776000 seconds, the inclusive upper bound (§07:279). Validated standalone at Stage 5 like 148/149. Accept boundary paired with 149 (ttl 7776001, reject). Signed by K_runtime.",
+      "spec_refs": [
+        "§07"
+      ],
+      "input": "vectors/013-state-ttl-max-boundary/input.json",
+      "expected": {
+        "verdict": "accept"
+      },
+      "context": {
+        "expected_runtime_pubkey": "jzFtziEJkbIdjI15I4u3ni3bBa6IFElyyjEmMVSGF7o"
+      }
+    },
+    {
+      "id": "014-state-value-max-boundary",
+      "kind": "transaction",
+      "description": "Transaction whose state set value is exactly 4096 raw UTF-8 bytes, the inclusive protocol ceiling (§07:264). Validated standalone at Stage 5. Accept boundary paired with 148 (value 4097, reject). Signed by K_runtime.",
+      "spec_refs": [
+        "§07"
+      ],
+      "input": "vectors/014-state-value-max-boundary/input.json",
+      "expected": {
+        "verdict": "accept"
+      },
+      "context": {
+        "expected_runtime_pubkey": "jzFtziEJkbIdjI15I4u3ni3bBa6IFElyyjEmMVSGF7o"
+      }
+    },
+    {
+      "id": "015-origin-not-after-max-boundary",
+      "kind": "manifest",
+      "description": "Manifest whose origin.not_after is exactly 157680000 seconds (the 5-year ceiling, §06:171) after canary.issued_at 2026-05-07T00:00:00Z, which is 2031-05-06T00:00:00Z. The bound is inclusive, so the exact ceiling is accepted. Accept boundary paired with 177 (one past the ceiling, reject). Signed by K_publisher.",
+      "spec_refs": [
+        "§06"
+      ],
+      "input": "vectors/015-origin-not-after-max-boundary/input.json",
+      "expected": {
+        "verdict": "accept"
+      },
+      "context": {
+        "fetched_origin_address": "dkptfyethnbfsj7qsxscia4w6lg4yssjca2gdrqlk457qav2lkna4xqd.onion"
+      }
+    },
+    {
+      "id": "016-canary-interval-min-boundary",
+      "kind": "manifest",
+      "description": "Manifest whose canary interval (next_expected - issued_at) is exactly 7 days (604800 seconds), the inclusive minimum (§08:86): issued_at 2026-05-07, next_expected 2026-05-14. Accept boundary paired with 182 (6-day interval, reject). Signed by K_publisher.",
+      "spec_refs": [
+        "§08"
+      ],
+      "input": "vectors/016-canary-interval-min-boundary/input.json",
+      "expected": {
+        "verdict": "accept"
+      },
+      "context": {
+        "fetched_origin_address": "dkptfyethnbfsj7qsxscia4w6lg4yssjca2gdrqlk457qav2lkna4xqd.onion"
+      }
+    },
+    {
       "id": "100-input-bom",
       "kind": "manifest",
       "description": "Otherwise-valid manifest preceded by a UTF-8 BOM (EF BB BF). Must be rejected at stage 2 input checks.",
