@@ -19,6 +19,8 @@ Entangled is for publishing small, verifiable, mostly-static documents over carr
 
 It is not a website framework, not a social network protocol, and not a general application runtime.
 
+Entangled deliberately gives up general web interactivity in exchange for a smaller, more auditable reader surface and a publisher identity that is independent of the current host or address.
+
 Example use cases:
 
 - a journalist publishing signed updates over rotating onion addresses;
@@ -34,7 +36,7 @@ Entangled is easy to mistake for a static-site generator or a signed-page scheme
 |---|---|---|---|---|
 | **Entangled** | None; closed document grammar, no script | An offline key, shown as a PIP and verified out of band | Yes; every document is signed, and identity survives address or host changes | No; you confirm the PIP out of band once, then the client verifies every document against that pinned identity, so a hostile server cannot impersonate the publisher |
 | Plain web site | Full (HTML + JavaScript) | A domain and its CA (TLS) | No | Yes |
-| Static site over HTTPS | Full (still HTML + JS in a browser) | A domain and its CA (TLS) | No | Yes |
+| Static site over HTTPS | Full (still HTML + JS in a browser) | A domain and its CA (TLS) | No | Yes; the server or deploy controls the current content served under the domain |
 | Signed HTML (e.g. Signed Exchanges) | Full (still HTML + JS in a browser) | A certificate bound to a domain | To a certificate and domain, not to a stable publisher key | Partly; signing limits tampering, but the active-content surface remains |
 | IPFS | Depends on the gateway or browser, usually full | A content address (CID); a stable publisher identity is not part of plain CID semantics and is added through layers such as IPNS, DNSLink, or app-level signatures | Integrity is content-addressed by CID; binding to a stable publisher identity needs an added naming or signing layer | No for integrity once the client verifies the CID; a public gateway, if used to fetch, is still a trust point |
 
