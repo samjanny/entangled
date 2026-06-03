@@ -1101,6 +1101,60 @@ def negative_vectors(keys) -> list[dict]:
         context={"expected_runtime_pubkey": b64u(rp_pub)},
     ))
 
+    # ---- 220/221: state update references an undeclared (namespace, key) ----
+    # Unlike 148/149/163/164, which are standalone Stage 5 checks on the
+    # state_updates array, E_STATE_UNDECLARED (§07:252, §11:287) needs the
+    # manifest's state_policy to resolve which (namespace, key) pairs are
+    # declared. The transactions below are otherwise valid and signed by
+    # K_runtime; context.previously_verified points at 002, whose state_policy
+    # declares exactly (session, auth) and (ui, lang). The referenced pairs are
+    # outside that set, so the only live violation is the undeclared reference.
+    t_state_undeclared_set, _ = make_transaction(
+        runtime_priv=rp,
+        state_updates=[{
+            "op": "set",
+            "namespace": "session",
+            "key": "token",
+            "value": "ok",
+            "ttl": 86400,
+        }],
+    )
+    out.append(vec(
+        "220-state-undeclared-set",
+        kind="transaction",
+        description="Transaction whose state_updates set operation references (session, token). The namespace session is declared by the manifest's state_policy (002) but the key token is not, so the pair is undeclared. Per §07:252 a state update referencing a (namespace, key) not in the current state_policy is rejected with E_STATE_UNDECLARED (§11:287). The set is otherwise well-formed (value and ttl in range) and signed by K_runtime, so the undeclared reference is the only live violation. Resolving the declared set needs the manifest, so context.previously_verified points at 002.",
+        spec_refs=["§07", "§11"],
+        verdict="reject",
+        diagnostic="E_STATE_UNDECLARED",
+        body_obj=t_state_undeclared_set,
+        context={
+            "expected_runtime_pubkey": b64u(rp_pub),
+            "previously_verified": "vectors/002-manifest-valid-state-policy/input.json",
+        },
+    ))
+
+    t_state_undeclared_delete, _ = make_transaction(
+        runtime_priv=rp,
+        state_updates=[{
+            "op": "delete",
+            "namespace": "analytics",
+            "key": "visits",
+        }],
+    )
+    out.append(vec(
+        "221-state-undeclared-delete",
+        kind="transaction",
+        description="Transaction whose state_updates delete operation references (analytics, visits), a pair the manifest's state_policy (002) does not declare at all. Per §07:323 a delete referencing an undeclared (namespace, key) is rejected with E_STATE_UNDECLARED (§11:287), the same dedicated code as the set form. The delete is otherwise well-formed (exactly op, namespace, key) and signed by K_runtime, so the undeclared reference is the only live violation. context.previously_verified points at 002 to resolve the declared set.",
+        spec_refs=["§07", "§11"],
+        verdict="reject",
+        diagnostic="E_STATE_UNDECLARED",
+        body_obj=t_state_undeclared_delete,
+        context={
+            "expected_runtime_pubkey": b64u(rp_pub),
+            "previously_verified": "vectors/002-manifest-valid-state-policy/input.json",
+        },
+    ))
+
     # ---- 163/164: transaction state_updates operation-form schema (AMB-18) --
     # A state_updates entry whose `op` is unknown, or whose operation form is
     # missing a required field, is a Stage 5 closed-schema rejection. Per the

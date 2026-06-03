@@ -454,6 +454,42 @@
       }
     },
     {
+      "id": "220-state-undeclared-set",
+      "kind": "transaction",
+      "description": "Transaction whose state_updates set operation references (session, token). The namespace session is declared by the manifest's state_policy (002) but the key token is not, so the pair is undeclared. Per §07:252 a state update referencing a (namespace, key) not in the current state_policy is rejected with E_STATE_UNDECLARED (§11:287). The set is otherwise well-formed (value and ttl in range) and signed by K_runtime, so the undeclared reference is the only live violation. Resolving the declared set needs the manifest, so context.previously_verified points at 002.",
+      "spec_refs": [
+        "§07",
+        "§11"
+      ],
+      "input": "vectors/220-state-undeclared-set/input.json",
+      "expected": {
+        "verdict": "reject",
+        "diagnostic": "E_STATE_UNDECLARED"
+      },
+      "context": {
+        "expected_runtime_pubkey": "jzFtziEJkbIdjI15I4u3ni3bBa6IFElyyjEmMVSGF7o",
+        "previously_verified": "vectors/002-manifest-valid-state-policy/input.json"
+      }
+    },
+    {
+      "id": "221-state-undeclared-delete",
+      "kind": "transaction",
+      "description": "Transaction whose state_updates delete operation references (analytics, visits), a pair the manifest's state_policy (002) does not declare at all. Per §07:323 a delete referencing an undeclared (namespace, key) is rejected with E_STATE_UNDECLARED (§11:287), the same dedicated code as the set form. The delete is otherwise well-formed (exactly op, namespace, key) and signed by K_runtime, so the undeclared reference is the only live violation. context.previously_verified points at 002 to resolve the declared set.",
+      "spec_refs": [
+        "§07",
+        "§11"
+      ],
+      "input": "vectors/221-state-undeclared-delete/input.json",
+      "expected": {
+        "verdict": "reject",
+        "diagnostic": "E_STATE_UNDECLARED"
+      },
+      "context": {
+        "expected_runtime_pubkey": "jzFtziEJkbIdjI15I4u3ni3bBa6IFElyyjEmMVSGF7o",
+        "previously_verified": "vectors/002-manifest-valid-state-policy/input.json"
+      }
+    },
+    {
       "id": "163-state-op-unknown",
       "kind": "transaction",
       "description": "Transaction whose state_updates entry carries op=\"replace\", a value outside the closed v1 operation set {set, delete}. Per the §07 state-update failure taxonomy and §11, an unknown op is a closed-enum violation rejected at Stage 5 as E_SCHEMA_ENUM_VIOLATION, not the dedicated E_STATE_OP (reserved for the later state-operation processing phase). The state_updates array is validated standalone at Stage 5; namespace, key, value, and ttl are otherwise valid, so the unknown op is the only live violation. Signed by K_runtime.",
