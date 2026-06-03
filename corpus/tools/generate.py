@@ -3290,6 +3290,180 @@ def negative_vectors(keys) -> list[dict]:
         },
     ))
 
+    # -----------------------------------------------------------------------
+    # Stage 9: content index and content sequencing (§02, §06, §09, §10, §11).
+    #
+    # A manifest may carry content_root, the SHA-256 of the exact response
+    # bytes of /content_index.json (§06:437). The index is a closed-structure
+    # JSON document {"entries": {"/path": {"seq": N, "hash": "sha-256:..."}}}
+    # (§02:221-234); it is NOT a signed Entangled document. At Stage 9 the
+    # client fetches and hash-checks the index against content_root, then
+    # structurally validates it, then for the content document being rendered
+    # compares its seq against the index entry (§10:608-620): seq absent ->
+    # E_CONTENT_SEQ_MISSING, seq < idx -> rollback, seq > idx -> uncommitted,
+    # seq == idx with body hash != idx hash -> E_CONTENT_HASH_MISMATCH.
+    #
+    # The content document is the main input; the index travels in extra_files
+    # and content_root is recorded in context (no separate manifest file is
+    # needed to express this check). E_CONTENT_INDEX_FETCH_FAILED is the one
+    # content code left deferred: it is a transport failure and shares the
+    # deferred Stage 1 transport schema extension.
+    indexed_path = "/articles/first-post"
+
+    def content_index_bytes(entries: dict) -> bytes:
+        # Serialize the index as canonical JCS so content_root is a stable
+        # function of the entry set. The client hashes the exact response
+        # bytes; using JCS here fixes those bytes deterministically.
+        return jcs({"entries": entries})
+
+    # ---- 230: content_root does not match the served index bytes ----
+    # The index is structurally valid; only the manifest's content_root digest
+    # is wrong, so the live failure is the index hash mismatch, not _INVALID.
+    idx_230 = content_index_bytes({
+        indexed_path: {"seq": 5, "hash": sha256_b64u(b"first-post-body-v5")},
+    })
+    m_230 = make_manifest(
+        publisher_priv=pp, publisher_pub=pp_pub,
+        origin_pub=op_pub, runtime_pub=rp_pub,
+    )
+    # Declare a content_root that is the digest of different bytes, so it does
+    # not match the served index. Re-sign so the only live failure is Stage 9.
+    m_230["content_root"] = sha256_b64u(b"a-different-content-index")
+    del m_230["sig"]
+    m_230["sig"] = sign(pp, CTX_MANIFEST, m_230)
+    out.append(vec(
+        "230-content-index-hash-mismatch",
+        kind="manifest",
+        description="Manifest declaring a content_root whose SHA-256 does not match the exact bytes of the served content_index.json (provided in extra_files). The index is structurally valid, so the live failure is E_CONTENT_INDEX_HASH_MISMATCH (§10:598, §11:244), not E_CONTENT_INDEX_INVALID. Signed correctly by K_publisher; per §10:600 an index hash failure blocks rendering of all content under this manifest.",
+        spec_refs=["§06", "§09", "§10", "§11"],
+        verdict="reject",
+        diagnostic="E_CONTENT_INDEX_HASH_MISMATCH",
+        body_obj=m_230,
+        context={
+            "fetched_origin_address": m_230["origin"]["address"],
+            "content_index_path": "vectors/230-content-index-hash-mismatch/content_index.json",
+        },
+        extra_files={"content_index.json": idx_230},
+    ))
+
+    # ---- 231: content_root matches, but the index is structurally invalid ----
+    # An entry carries an extra field beyond the closed {seq, hash} schema. The
+    # content_root is the true digest of these bytes so the hash check passes
+    # and the live failure is the structural one.
+    idx_231 = jcs({"entries": {
+        indexed_path: {"seq": 5, "hash": sha256_b64u(b"first-post-body-v5"),
+                       "extra": "not-permitted"},
+    }})
+    m_231 = make_manifest(
+        publisher_priv=pp, publisher_pub=pp_pub,
+        origin_pub=op_pub, runtime_pub=rp_pub,
+    )
+    m_231["content_root"] = sha256_b64u(idx_231)
+    del m_231["sig"]
+    m_231["sig"] = sign(pp, CTX_MANIFEST, m_231)
+    out.append(vec(
+        "231-content-index-invalid",
+        kind="manifest",
+        description="Manifest whose content_root matches the served content_index.json bytes, but the index fails structural validation: an entry carries a field beyond the closed {seq, hash} entry schema (§02:229-234). The hash check passes, so the live failure is E_CONTENT_INDEX_INVALID (§10:598, §11:245), not E_CONTENT_INDEX_HASH_MISMATCH. Signed correctly by K_publisher.",
+        spec_refs=["§02", "§09", "§10", "§11"],
+        verdict="reject",
+        diagnostic="E_CONTENT_INDEX_INVALID",
+        body_obj=m_231,
+        context={
+            "fetched_origin_address": m_231["origin"]["address"],
+            "content_index_path": "vectors/231-content-index-invalid/content_index.json",
+        },
+        extra_files={"content_index.json": idx_231},
+    ))
+
+    # ---- 232-235: per-document seq checks against a verified index ----
+    # The index commits indexed_path at seq 5 with the digest of the accepted
+    # body bytes. Each content document below is signed by K_runtime and is
+    # well-formed; the live failure is the seq/hash relationship to the index.
+    accepted_body_marker = b"first-post-body-v5"
+    idx_seq = 5
+    idx_hash = sha256_b64u(accepted_body_marker)
+    seq_index_bytes = content_index_bytes({
+        indexed_path: {"seq": idx_seq, "hash": idx_hash},
+    })
+    seq_content_root = sha256_b64u(seq_index_bytes)
+
+    def seq_content(*, seq=None):
+        payload = {
+            "spec_version": "1.0",
+            "kind": "content",
+            "path": indexed_path,
+            "meta": {"title": "First post", "published_at": "2026-05-07T00:00:00Z"},
+            "blocks": [
+                {
+                    "kind": "paragraph",
+                    "content": [
+                        {"kind": "text", "value": "Hello, world.", "marks": []},
+                    ],
+                }
+            ],
+        }
+        if seq is not None:
+            payload["seq"] = seq
+        payload["sig"] = sign(rp, CTX_CONTENT, payload)
+        return payload
+
+    def seq_context(vid):
+        return {
+            "fetched_path": indexed_path,
+            "expected_runtime_pubkey": b64u(rp_pub),
+            "content_root": seq_content_root,
+            "content_index_path": f"vectors/{vid}/content_index.json",
+        }
+
+    out.append(vec(
+        "232-content-seq-missing",
+        kind="content",
+        description="Content document at an indexed path that omits the seq field. The verified content index has an entry for this path, so per §02:194 and §10:616 seq is required; its absence is E_CONTENT_SEQ_MISSING. The document is otherwise well-formed and signed by K_runtime.",
+        spec_refs=["§02", "§10", "§11"],
+        verdict="reject",
+        diagnostic="E_CONTENT_SEQ_MISSING",
+        body_obj=seq_content(seq=None),
+        context=seq_context("232-content-seq-missing"),
+        extra_files={"content_index.json": seq_index_bytes},
+    ))
+
+    out.append(vec(
+        "233-content-seq-rollback",
+        kind="content",
+        description="Content document whose seq (2) is strictly less than the seq (5) committed for this path in the verified content index. Per §10:617 a lower seq is E_CONTENT_SEQ_ROLLBACK, which blocks a K_runtime-only attacker from serving an older signed version. Signed by K_runtime.",
+        spec_refs=["§02", "§10", "§11"],
+        verdict="reject",
+        diagnostic="E_CONTENT_SEQ_ROLLBACK",
+        body_obj=seq_content(seq=2),
+        context=seq_context("233-content-seq-rollback"),
+        extra_files={"content_index.json": seq_index_bytes},
+    ))
+
+    out.append(vec(
+        "234-content-seq-uncommitted",
+        kind="content",
+        description="Content document whose seq (9) is strictly greater than the seq (5) committed for this path in the verified content index. Per §10:618 a higher seq is E_CONTENT_SEQ_UNCOMMITTED, which blocks a K_runtime-only attacker from injecting a forged update at a higher sequence number than the publisher committed. Signed by K_runtime.",
+        spec_refs=["§02", "§10", "§11"],
+        verdict="reject",
+        diagnostic="E_CONTENT_SEQ_UNCOMMITTED",
+        body_obj=seq_content(seq=9),
+        context=seq_context("234-content-seq-uncommitted"),
+        extra_files={"content_index.json": seq_index_bytes},
+    ))
+
+    out.append(vec(
+        "235-content-hash-mismatch",
+        kind="content",
+        description="Content document whose seq (5) equals the seq committed for this path in the verified content index, but whose response-body SHA-256 does not match the hash the index commits for that seq. Per §10:619 a body that does not match the committed digest at the committed seq is E_CONTENT_HASH_MISMATCH. The index hash is the digest of different body bytes than this document, so the seq matches while the hash does not. Signed by K_runtime.",
+        spec_refs=["§02", "§10", "§11"],
+        verdict="reject",
+        diagnostic="E_CONTENT_HASH_MISMATCH",
+        body_obj=seq_content(seq=5),
+        context=seq_context("235-content-hash-mismatch"),
+        extra_files={"content_index.json": seq_index_bytes},
+    ))
+
     return out
 
 
