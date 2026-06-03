@@ -157,9 +157,14 @@
         "verdict": "accept"
       },
       "context": {
+        "submit_path": "/contact",
         "expected_runtime_pubkey": "jzFtziEJkbIdjI15I4u3ni3bBa6IFElyyjEmMVSGF7o",
+        "submit_body_path": "vectors/011-transaction-valid-state-updates/submit_body.json",
         "previously_verified": "vectors/002-manifest-valid-state-policy/input.json"
-      }
+      },
+      "extra_files": [
+        "submit_body.json"
+      ]
     },
     {
       "id": "012-migration-successor-adopted",
@@ -185,7 +190,7 @@
     {
       "id": "013-state-ttl-max-boundary",
       "kind": "transaction",
-      "description": "Transaction whose state set ttl is exactly 7776000 seconds, the inclusive upper bound (§07:279). Validated standalone at Stage 5 like 148/149. Accept boundary paired with 149 (ttl 7776001, reject). Signed by K_runtime.",
+      "description": "Transaction whose state set ttl is exactly 7776000 seconds, the inclusive upper bound (§07:279). Accept boundary paired with 149 (ttl 7776001, reject). Signed by K_runtime.",
       "spec_refs": [
         "§07"
       ],
@@ -194,13 +199,18 @@
         "verdict": "accept"
       },
       "context": {
-        "expected_runtime_pubkey": "jzFtziEJkbIdjI15I4u3ni3bBa6IFElyyjEmMVSGF7o"
-      }
+        "submit_path": "/contact",
+        "expected_runtime_pubkey": "jzFtziEJkbIdjI15I4u3ni3bBa6IFElyyjEmMVSGF7o",
+        "submit_body_path": "vectors/013-state-ttl-max-boundary/submit_body.json"
+      },
+      "extra_files": [
+        "submit_body.json"
+      ]
     },
     {
       "id": "014-state-value-max-boundary",
       "kind": "transaction",
-      "description": "Transaction whose state set value is exactly 4096 raw UTF-8 bytes, the inclusive protocol ceiling (§07:264). Validated standalone at Stage 5. Accept boundary paired with 148 (value 4097, reject). Signed by K_runtime.",
+      "description": "Transaction whose state set value is exactly 4096 raw UTF-8 bytes, the inclusive protocol ceiling (§07:264). Accept boundary paired with 148 (value 4097, reject). Signed by K_runtime.",
       "spec_refs": [
         "§07"
       ],
@@ -209,8 +219,13 @@
         "verdict": "accept"
       },
       "context": {
-        "expected_runtime_pubkey": "jzFtziEJkbIdjI15I4u3ni3bBa6IFElyyjEmMVSGF7o"
-      }
+        "submit_path": "/contact",
+        "expected_runtime_pubkey": "jzFtziEJkbIdjI15I4u3ni3bBa6IFElyyjEmMVSGF7o",
+        "submit_body_path": "vectors/014-state-value-max-boundary/submit_body.json"
+      },
+      "extra_files": [
+        "submit_body.json"
+      ]
     },
     {
       "id": "015-origin-not-after-max-boundary",
@@ -582,9 +597,14 @@
         "diagnostic": "E_STATE_UNDECLARED"
       },
       "context": {
+        "submit_path": "/contact",
         "expected_runtime_pubkey": "jzFtziEJkbIdjI15I4u3ni3bBa6IFElyyjEmMVSGF7o",
+        "submit_body_path": "vectors/220-state-undeclared-set/submit_body.json",
         "previously_verified": "vectors/002-manifest-valid-state-policy/input.json"
-      }
+      },
+      "extra_files": [
+        "submit_body.json"
+      ]
     },
     {
       "id": "221-state-undeclared-delete",
@@ -600,9 +620,14 @@
         "diagnostic": "E_STATE_UNDECLARED"
       },
       "context": {
+        "submit_path": "/contact",
         "expected_runtime_pubkey": "jzFtziEJkbIdjI15I4u3ni3bBa6IFElyyjEmMVSGF7o",
+        "submit_body_path": "vectors/221-state-undeclared-delete/submit_body.json",
         "previously_verified": "vectors/002-manifest-valid-state-policy/input.json"
-      }
+      },
+      "extra_files": [
+        "submit_body.json"
+      ]
     },
     {
       "id": "163-state-op-unknown",

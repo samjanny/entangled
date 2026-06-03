@@ -659,7 +659,7 @@ def positive_vectors(keys) -> list[dict]:
     # 011: a valid transaction carrying both a set and a delete state update,
     # each against a (namespace, key) declared by manifest 002's state_policy.
     # The accept counterpart to the undeclared-reference rejects (220, 221).
-    t_state_ok, _ = make_transaction(
+    t_state_ok, sb_state_ok = make_transaction(
         runtime_priv=rp,
         state_updates=[
             {"op": "set", "namespace": "session", "key": "auth",
@@ -675,8 +675,15 @@ def positive_vectors(keys) -> list[dict]:
         verdict="accept",
         body_obj=t_state_ok,
         context={
+            "submit_path": t_state_ok["in_response_to"],
             "expected_runtime_pubkey": b64u(rp_pub),
+            "submit_body_path": "vectors/011-transaction-valid-state-updates/submit_body.json",
             "previously_verified": "vectors/002-manifest-valid-state-policy/input.json",
+        },
+        extra_files={
+            "submit_body.json": json.dumps(
+                sb_state_ok, separators=(",", ":"), ensure_ascii=False
+            ).encode("utf-8"),
         },
     ))
 
@@ -726,7 +733,7 @@ def positive_vectors(keys) -> list[dict]:
 
     # 013: state set ttl at exactly 7776000 (the inclusive upper bound, §07:279).
     # Pairs with 149 (ttl 7776001, reject).
-    t_ttl_max, _ = make_transaction(
+    t_ttl_max, sb_ttl_max = make_transaction(
         runtime_priv=rp,
         state_updates=[{"op": "set", "namespace": "session", "key": "data",
                         "value": "ok", "ttl": 7776000}],
@@ -734,16 +741,25 @@ def positive_vectors(keys) -> list[dict]:
     out.append(vec(
         "013-state-ttl-max-boundary",
         kind="transaction",
-        description="Transaction whose state set ttl is exactly 7776000 seconds, the inclusive upper bound (§07:279). Validated standalone at Stage 5 like 148/149. Accept boundary paired with 149 (ttl 7776001, reject). Signed by K_runtime.",
+        description="Transaction whose state set ttl is exactly 7776000 seconds, the inclusive upper bound (§07:279). Accept boundary paired with 149 (ttl 7776001, reject). Signed by K_runtime.",
         spec_refs=["§07"],
         verdict="accept",
         body_obj=t_ttl_max,
-        context={"expected_runtime_pubkey": b64u(rp_pub)},
+        context={
+            "submit_path": t_ttl_max["in_response_to"],
+            "expected_runtime_pubkey": b64u(rp_pub),
+            "submit_body_path": "vectors/013-state-ttl-max-boundary/submit_body.json",
+        },
+        extra_files={
+            "submit_body.json": json.dumps(
+                sb_ttl_max, separators=(",", ":"), ensure_ascii=False
+            ).encode("utf-8"),
+        },
     ))
 
     # 014: state set value at exactly 4096 UTF-8 bytes (the inclusive ceiling,
     # §07:264). Pairs with 148 (value 4097, reject).
-    t_value_max, _ = make_transaction(
+    t_value_max, sb_value_max = make_transaction(
         runtime_priv=rp,
         state_updates=[{"op": "set", "namespace": "session", "key": "data",
                         "value": "x" * 4096, "ttl": 86400}],
@@ -751,11 +767,20 @@ def positive_vectors(keys) -> list[dict]:
     out.append(vec(
         "014-state-value-max-boundary",
         kind="transaction",
-        description="Transaction whose state set value is exactly 4096 raw UTF-8 bytes, the inclusive protocol ceiling (§07:264). Validated standalone at Stage 5. Accept boundary paired with 148 (value 4097, reject). Signed by K_runtime.",
+        description="Transaction whose state set value is exactly 4096 raw UTF-8 bytes, the inclusive protocol ceiling (§07:264). Accept boundary paired with 148 (value 4097, reject). Signed by K_runtime.",
         spec_refs=["§07"],
         verdict="accept",
         body_obj=t_value_max,
-        context={"expected_runtime_pubkey": b64u(rp_pub)},
+        context={
+            "submit_path": t_value_max["in_response_to"],
+            "expected_runtime_pubkey": b64u(rp_pub),
+            "submit_body_path": "vectors/014-state-value-max-boundary/submit_body.json",
+        },
+        extra_files={
+            "submit_body.json": json.dumps(
+                sb_value_max, separators=(",", ":"), ensure_ascii=False
+            ).encode("utf-8"),
+        },
     ))
 
     # 015: origin.not_after at exactly the 5-year ceiling. Per §06:171 the
@@ -1291,7 +1316,7 @@ def negative_vectors(keys) -> list[dict]:
     # K_runtime; context.previously_verified points at 002, whose state_policy
     # declares exactly (session, auth) and (ui, lang). The referenced pairs are
     # outside that set, so the only live violation is the undeclared reference.
-    t_state_undeclared_set, _ = make_transaction(
+    t_state_undeclared_set, sb_undeclared_set = make_transaction(
         runtime_priv=rp,
         state_updates=[{
             "op": "set",
@@ -1310,12 +1335,19 @@ def negative_vectors(keys) -> list[dict]:
         diagnostic="E_STATE_UNDECLARED",
         body_obj=t_state_undeclared_set,
         context={
+            "submit_path": t_state_undeclared_set["in_response_to"],
             "expected_runtime_pubkey": b64u(rp_pub),
+            "submit_body_path": "vectors/220-state-undeclared-set/submit_body.json",
             "previously_verified": "vectors/002-manifest-valid-state-policy/input.json",
+        },
+        extra_files={
+            "submit_body.json": json.dumps(
+                sb_undeclared_set, separators=(",", ":"), ensure_ascii=False
+            ).encode("utf-8"),
         },
     ))
 
-    t_state_undeclared_delete, _ = make_transaction(
+    t_state_undeclared_delete, sb_undeclared_delete = make_transaction(
         runtime_priv=rp,
         state_updates=[{
             "op": "delete",
@@ -1332,8 +1364,15 @@ def negative_vectors(keys) -> list[dict]:
         diagnostic="E_STATE_UNDECLARED",
         body_obj=t_state_undeclared_delete,
         context={
+            "submit_path": t_state_undeclared_delete["in_response_to"],
             "expected_runtime_pubkey": b64u(rp_pub),
+            "submit_body_path": "vectors/221-state-undeclared-delete/submit_body.json",
             "previously_verified": "vectors/002-manifest-valid-state-policy/input.json",
+        },
+        extra_files={
+            "submit_body.json": json.dumps(
+                sb_undeclared_delete, separators=(",", ":"), ensure_ascii=False
+            ).encode("utf-8"),
         },
     ))
 
