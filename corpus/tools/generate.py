@@ -54,12 +54,14 @@ RUNTIME_SEED = b"ENTANGLED-v1.0-runtime-test0001\x00"
 ORIGIN_SEED = b"ENTANGLED-v1.0-origin-test00001\x00"
 RUNTIME_SEED_2 = b"ENTANGLED-v1.0-runtime-test0002\x00"
 ORIGIN_SEED_2 = b"ENTANGLED-v1.0-origin-test00002\x00"
+PUBLISHER_SEED_2 = b"ENTANGLED-v1.0-publisher-test02\x00"
 
 assert len(PUBLISHER_SEED) == 32
 assert len(RUNTIME_SEED) == 32
 assert len(ORIGIN_SEED) == 32
 assert len(RUNTIME_SEED_2) == 32
 assert len(ORIGIN_SEED_2) == 32
+assert len(PUBLISHER_SEED_2) == 32
 
 
 # ---------------------------------------------------------------------------
@@ -3134,6 +3136,106 @@ def negative_vectors(keys) -> list[dict]:
         },
     ))
 
+    # -----------------------------------------------------------------------
+    # Stage 7: publisher trust-state resolution (§10, §11).
+    #
+    # Trust state is keyed by the site or publisher profile. A client that
+    # has verified and retained K_publisher.pub for a site reaches the
+    # Changed/mismatch state when a later manifest for that same site presents
+    # a different K_publisher.pub. The mismatch is detected as a Stage 6
+    # pre-check and takes precedence over signature verification (§10): the
+    # manifest below is signed correctly under the SECOND publisher key, so its
+    # signature verifies, yet the identity mismatch against the retained first
+    # publisher is the live failure. Vectors 001 (retained) and these share the
+    # same origin address, modelling one site whose pinned identity changed.
+    pp2 = keys["publisher_priv_2"]
+    pp2_pub = keys["publisher_pub_2"]
+
+    m_trust_mismatch = make_manifest(
+        publisher_priv=pp2, publisher_pub=pp2_pub,
+        origin_pub=op_pub, runtime_pub=rp_pub,
+    )
+    out.append(vec(
+        "210-trust-publisher-key-mismatch",
+        kind="manifest",
+        description="Manifest presenting a different K_publisher.pub than the identity the client previously verified and retained for this site (001). The manifest is signed correctly under the second publisher key, so its signature verifies, but the identity mismatch is detected as a Stage 6 pre-check and takes precedence over signature verification. Rejected with E_TRUST_MISMATCH.",
+        spec_refs=["§10", "§11"],
+        verdict="reject",
+        diagnostic="E_TRUST_MISMATCH",
+        body_obj=m_trust_mismatch,
+        context={
+            "fetched_origin_address": m_trust_mismatch["origin"]["address"],
+            "previously_verified": "vectors/001-manifest-valid-minimal/input.json",
+            "retained_publisher_pubkey": b64u(pp_pub),
+        },
+    ))
+
+    out.append(vec(
+        "211-trust-user-rejected-new-identity",
+        kind="manifest",
+        description="Same identity mismatch as 210: a manifest presents a different K_publisher.pub than the retained identity for this site (001). During mismatch resolution the user explicitly rejects the newly presented identity rather than adopting it. Rejected with E_TRUST_USER_REJECTED.",
+        spec_refs=["§10", "§11"],
+        verdict="reject",
+        diagnostic="E_TRUST_USER_REJECTED",
+        body_obj=m_trust_mismatch,
+        context={
+            "fetched_origin_address": m_trust_mismatch["origin"]["address"],
+            "previously_verified": "vectors/001-manifest-valid-minimal/input.json",
+            "retained_publisher_pubkey": b64u(pp_pub),
+            "user_decision": "reject_new_identity",
+        },
+    ))
+
+    # First contact: a valid manifest for a publisher the client has never
+    # retained. All stages pass; Stage 7 records a first-contact observation
+    # and emits the info code I_TRUST_FIRST_CONTACT on an accept verdict. The
+    # manifest is the second publisher's, fetched at the second origin, so no
+    # prior record exists for this site or publisher profile.
+    m_first_contact = make_manifest(
+        publisher_priv=pp2, publisher_pub=pp2_pub,
+        origin_pub=op_pub_2, runtime_pub=rp_pub,
+    )
+    out.append(vec(
+        "212-trust-first-contact",
+        kind="manifest",
+        description="Valid manifest for a publisher identity the client has no prior retained record of. All stages pass; Stage 7 records a first-contact observation and emits the info code I_TRUST_FIRST_CONTACT alongside an accept verdict.",
+        spec_refs=["§10", "§11"],
+        verdict="accept",
+        diagnostic="I_TRUST_FIRST_CONTACT",
+        body_obj=m_first_contact,
+        context={
+            "fetched_origin_address": m_first_contact["origin"]["address"],
+        },
+    ))
+
+    out.append(vec(
+        "213-trust-tofu-pinned",
+        kind="manifest",
+        description="Valid manifest whose first-contact observation the user explicitly affirms, transitioning the publisher identity to TOFU pinned. Accept verdict with the info code I_TRUST_TOFU_PINNED.",
+        spec_refs=["§10", "§11"],
+        verdict="accept",
+        diagnostic="I_TRUST_TOFU_PINNED",
+        body_obj=m_first_contact,
+        context={
+            "fetched_origin_address": m_first_contact["origin"]["address"],
+            "user_decision": "pin_identity",
+        },
+    ))
+
+    out.append(vec(
+        "214-trust-externally-verified",
+        kind="manifest",
+        description="Valid manifest whose K_publisher.pub the user confirms against an out-of-band PIP reference, transitioning the publisher identity to Externally verified. Accept verdict with the info code I_TRUST_VERIFIED.",
+        spec_refs=["§10", "§11"],
+        verdict="accept",
+        diagnostic="I_TRUST_VERIFIED",
+        body_obj=m_first_contact,
+        context={
+            "fetched_origin_address": m_first_contact["origin"]["address"],
+            "user_decision": "verify_pip",
+        },
+    ))
+
     return out
 
 
@@ -3151,6 +3253,7 @@ def main() -> int:
     origin_priv, origin_pub = keypair(ORIGIN_SEED)
     runtime_priv_2, runtime_pub_2 = keypair(RUNTIME_SEED_2)
     origin_priv_2, origin_pub_2 = keypair(ORIGIN_SEED_2)
+    publisher_priv_2, publisher_pub_2 = keypair(PUBLISHER_SEED_2)
 
     keys = {
         "publisher_priv": publisher_priv,
@@ -3163,6 +3266,8 @@ def main() -> int:
         "runtime_pub_2": runtime_pub_2,
         "origin_priv_2": origin_priv_2,
         "origin_pub_2": origin_pub_2,
+        "publisher_priv_2": publisher_priv_2,
+        "publisher_pub_2": publisher_pub_2,
     }
 
     wordlist = load_bip39_wordlist()
@@ -3172,6 +3277,16 @@ def main() -> int:
     }
     if wordlist is not None:
         publisher_entry["pip"] = compute_pip(publisher_pub, wordlist)
+
+    # Second publisher identity. Used by the Stage 7 trust-state vectors to
+    # model a manifest presenting a different K_publisher.pub than the one a
+    # client previously verified and retained for the site or publisher profile.
+    publisher_2_entry = {
+        "seed_hex": PUBLISHER_SEED_2.hex(),
+        "pub_b64u": b64u(publisher_pub_2),
+    }
+    if wordlist is not None:
+        publisher_2_entry["pip"] = compute_pip(publisher_pub_2, wordlist)
 
     keys_doc = {
         "_comment": "Test fixtures only. NEVER use these for any real deployment.",
@@ -3194,6 +3309,7 @@ def main() -> int:
             "pub_b64u": b64u(origin_pub_2),
             "tor_v3_address": onion_address(origin_pub_2),
         },
+        "publisher_2": publisher_2_entry,
     }
     (ROOT / "keys.json").write_bytes(
         (json.dumps(keys_doc, indent=2, ensure_ascii=False) + "\n")

@@ -1556,6 +1556,98 @@
       "extra_files": [
         "successor_manifest.json"
       ]
+    },
+    {
+      "id": "210-trust-publisher-key-mismatch",
+      "kind": "manifest",
+      "description": "Manifest presenting a different K_publisher.pub than the identity the client previously verified and retained for this site (001). The manifest is signed correctly under the second publisher key, so its signature verifies, but the identity mismatch is detected as a Stage 6 pre-check and takes precedence over signature verification. Rejected with E_TRUST_MISMATCH.",
+      "spec_refs": [
+        "§10",
+        "§11"
+      ],
+      "input": "vectors/210-trust-publisher-key-mismatch/input.json",
+      "expected": {
+        "verdict": "reject",
+        "diagnostic": "E_TRUST_MISMATCH"
+      },
+      "context": {
+        "fetched_origin_address": "dkptfyethnbfsj7qsxscia4w6lg4yssjca2gdrqlk457qav2lkna4xqd.onion",
+        "previously_verified": "vectors/001-manifest-valid-minimal/input.json",
+        "retained_publisher_pubkey": "moyzpl3i5hUIcMNRLPMxir4sdmSO3gO79gLUtvYDWxc"
+      }
+    },
+    {
+      "id": "211-trust-user-rejected-new-identity",
+      "kind": "manifest",
+      "description": "Same identity mismatch as 210: a manifest presents a different K_publisher.pub than the retained identity for this site (001). During mismatch resolution the user explicitly rejects the newly presented identity rather than adopting it. Rejected with E_TRUST_USER_REJECTED.",
+      "spec_refs": [
+        "§10",
+        "§11"
+      ],
+      "input": "vectors/211-trust-user-rejected-new-identity/input.json",
+      "expected": {
+        "verdict": "reject",
+        "diagnostic": "E_TRUST_USER_REJECTED"
+      },
+      "context": {
+        "fetched_origin_address": "dkptfyethnbfsj7qsxscia4w6lg4yssjca2gdrqlk457qav2lkna4xqd.onion",
+        "previously_verified": "vectors/001-manifest-valid-minimal/input.json",
+        "retained_publisher_pubkey": "moyzpl3i5hUIcMNRLPMxir4sdmSO3gO79gLUtvYDWxc",
+        "user_decision": "reject_new_identity"
+      }
+    },
+    {
+      "id": "212-trust-first-contact",
+      "kind": "manifest",
+      "description": "Valid manifest for a publisher identity the client has no prior retained record of. All stages pass; Stage 7 records a first-contact observation and emits the info code I_TRUST_FIRST_CONTACT alongside an accept verdict.",
+      "spec_refs": [
+        "§10",
+        "§11"
+      ],
+      "input": "vectors/212-trust-first-contact/input.json",
+      "expected": {
+        "verdict": "accept",
+        "diagnostic": "I_TRUST_FIRST_CONTACT"
+      },
+      "context": {
+        "fetched_origin_address": "fkhd5flqvbfahfdt7wb3oydc6tltevzfbxogmiaqumezea6qww7rjhid.onion"
+      }
+    },
+    {
+      "id": "213-trust-tofu-pinned",
+      "kind": "manifest",
+      "description": "Valid manifest whose first-contact observation the user explicitly affirms, transitioning the publisher identity to TOFU pinned. Accept verdict with the info code I_TRUST_TOFU_PINNED.",
+      "spec_refs": [
+        "§10",
+        "§11"
+      ],
+      "input": "vectors/213-trust-tofu-pinned/input.json",
+      "expected": {
+        "verdict": "accept",
+        "diagnostic": "I_TRUST_TOFU_PINNED"
+      },
+      "context": {
+        "fetched_origin_address": "fkhd5flqvbfahfdt7wb3oydc6tltevzfbxogmiaqumezea6qww7rjhid.onion",
+        "user_decision": "pin_identity"
+      }
+    },
+    {
+      "id": "214-trust-externally-verified",
+      "kind": "manifest",
+      "description": "Valid manifest whose K_publisher.pub the user confirms against an out-of-band PIP reference, transitioning the publisher identity to Externally verified. Accept verdict with the info code I_TRUST_VERIFIED.",
+      "spec_refs": [
+        "§10",
+        "§11"
+      ],
+      "input": "vectors/214-trust-externally-verified/input.json",
+      "expected": {
+        "verdict": "accept",
+        "diagnostic": "I_TRUST_VERIFIED"
+      },
+      "context": {
+        "fetched_origin_address": "fkhd5flqvbfahfdt7wb3oydc6tltevzfbxogmiaqumezea6qww7rjhid.onion",
+        "user_decision": "verify_pip"
+      }
     }
   ]
 }
