@@ -468,7 +468,7 @@ Implementation versions are independent.
 
 Entangled is a pre-v1 security protocol.
 
-It has a complete specification, a normative conformance corpus, and two reference implementations ([Rust](https://github.com/samjanny/entangled-api), [Java](https://github.com/samjanny/entangled-api-java)) kept in lockstep with the spec through that corpus. Across the release-candidate cycle the wire format is stable: a document valid under one `1.0-rc.N` stays valid under later ones.
+It has a complete specification, a normative conformance corpus, and two reference implementations ([Rust](https://github.com/samjanny/entangled-api), [Java](https://github.com/samjanny/entangled-api-java)) kept in lockstep with the spec through that corpus. Both are verifier libraries: they implement the per-document validation pipeline (Stages 2 through 9) and deliberately leave the Stage 7 trust-state machine (TOFU pinning, externally-verified PIP, retained-identity mismatch detection) and its history persistence to an embedding client layer, so the two trust-state corpus vectors are reported as out of scope rather than as failures. A conforming client, as defined in section 10, is the full component built on top of such a verifier. Across the release-candidate cycle the wire format is stable: a document valid under one `1.0-rc.N` stays valid under later ones.
 
 "Pre-v1" here means two specific things: the v1.0 specification is not yet frozen, and it has not had an independent security audit. Until both are done, Entangled is suitable for review, implementation, and experimentation, but you should not yet stake high-risk operational safety on it.
 
