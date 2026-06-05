@@ -1,5 +1,9 @@
 # Entangled
 
+[![Spec](https://img.shields.io/badge/spec-v1.0--rc.48-blue)](#versioning)
+[![Code license: MIT OR Apache-2.0](https://img.shields.io/badge/code-MIT%20OR%20Apache--2.0-blue.svg)](#license)
+[![Spec license: CC-BY-4.0](https://img.shields.io/badge/spec-CC--BY--4.0-blue.svg)](#license)
+
 Entangled is a protocol for publishing signed, structured documents over hostile or anonymity-oriented carrier networks.
 
 It is built around two separate security goals:
