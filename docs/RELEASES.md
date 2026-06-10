@@ -47,6 +47,25 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.51
+
+Date: 2026-06-10
+
+**Conformance corpus: calendrically-invalid timestamp vectors (§04)**
+
+Adds two negative vectors exercising the §04 "RFC 3339 timestamp validity" rule introduced in rc.50, which had no corpus coverage. No specification text, wire-format, schema, signature-input, JCS, byte-cap, or diagnostic-catalog change; no new diagnostic code; `spec_version` remains `"1.0"`. The corpus `rc_target` moves `1.0-rc.50` -> `1.0-rc.51`; the count moves 108 -> 110; no existing vector input bytes change.
+
+**Corpus.** Two manifest vectors, both carrying an impossible calendar date (2026-02-30, February 30) that matches the `YYYY-MM-DDTHH:MM:SSZ` lexical shape but denotes no real instant:
+
+- `194-manifest-updated-impossible-date`: the date is in `manifest.updated`. Per §04 it is rejected at Stage 5 schema validation as `E_SCHEMA_FIELD_SYNTAX`. Distinct from `178` (a valid-but-future `updated`, future-skew) and from any lexical RFC 3339 violation.
+- `195-canary-issued-at-impossible-date`: the date is in `canary.issued_at`. Per §04 and §11:209 a calendrically invalid canary timestamp is part of the canary Invalid state and is reported at Stage 8 as `E_CANARY_INVALID`, not as a generic Stage 5 schema code (the AMB-16 routing). `next_expected` is a valid date; `issued_at` is the only bad field.
+
+Both isolate a single live violation and are signed under `K_publisher`.
+
+**Behavioral compatibility.** No rule changed. The two vectors pin behavior both reference implementations already exhibit: the Rust verifier rejects an impossible calendar date via the `time` crate (`Date::from_calendar_date`), the Java verifier via the strict RFC 3339 resolver (`ResolverStyle.STRICT`), and both route a bad canary timestamp to Stage 8 `E_CANARY_INVALID` per §11:209. Verified: Rust conformance 108 vectors driven (110 minus the 2 trust-state vectors out of scope), 0 failures; Java `ConformanceTest` 108 tests, 0 failures (JDK 21).
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. The change is corpus-only (two vectors plus the `rc_target` bump); no specification text changes. The Rust and Java `SPEC_REVISION` constants, the CI corpus-checkout ref, and the Java bundled corpus are bumped or resynced to `1.0-rc.51` when the tag is cut.
+
 ### v1.0-rc.50
 
 Date: 2026-06-10
