@@ -416,12 +416,14 @@ The verification order is:
 4. enforce the 2 MiB image response body cap before any decoding. Over-cap is `W_IMAGE_OVERSIZE`;
 5. compute SHA-256 over the exact response body bytes and compare to the block's `sha256` field. Mismatch is `W_IMAGE_HASH_MISMATCH`;
 6. decode the image bytes using a decoder for the declared `media_type`. The declared `media_type` is authoritative for decoder selection; the response `Content-Type` is checked for header consistency in step 3 but is not itself the format identifier. Decode failure, including a body whose bytes are valid for a different format than the declared `media_type`, is `W_IMAGE_DECODE_FAILED`;
-7. for `media_type` `image/webp`, determine whether the resource is animated; an animated WebP is `W_IMAGE_DECODE_FAILED` (see "SVG and animated formats are forbidden" below);
+7. determine whether the resource is an animated form of its declared `media_type` and reject an animated resource as `W_IMAGE_DECODE_FAILED` (see "SVG and animated formats are forbidden" below): for `media_type` `image/webp`, inspect the `VP8X` animation flag in the RIFF container; for `media_type` `image/png`, inspect for an APNG animation-control (`acTL`) chunk preceding the first `IDAT`;
 8. compare the decoded image dimensions against the declared `width` and `height`. Mismatch is `W_IMAGE_DIMENSIONS`;
 9. apply the document's 16-megapixel decoded pixel budget (defined under "Limits" below). Over-budget is `W_IMAGE_BUDGET`;
 10. render the image.
 
 Failure at any step from 2 to 9 rejects the image resource; the image is rendered as missing or unavailable, and the corresponding diagnostic is reported. None of these failures invalidate the containing `content` or `transaction` document.
+
+Resource-exhaustion gate (pre-decode). Steps 6 through 9 are written in decode-then-check order for clarity, but a conforming client MUST NOT allocate a full pixel surface before bounding it by the dimension and pixel limits in "Limits" below. Before decoding (step 6), the client MUST read the resource's pixel geometry from its container header - the PNG `IHDR` width and height, the JPEG frame header (`SOFn`), or the WebP `VP8`/`VP8L`/`VP8X` dimensions - and apply the geometry checks against that header value rather than against an already-allocated surface: a header geometry that differs from the block's declared `width` and `height` is rejected as `W_IMAGE_DIMENSIONS` without decoding, and a header geometry that matches the declared dimensions but whose pixel count would exceed the document's remaining 16-megapixel decoded budget is rejected as `W_IMAGE_BUDGET` without decoding. Only a resource whose header geometry both equals the declared `width` and `height` (and is therefore within 4096 by 4096, since those fields are bounded at Stage 5) and fits the remaining budget is decoded. The decoded-geometry checks in steps 8 and 9 remain in force as a post-decode re-confirmation against a decoder that emits geometry differing from its own header. This gate bounds the worst-case allocation so that a body within the 2 MiB cap (step 4) cannot force a multi-gigapixel allocation through a decoder that allocates before validating geometry.
 
 ### No retry on image verification failure
 
@@ -459,6 +461,8 @@ If a WebP file contains animation, the client MUST reject it.
 
 A client MUST determine whether a WebP resource contains animation before rendering, by inspecting the RIFF container's chunk structure or by querying its decoding library for an animation flag. An implementation whose WebP library cannot expose this property reliably MUST reject all WebP resources, or MUST disable WebP support in the client. A WebP file determined to be animated is reported as `W_IMAGE_DECODE_FAILED` (§11). Silently rendering only the first frame of an animated WebP is non-conformant.
 
+A client MUST likewise determine whether an `image/png` resource is an animated PNG (APNG) before rendering, by inspecting the PNG chunk stream for an animation-control (`acTL`) chunk appearing before the first `IDAT` chunk, or by querying its decoding library for an animation flag. A PNG resource carrying an `acTL` chunk is an animated PNG and MUST be rejected, reported as `W_IMAGE_DECODE_FAILED` (§11). An implementation whose PNG decoder cannot reliably expose this property MUST reject all `image/png` resources, or MUST disable PNG support in the client. Silently rendering only the default image of an APNG is non-conformant: the animated-format prohibition above is blanket, and `image/png` is not exempt from it.
+
 ### Decoder safety
 
 SHA-256 hash verification authenticates the bytes of an image resource against the signed document; it does not make image decoding safe. A document signed by an authorized `K_runtime` may reference an image whose bytes are intentionally crafted to exploit bugs in the decoder. The publisher may be malicious or compromised even when its operational keys are not.
@@ -466,6 +470,8 @@ SHA-256 hash verification authenticates the bytes of an image resource against t
 Implementations SHOULD use memory-safe image decoders, hardened parsers, sandboxed decoder processes, or other isolation mechanisms appropriate to the deployment environment. The choice among these mitigations is implementation-defined; the protocol does not mandate any specific decoder or sandboxing technology.
 
 The protocol-level rejections in this section - the media-type allowlist, the SVG and animated-format prohibitions, hash verification, dimension limits, and the document-wide pixel budget - are necessary but not sufficient to make decoding fully safe. They reduce the attack surface; they do not eliminate it.
+
+The residual surface includes resource exhaustion as well as memory-safety bugs. An image whose container header declares an enormous geometry, or whose compressed body expands to far more than its wire size (a decompression bomb), can exhaust client memory if it is decoded naively, even though its wire body is within the 2 MiB cap. The pre-decode resource-exhaustion gate under "Image fetching and verification" above bounds the worst-case allocation to the per-image and per-document pixel limits in this section; implementations SHOULD additionally cap total decoder memory and per-image decode time, and SHOULD prefer decoders that stream and enforce geometry limits before allocation.
 
 ### Limits
 

@@ -158,7 +158,7 @@ The fields subject to this rule are, non-exhaustively:
 * `meta.title` of content documents (§02);
 * `navigation` entry `label` fields in the manifest (§06);
 * `state_policy` entry `purpose` fields (§07);
-* every block text content span and every block string field that the client renders to the user, including in particular `paragraph` runs, `heading` runs, `quote` content, `list` item runs, `link.label`, `image.alt`, `code_block.content`, `feedback.statement`, `note.statement`, `submit_form` form-level labels, and `submit_form.fields[*].label` and `submit_form.fields[*].options[*].label` (§03).
+* every block text content span and every block string field that the client renders to the user, including in particular `paragraph` runs, `heading` runs, `quote` content, `list` item runs, `link.label`, `image.alt`, `code_block.content`, `feedback.content`, `note.content`, `submit_form` form-level labels, and `submit_form.fields[*].label` and `submit_form.fields[*].options[*].label` (§03).
 
 The rule applies to any future field whose semantics include "displayed to the user as text" by a conforming client. A field is subject to NFC if the client is required to render its value as user-visible text; whether a particular field meets this test is determined by the schema section that owns the field.
 
@@ -187,6 +187,14 @@ All base64url-encoded fields MUST be decoded using strict RFC 4648 §5 ("Base 64
 A field whose value violates any of these rules is rejected with `E_SCHEMA_FIELD_SYNTAX` (§11).
 
 Permissive base64 decoders that accept padded input, silently ignore whitespace, accept the standard `+`/`/` alphabet, or accept non-canonical trailing-group encodings are non-conforming for Entangled use. Implementations MUST configure or replace such decoders.
+
+## RFC 3339 timestamp validity
+
+Several fields carry a timestamp in the single permitted RFC 3339 UTC form `YYYY-MM-DDTHH:MM:SSZ` defined by their owning sections: `canary.issued_at` and `canary.next_expected` (§08); `manifest.updated`, `origin.not_after`, and `migration_pointer.announced_at` (§06); and `meta.published_at` (§02).
+
+Beyond matching that lexical shape, such a value MUST denote a valid calendar date and clock time. The month MUST be `01` through `12`; the day MUST be valid for that month and year, so `2026-02-29` is accepted only in a leap year and `2026-02-30` is always rejected; the hour MUST be `00` through `23`; and the minute and second MUST each be `00` through `59` (the second value `60`, a leap second, is already excluded by the per-field form rules). A value that matches the `YYYY-MM-DDTHH:MM:SSZ` shape but does not denote a real instant is rejected.
+
+For the Stage 5 timestamp fields (`meta.published_at`, `manifest.updated`, `origin.not_after`, `migration_pointer.announced_at`), a calendrically invalid value is reported as `E_SCHEMA_FIELD_SYNTAX` (§11), consistent with the other RFC 3339 form violations. For the canary timestamps (`canary.issued_at`, `canary.next_expected`), the calendrically invalid case is part of the canary Invalid state and is reported at Stage 8 as `E_CANARY_INVALID` (§08, §11), consistent with the pipeline stage that owns canary validation. Implementations MUST perform this calendrical check at schema validation (or, for the canary, at canary validation), before signature verification, in keeping with the pipeline ordering in §10.
 
 ## Closed-schema validation precedes signature verification
 

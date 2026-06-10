@@ -274,7 +274,7 @@ No additional fields are permitted.
 * it MUST NOT exceed 100 bytes when encoded as UTF-8;
 * it MUST NOT contain control characters in the range U+0000 through U+001F or the value U+007F.
 
-`path` MUST satisfy the path syntax defined in §02 for content document `path` values, including the reservation of `/manifest.json`.
+`path` MUST satisfy the path syntax defined in §02 for content document `path` values, including the reservations of `/manifest.json` and `/content_index.json`.
 
 The label is rendered in the chrome navigation control. The path is a relative path within the same site. Cross-host, cross-origin, cross-carrier, and absolute URLs are forbidden in navigation entries.
 
