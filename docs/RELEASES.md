@@ -47,6 +47,22 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.56
+
+Date: 2026-06-10
+
+**Traffic-analysis limitation (§00) and size-bucketing operational guidance**
+
+Documents the carrier-layer traffic-analysis boundary explicitly, so integrators do not overclaim protection in user-facing material, and gives publishers an operational mitigation that requires no wire-format change. No normative behavior change: no wire-format, schema, signature-input, JCS, byte-cap, diagnostic-catalog, or validation-rule change; `spec_version` remains `"1.0"`.
+
+**The boundary being documented.** §00 already declares that Entangled "is not an anonymity layer"; network-layer anonymity is a carrier property. What was implicit is now an explicit entry in §00 "v1.0 limitations": the carrier's padding conceals cell sizes, not the total volume, direction, or timing of a transfer, and Entangled responses are deterministic byte-exact objects served without compression or chunking, so the size of a public document is itself public and volume fingerprinting is in principle easier than against the dynamic web. The entry also records what the protocol does minimize (fixed request-header discipline, no negotiation, no application-level handshake/acknowledgment/heartbeat messages) and that application-level padding and cover traffic are out of scope for v1.
+
+**Operational mitigation.** The operator playbook gains "Traffic-analysis posture and size bucketing" (section 13): because signatures verify over the JCS-canonical form while the wire form is the original non-canonicalized JSON (§04), a publisher can pad served documents with insignificant inter-token whitespace to a fixed bucket ladder without affecting signatures, recomputing the exact-byte hash bindings (`content_index.json` entry hashes, `content_root`) over the padded bytes. Bucketing quantizes per-document sizes into buckets; it does not conceal flow existence, timing, or aggregate session volume. The guidance is operational, not normative spec text.
+
+**Corpus.** No vector changes; the count stays 139 and no vector bytes or descriptions change. `corpus.json` `rc_target` moves `1.0-rc.55` -> `1.0-rc.56`.
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. The change is a §00 limitations entry, an operator-playbook section, and the `rc_target` bump.
+
 ### v1.0-rc.55
 
 Date: 2026-06-10

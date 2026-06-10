@@ -739,6 +739,23 @@ Disable:
 * analytics middleware;
 * generic web application features not used by Entangled.
 
+### Traffic-analysis posture and size bucketing
+
+The carrier hides payload bytes, not flow shape. Tor's padding conceals cell sizes; it does not conceal the total volume, direction, or timing of a transfer, and Entangled documents are deterministic byte-exact objects served without compression or chunking, so the size of every public document is itself public. An observer of a reader's access network can correlate flow volume against the known sizes of a site's documents. This is the §00 "v1.0 limitations" traffic-analysis boundary; the protocol does not mitigate it, but a publisher can reduce the uniqueness of per-document sizes operationally, with no wire-format change.
+
+**Mechanism.** Signatures verify over the JCS-canonical form of a document, and JCS eliminates insignificant whitespace; the wire form is the original non-canonicalized JSON (§04). A served document MAY therefore carry insignificant inter-token whitespace - in the simplest form, a run of spaces before the final closing brace - without affecting signature verification. The same holds for `request_hash`, which is computed over the JCS-canonical submit body, not the wire bytes (§02).
+
+**Procedure.**
+
+1. Choose a fixed bucket ladder for the deployment, for example 4 KiB steps for manifests and 16 KiB steps for content documents. Every reader-visible document of the site should land on a ladder boundary, so individual documents within the same bucket are indistinguishable by size.
+2. After signing, pad each served document's wire form with spaces (insignificant whitespace between tokens) up to the next bucket boundary. Padding counts toward the kind's byte cap (64 KiB manifest, 1 MiB content and transaction); verify the padded size stays within the cap.
+3. Recompute every binding that commits exact response bytes after padding, because those bindings hold over the bytes actually served: the per-path `hash` entries in `content_index.json` are digests of the padded content-document bytes, and the manifest's `content_root` is the digest of the (padded, if bucketed) index bytes.
+4. Serve the padded form byte-for-byte, with `Content-Length` matching the padded length. Do not re-serialize at the web-server layer; any transformation breaks the hash bindings and the signature byte caps.
+
+Image resources are binary and hash-bound to their exact bytes; bucketing them is a content-production choice (produce assets at bucketed sizes), not a serving-time transformation.
+
+**What this buys, and what it does not.** Bucketing quantizes downstream response sizes so that a flow's volume identifies a bucket, not a document. It does not conceal that a fetch happened, when it happened, how many fetches a session made, or that a submit occurred; aggregate session volume remains observable. It is an inexpensive raising of the fingerprinting cost, not an anonymity mechanism. Clients may apply the same JCS property to pad submit bodies to a bucket within the 64 KiB cap; that is a client implementation choice outside this playbook.
+
 ### Non-Tor carriers
 
 The §09 transport section in the specification covers only the Tor v3 carrier; "Other carrier profiles, such as I2P, freenet, or signed clearnet HTTPS, are draft profiles and not part of v1 conformance" (§09:5). Operators evaluating a non-Tor carrier should treat the following as the operational floor for any deployment until a published draft profile supersedes this guidance.
