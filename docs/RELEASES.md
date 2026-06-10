@@ -47,6 +47,31 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.52
+
+Date: 2026-06-10
+
+**Conformance corpus: image resource layer vectors (240-245) and the image-response schema extension**
+
+Adds the first image-layer tranche to the corpus: six vectors exercising the §03 image fetching-and-verification pipeline (steps 3 through 9), including the APNG animation-rejection rule introduced in rc.50, which previously had no corpus coverage. The vector schema gains the image-response extension. No specification text, wire-format, schema, signature-input, JCS, byte-cap, or diagnostic-catalog change; no new diagnostic code; `spec_version` remains `"1.0"`. The corpus `rc_target` moves `1.0-rc.51` -> `1.0-rc.52`; the count moves 110 -> 116; no existing vector input bytes change.
+
+**Schema extension.** An image vector is a valid content document carrying one `image` block, with the fetched image-resource response supplied alongside: the response body bytes in `extra_files`, and the response `Content-Type` in `context.image_responses` (one entry per image block, in document order). The document `verdict` is `accept` in every image vector, because per §03 an image-resource failure renders the image as missing and never invalidates the containing signed document; the per-image outcome travels in `expected.image_outcomes`, aligned index-by-index with `context.image_responses` (`accept` or the `W_IMAGE_*` code of the first failing §03 step). Verifier-only implementations skip the six vectors as out of scope, exactly as for the Stage 7 trust-state vectors 210-211; the vectors are exercised by client-side harnesses that implement the §03 image layer.
+
+**Corpus.** Image bytes are built without a DEFLATE compressor: pixel data is wrapped in stored (uncompressed) DEFLATE blocks, so the emitted bytes are identical across platforms and zlib builds, preserving the corpus's byte-for-byte reproducibility. The six vectors:
+
+- `240-image-valid-png`: well-formed 2x2 PNG, every §03 step passes; outcome `accept`.
+- `241-image-apng-animated`: well-formed two-frame APNG (acTL before the first IDAT, conforming fcTL/fdAT structure); hash, Content-Type, and dimensions all match, so animation is the only violation; outcome `W_IMAGE_DECODE_FAILED` per the rc.50 APNG rule.
+- `242-image-dimension-mismatch`: well-formed 4x4 PNG declared as 2x2; outcome `W_IMAGE_DIMENSIONS`. The file is fully decodable, so gate-equipped (pre-decode header geometry) and decode-then-check implementations report the same code.
+- `243-image-hash-mismatch`: declared sha256 computed over different bytes; outcome `W_IMAGE_HASH_MISMATCH`.
+- `244-image-content-type-mismatch`: response `Content-Type: image/jpeg` against declared `media_type` `image/png`; outcome `W_IMAGE_CONTENT_TYPE`.
+- `245-image-decode-failed`: deterministic non-PNG bytes with matching hash and Content-Type; outcome `W_IMAGE_DECODE_FAILED` (distinct from 241, which is structurally valid PNG rejected for animation).
+
+Still deferred, with reasons recorded in the corpus README: `W_IMAGE_OVERSIZE` (multi-megabyte committed binary for a single byte-length comparison), `W_IMAGE_BUDGET` (over 16 megapixels of decodable PNG requires real DEFLATE compression, whose output is not bit-stable across zlib builds; a hand-rolled fixed-Huffman stream can lift this later), `W_IMAGE_FETCH_FAILED` (Stage 1 transport schema extension), and an animated-WebP vector (hand-built VP8/VP8L bitstream; the animation policy is pinned format-independently by 241).
+
+**Behavioral compatibility.** No rule changed. The vectors pin the §03 image-layer behavior specified since rc.50. The Rust and Java verifier libraries add the six IDs to their out-of-scope lists (image resource layer not implemented by a verifier), with `SPEC_REVISION`, the CI corpus pin, and the Java bundled corpus moving to `1.0-rc.52`. The Rust client (`entangled-client`) gains a corpus-driven image-conformance harness that runs vectors 240-245 through its §03 pipeline; its CI checks out the corpus at the `v1.0-rc.52` tag.
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. The change is corpus-only (six vectors, the image-response schema extension, and the `rc_target` bump); no specification text changes.
+
 ### v1.0-rc.51
 
 Date: 2026-06-10
