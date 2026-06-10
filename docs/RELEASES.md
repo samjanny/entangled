@@ -47,6 +47,22 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.53
+
+Date: 2026-06-10
+
+**Conformance corpus: observed-only mismatch vector (215) and the retained-provenance context field**
+
+Adds one trust-state vector pinning the section 10 observation-record semantics, which had no corpus coverage and which a client modelling retention as pinned-or-verified silently fails. No specification text, wire-format, schema, signature-input, JCS, byte-cap, or diagnostic-catalog change; no new diagnostic code; `spec_version` remains `"1.0"`. The corpus `rc_target` moves `1.0-rc.52` -> `1.0-rc.53`; the count moves 116 -> 117; no existing vector input bytes change.
+
+**The rule being pinned.** Section 10:298: at first contact, once the pipeline through Stage 9 succeeds, the client creates an observation record for the presented `K_publisher.pub` automatically - with no user decision - and that record "is a retained observation used to detect later changes". Section 10:308 separately forbids transitioning First contact to TOFU pinned without an explicit affirmative response. Together they imply a three-flavor retention model: observed (automatic), pinned (explicit), verified (PIP-confirmed). All three arm Changed/mismatch detection; they differ in the trust state a matching revisit resolves to. A client that only retains on explicit pin re-resolves a later key change at the same site as a fresh First contact instead of Changed/mismatch, silently losing the continuity §10:298 exists to provide.
+
+**Corpus.** `215-trust-observed-mismatch`: the same correctly-signed second-publisher manifest as 210, with `context.retained_provenance = "observed"` marking that the site's first publisher was automatically observed but never pinned. The mismatch fires exactly as against a pin: reject, `E_TRUST_MISMATCH` (Stage 6 pre-check, taking precedence over signature verification). The new optional `context.retained_provenance` field ("observed" | "pinned", absent means pinned) is documented in the corpus README; 210/211 are unchanged and keep their pinned shape. Like the rest of the trust family, 215 is exercised by the client-side trust harness; verifier-only implementations skip it as out of scope.
+
+**Behavioral compatibility.** No specification rule changed; the vector pins behavior already required by §10:298 and §10:308. The Rust client (`entangled-client`) implements the three-flavor model in this cycle: `RetainedProvenance` on the retained identity, a `RecordObservation` persistence intent emitted at first contact with no user decision, store support with a versioned on-disk record (legacy pinned/verified records stay readable), and the §10:308 guarantee that an observed-only record keeps the state at First contact, pin prompt included, on a matching revisit. The verifier libraries add 215 to their out-of-scope lists with `SPEC_REVISION`, the CI corpus pins, and the Java bundled corpus moving to `1.0-rc.53`.
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. The change is corpus-only (one vector, one optional context field, and the `rc_target` bump); no specification text changes.
+
 ### v1.0-rc.52
 
 Date: 2026-06-10
