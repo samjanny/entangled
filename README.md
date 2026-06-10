@@ -1,6 +1,6 @@
 # Entangled
 
-[![Spec](https://img.shields.io/badge/spec-v1.0--rc.53-blue)](#versioning)
+[![Spec](https://img.shields.io/badge/spec-v1.0--rc.56-blue)](#versioning)
 [![Code license: MIT OR Apache-2.0](https://img.shields.io/badge/code-MIT%20OR%20Apache--2.0-blue.svg)](#license)
 [![Spec license: CC-BY-4.0](https://img.shields.io/badge/spec-CC--BY--4.0-blue.svg)](#license)
 
@@ -94,6 +94,7 @@ Entangled does not address all threats.
 In particular, Entangled does not provide:
 
 - network-layer anonymity, which is the responsibility of the selected carrier network;
+- resistance to traffic analysis: the carrier conceals payload bytes, not flow volume or timing, and Entangled documents are deterministic byte-exact objects, so flow-volume fingerprinting is not mitigated at the protocol level (see §00 "v1.0 limitations"; the operator playbook documents a publisher-side size-bucketing mitigation);
 - payload confidentiality beyond whatever transport encryption the carrier provides;
 - cryptographic deniability of publisher identity;
 - protection for users whose own devices are compromised;
@@ -472,7 +473,7 @@ Implementation versions are independent.
 
 Entangled is a pre-v1 security protocol.
 
-It has a complete specification, a normative conformance corpus, and two reference implementations ([Rust](https://github.com/samjanny/entangled-api), [Java](https://github.com/samjanny/entangled-api-java)) kept in lockstep with the spec through that corpus. Both are verifier libraries: they implement the per-document validation pipeline (Stages 2 through 9) and deliberately leave the Stage 7 trust-state machine (TOFU pinning, externally-verified PIP, retained-identity mismatch detection) and its history persistence to an embedding client layer, so the trust-state and image-layer corpus vectors are reported as out of scope rather than as failures; those vector families are driven by the client-side conformance harnesses in entangled-client. A conforming client, as defined in section 10, is the full component built on top of such a verifier. Across the release-candidate cycle the wire format is stable: a document valid under one `1.0-rc.N` stays valid under later ones.
+It has a complete specification, a normative conformance corpus, and two reference implementations ([Rust](https://github.com/samjanny/entangled-api), [Java](https://github.com/samjanny/entangled-api-java)) kept in lockstep with the spec through that corpus. Both are verifier libraries: they implement the per-document validation pipeline (Stages 2 through 9) and deliberately leave the Stage 7 trust-state machine (TOFU pinning, externally-verified PIP, retained-identity mismatch detection) and its history persistence to an embedding client layer, so the trust-state, image-layer, and Stage 1 transport corpus vectors are reported as out of scope rather than as failures. The trust and image families are driven by the client-side conformance harnesses in [entangled-client](https://github.com/samjanny/entangled-client); the transport family (mock HTTP response classification against the §09 wire profile) awaits an implementation that owns a fetch surface. A conforming client, as defined in section 10, is the full component built on top of such a verifier. Across the release-candidate cycle the wire format is stable: a document valid under one `1.0-rc.N` stays valid under later ones.
 
 "Pre-v1" here means two specific things: the v1.0 specification is not yet frozen, and it has not had an independent security audit. Until both are done, Entangled is suitable for review, implementation, and experimentation, but you should not yet stake high-risk operational safety on it.
 
