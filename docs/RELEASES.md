@@ -47,6 +47,36 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.54
+
+Date: 2026-06-10
+
+**Conformance corpus: Stage 1 transport vectors (250-269) and the transport-response schema extension**
+
+Adds the transport tranche to the corpus: twenty vectors exercising the §09 wire profile and the §11 Stage 1 transport diagnostics, which previously had no corpus coverage. The vector schema gains the transport-response extension that the corpus README had recorded as the open precondition for this family. No specification text, wire-format, schema, signature-input, JCS, byte-cap, or diagnostic-catalog change; no new diagnostic code; `spec_version` remains `"1.0"`. The corpus `rc_target` moves `1.0-rc.53` -> `1.0-rc.54`; the count moves 117 -> 137; no existing vector input bytes change.
+
+**Schema extension.** A transport vector supplies the HTTP response metadata of the primary document fetch in `context.transport_response`: `status` (integer), `headers` (an object of response header names and values; the corpus uses canonical casing and harnesses match names case-insensitively), and optionally `body_outcome` set to `"failed"` when the transport reported a body-retrieval failure after delivering the input bytes, which are then a partial prefix and must not be presented as a complete body. Absent `transport_response` means a clean `200` fetch with exact `Content-Type` and `Content-Length`, which is what every existing vector has always assumed. Two sibling fields carry the same metadata for the other fetched resources: `context.content_index_response` (`{status, headers}`) for the `/content_index.json` fetch, and an optional per-image `status` in `context.image_responses` entries (absent means `200`; the rc.52 vectors are unchanged). Every response body in the family is a fully valid document, so the transport condition is the only live violation and the §09:515 body-ignored rule is pinned alongside. The family is exercised by implementations that perform Stage 1 transport classification; harnesses with no transport layer skip 250-269 as out of scope, exactly as for the trust and image families.
+
+**Corpus.** The twenty vectors:
+
+- `250-transport-accept-ignored-headers`: the accept baseline; 200 with exact required headers plus Set-Cookie, Cache-Control, ETag, Server, and a custom X- header, all without effect per §09:377-389.
+- `251-transport-status-unlisted` / `252-transport-status-unlisted-2xx`: non-whitelisted status codes (418; 206 per the §09:368 unlisted-2xx rule), both `E_TRANSPORT_STATUS`.
+- `253-transport-redirect`: 301 with a Location header, `E_TRANSPORT_REDIRECT`, pinning the §11:111 precedence over `E_TRANSPORT_STATUS`.
+- `254-transport-content-type-missing` / `255-transport-content-type-parameter`: absent Content-Type; `application/entangled+json; charset=utf-8` (the exact-match rule against media-type-essence comparisons), both `E_TRANSPORT_CONTENT_TYPE`.
+- `256-transport-content-length-missing` / `257-transport-content-length-inconsistent`: absent Content-Length; a declaration differing from the delivered body per the §09:452 same-bytes comparison, both `E_TRANSPORT_CONTENT_LENGTH`.
+- `258-transport-body-failure`: a transport-level body-retrieval failure (`body_outcome = "failed"`, a 64-byte delivered prefix against a full-length Content-Length), `E_TRANSPORT_BODY_FAILURE`, distinguished from the completed-delivery comparison of 257.
+- `259` through `262`: the whitelisted error statuses 429, 404, 405, 503 with their dedicated codes (`E_TRANSPORT_RATE_LIMITED`, `E_TRANSPORT_NOT_FOUND`, `E_TRANSPORT_METHOD_NOT_ALLOWED`, `E_TRANSPORT_UNAVAILABLE`).
+- `263-transport-content-encoding` / `264-transport-transfer-encoding`: forbidden encoding headers on a 200 response, `E_TRANSPORT_CONTENT_ENCODING` / `E_TRANSPORT_TRANSFER_ENCODING`; Content-Length is deliberately present and consistent so the forbidden header is the single live violation.
+- `265-transport-submit-payload-too-large` / `266-transport-submit-bad-request`: submit responses 413 and 400, `E_TRANSPORT_PAYLOAD_TOO_LARGE` / `E_TRANSPORT_BAD_REQUEST` (document kind transaction), each carrying the recorded submit body and a fully valid transaction as the ignored response body.
+- `267-content-index-fetch-encoding` / `268-content-index-fetch-status`: the `/content_index.json` displacement per §09:110, a Content-Encoding header and a 404 on the index fetch both mapping to `E_CONTENT_INDEX_FETCH_FAILED` rather than the generic Stage 1 codes, regardless of whether the implementation branches on the resource path before or after Stage 1 classification.
+- `269-image-fetch-failed`: an image-resource fetch answered 404, image outcome `W_IMAGE_FETCH_FAILED` per §09:319 with the document verdict staying accept, closing the last code the rc.52 image family left deferred.
+
+With this tranche all 13 `E_TRANSPORT_*` codes, `E_CONTENT_INDEX_FETCH_FAILED`, and `W_IMAGE_FETCH_FAILED` are covered. The no-response flavor of `E_TRANSPORT_UNAVAILABLE` (transport-level unreachability) has no wire bytes to record; the code is pinned in its 503 form and the unreachability path stays at the client's unit-test layer, as documented in the corpus README.
+
+**Behavioral compatibility.** No specification rule changed; the vectors pin §09 behavior as written. Implementations that perform Stage 1 transport classification run the family through a mock-response harness honoring the contract above; document-verifier harnesses with no transport layer add 250-269 to their out-of-scope lists. `SPEC_REVISION`, the CI corpus pins, and the Java bundled corpus move to `1.0-rc.54` in the implementation repositories.
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. The change is corpus-only (twenty vectors, the transport-response schema extension, and the `rc_target` bump); no specification text changes.
+
 ### v1.0-rc.53
 
 Date: 2026-06-10
