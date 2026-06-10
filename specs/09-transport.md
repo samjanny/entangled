@@ -475,6 +475,8 @@ Status codes outside the whitelist - including `1xx`, `2xx` other than `200`, al
 
 The error reported to the user reflects an unexpected transport response, not the literal HTTP status meaning.
 
+Two whitelisted codes are scoped to submit responses. `400 Bad Request` and `413 Payload Too Large` are defined for `POST` submit responses only; their semantics describe a publisher judgment about the submit body, which a `GET` does not carry. A client that receives `400` or `413` in response to a `GET` for an Entangled document MUST treat the response as an unexpected transport response, exactly as for a code outside the whitelist: the reported diagnostic is the generic `E_TRANSPORT_STATUS` (§11), not `E_TRANSPORT_BAD_REQUEST` or `E_TRANSPORT_PAYLOAD_TOO_LARGE`. The remaining whitelisted error codes (`404`, `405`, `429`, `503`) have operation-independent semantics and keep their dedicated diagnostics on any request. This rule governs the Entangled-document fetch path; the `/content_index.json` resource and image resources keep their own layer rules ("Content index fetch" and "Image resource fetches" above).
+
 The publisher SHOULD use only whitelisted status codes. A publisher returning non-whitelisted codes fails to communicate intent to the client.
 
 ## Redirects

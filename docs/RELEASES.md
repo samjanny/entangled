@@ -47,6 +47,29 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.55
+
+Date: 2026-06-10
+
+**AMB-30 - out-of-context whitelisted status on a GET maps to E_TRANSPORT_STATUS**
+
+Closes issue #31 (AMB-30). Pins the diagnostic for a `400 Bad Request` or `413 Payload Too Large` received in response to a `GET` for an Entangled document, a wire condition for which no §11 code was defined. No wire-format, schema, signature-input, JCS, byte-cap, or new-code change; `spec_version` remains `"1.0"`.
+
+**Issue.** The §09 status whitelist gives `400` and `413` submit-only semantics, and §11 scopes `E_TRANSPORT_BAD_REQUEST` / `E_TRANSPORT_PAYLOAD_TOO_LARGE` to document kind transaction, while `E_TRANSPORT_STATUS` was defined only for codes outside the whitelist. For a `400` or `413` answering a document `GET`, every candidate code was excluded by some clause, so two conforming implementations could reasonably pick different codes. The gap was found while authoring the rc.54 transport tranche and deliberately left unpinned there; it matters now because the condition is server misbehavior, exactly the input space the pre-audit differential-fuzzing campaign explores, and an unpinned mapping would produce spec-legitimate divergences during triage.
+
+**Resolution.** §09 "Status codes" now states that `400` and `413` are defined for `POST` submit responses only and that a client receiving either in response to a `GET` for an Entangled document MUST treat the response as an unexpected transport response, exactly as for a code outside the whitelist: the reported diagnostic is the generic `E_TRANSPORT_STATUS`. The §11 `E_TRANSPORT_STATUS` table meaning is widened to "outside the §09 whitelist, or a whitelisted code received outside its defined use", with an explicit note under the transport table mirroring the redirect-precedence note. The remaining whitelisted error codes (`404`, `405`, `429`, `503`) have operation-independent semantics and keep their dedicated diagnostics on any request; the `/content_index.json` and image-resource paths keep their own layer rules (the `E_CONTENT_INDEX_FETCH_FAILED` displacement and `W_IMAGE_FETCH_FAILED`).
+
+**Corpus.** Two new transport vectors completing the rc.54 family:
+
+- `270-transport-status-bad-request-on-get`: manifest fetch answered 400; `E_TRANSPORT_STATUS`, pairing with 266, where the same status on a submit response keeps `E_TRANSPORT_BAD_REQUEST`.
+- `271-transport-status-payload-too-large-on-get`: manifest fetch answered 413; `E_TRANSPORT_STATUS`, pairing with 265.
+
+No existing vector input bytes change; the count moves 137 -> 139; `corpus.json` `rc_target` moves `1.0-rc.54` -> `1.0-rc.55`. The §09 and §11 text insertions shift later line numbers by two in each file; the line references in vector descriptions and in the corpus README are updated accordingly (the §09 whitelist rows and the §11 transport-table rows are above the insertion points and do not shift).
+
+**Behavioral compatibility.** Neither reference implements Stage 1 transport classification (both document transport as out of scope), so no implementation behavior changes; the rule constrains future transport implementations and removes a known ambiguity from the differential-fuzzing surface. The verifier libraries add 270-271 to their out-of-scope lists, with `SPEC_REVISION`, the CI corpus pins, and the Java bundled corpus moving to `1.0-rc.55`.
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. The change is a §09/§11 diagnostic-mapping clarification, two corpus vectors, and the `rc_target` bump.
+
 ### v1.0-rc.54
 
 Date: 2026-06-10

@@ -94,7 +94,7 @@ The following catalog defines all diagnostic codes for Entangled v1.0. Codes are
 
 | Code                             | Severity | Document kind | Meaning                                                                            |
 | -------------------------------- | -------- | ------------- | ---------------------------------------------------------------------------------- |
-| `E_TRANSPORT_STATUS`             | error    | any           | HTTP status code outside the whitelist defined in §09                              |
+| `E_TRANSPORT_STATUS`             | error    | any           | HTTP status code outside the §09 whitelist, or a whitelisted code received outside its defined use (§09 "Status codes") |
 | `E_TRANSPORT_REDIRECT`           | error    | any           | HTTP 3xx response received; redirects are not supported                            |
 | `E_TRANSPORT_CONTENT_TYPE`       | error    | any           | `Content-Type` header missing or does not match the required value                 |
 | `E_TRANSPORT_CONTENT_LENGTH`     | error    | any           | `Content-Length` header missing, malformed, or inconsistent with the response body |
@@ -109,6 +109,8 @@ The following catalog defines all diagnostic codes for Entangled v1.0. Codes are
 | `E_TRANSPORT_TRANSFER_ENCODING`  | error    | any           | Response carries a `Transfer-Encoding` header; transfer encodings, including chunked, are not permitted (§09) |
 
 When a `3xx` status code is received, `E_TRANSPORT_REDIRECT` takes precedence over `E_TRANSPORT_STATUS`. The client MUST NOT interpret the `Location` header and MUST NOT issue follow-up requests based on it.
+
+`E_TRANSPORT_BAD_REQUEST` and `E_TRANSPORT_PAYLOAD_TOO_LARGE` are scoped to submit responses (document kind `transaction`). A `400` or `413` received in response to a `GET` is outside its defined use and is reported as the generic `E_TRANSPORT_STATUS`, per §09 "Status codes".
 
 ## Input diagnostics (Stage 2)
 
