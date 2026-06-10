@@ -115,7 +115,7 @@ The protocol attaches no semantic meaning to the contents of the statement. The 
 
 `freshness_proof` is an optional field by which the publisher may anchor the canary to a temporal reference outside the publisher's control.
 
-When present, it is a UTF-8 string not exceeding 200 bytes. It MUST NOT contain control characters. It is subject to the §04 Unicode normalization rule for user-visible strings: `freshness_proof` MUST be encoded in Normalization Form C (NFC), consistent with the §04:144 rule applied to any field a conforming client renders as user-visible text (see §08:127 and §10:706 for the rendering requirement that makes `freshness_proof` subject to NFC). A non-NFC `freshness_proof` is rejected at schema validation with `E_SCHEMA_FIELD_SYNTAX` per §04 and §11.
+When present, it is a UTF-8 string not exceeding 200 bytes. It MUST NOT contain control characters. It is subject to the §04 Unicode normalization rule for user-visible strings: `freshness_proof` MUST be encoded in Normalization Form C (NFC), consistent with the §04:144 rule applied to any field a conforming client renders as user-visible text (see §08:127 and §10:709 for the rendering requirement that makes `freshness_proof` subject to NFC). A non-NFC `freshness_proof` is rejected at schema validation with `E_SCHEMA_FIELD_SYNTAX` per §04 and §11.
 
 Common uses include:
 
@@ -235,7 +235,7 @@ The client MUST NOT pick a "winner" between the conflicting manifests by lexicog
 The retained manifest accepted before the conflict was observed remains in place for current rendering and anti-downgrade. The later conflicting manifest is rejected. The client MUST surface the conflict as a prominent, not-easily-dismissible chrome warning, analogous to the Changed/mismatch warning defined in §10, and MUST present an explicit user-accessible resolution control as part of that chrome warning. The resolution control MUST offer at least two distinct user actions:
 
 1. **Keep the retained identity.** The user explicitly acknowledges the conflict without abandoning the publisher identity. The chrome warning is cleared from the always-visible position; the conflict is recorded in publisher history and remains visible in the publisher-history detail surface.
-2. **Abandon the retained publisher identity.** The user explicitly chooses to stop trusting the publisher identity that produced the conflicting manifests. The effect on retained state is defined in §10 under "Abandoning a retained publisher identity".
+2. **Abandon the retained publisher identity.** The user explicitly chooses to stop trusting the publisher identity that produced the conflicting manifests. The effect on the retained trust-state record, on authorized origins, and on retained `request`-mode state items (which are suspended from transmission, not deleted) is defined in §10 under "Abandoning a retained publisher identity".
 
 A passive event - content rendering, navigation away from the site, dismissal of an unrelated chrome notice, or any other event not bound to the resolution control - MUST NOT clear the canary-conflict warning. A subsequent successful fetch of a non-conflicting newer manifest does not by itself clear the warning, because the conflict is a historical fault on the publisher identity, not a transient state of the current manifest. The warning persists until the user invokes the resolution control.
 

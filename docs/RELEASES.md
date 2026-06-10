@@ -47,6 +47,22 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.49
+
+Date: 2026-06-10
+
+**Abandonment suspends retained request-state transmission (§08, §10)**
+
+Closes a gap in the publisher-identity abandonment procedure: §10 "Abandoning a retained publisher identity" enumerated the trust-state, authorized-origin, migration-history, and runtime-authorization records the client deletes or retains, but said nothing about the §07 state store, and §08 (canary-conflict resolution) pointed at §10 for "the effect on retained state" that §10 did not actually define. Because §07 retained `request`-mode state is bound to `K_publisher.pub` and is retrieved for submits keyed only on `K_publisher.pub` (§07 "Retrieval for submits", "Storage scope"), a credential planted under an identity `P` before abandonment - including one planted by a `K_runtime`-only attacker operating under remembered consent (§07 remembered-consent value-change disclosure) - would resume automatic transmission once the user re-established `P` as First contact, reopening exactly the exposure window abandonment is invoked to close.
+
+**Resolution.** §10 abandonment gains a step 5: on abandonment of `P`, the client MUST suspend transmission of every retained `request`-mode state item bound to `P`, with the same effect as the §07 `runtime_superseded` marking (not attached to submits, retained for user inspection and deletion until natural `expires_at`, surfaced as suspended in chrome). The step does not delete state items; `client_only` items are unaffected but remain user-inspectable and deletable. A new paragraph states that re-establishing a previously abandoned `P` does not revive suspended items: a suspended `request`-mode item stays suspended until the re-established publisher issues a fresh `set` for its `(namespace, key)` and the user grants fresh consent; pre-abandonment remembered consent does not authorize transmission of a pre-abandonment value. The §08 canary-conflict cross-reference is corrected to name the retained-state effect it points to.
+
+**Behavioral compatibility.** This adds a client-lifecycle MUST; it does not change the wire format, schema, signature input, JCS, byte caps, or any diagnostic code, and `spec_version` remains `"1.0"`. No corpus vector input bytes change. The abandonment-and-re-establishment state-lifecycle behavior is client storage behavior not expressible as a single-document accept/reject verdict, so it remains outside the corpus's diagnostic-driven coverage; a future harness extension for multi-session state-lifecycle scenarios is the place to pin it. The Rust and Java `SPEC_REVISION` constants and the CI corpus-checkout ref are bumped to `1.0-rc.49` when the tag is cut.
+
+**Related limitation note (§00).** A second, smaller item: the §07 `runtime_superseded` suspension that bounds a `K_runtime`-planted request-state credential is triggered only when the client observes the rotation. An attacker controlling the carrier origin can suppress that observation while the previous canary is still fresh, so the planted item keeps transmitting until the previous manifest's `next_expected` (at most one canary interval, 7 to 30 days, not the up-to-90-day state TTL, since at that deadline the client computes Expired and blocks submits even when the live fetch is withheld). §00 "v1.0 limitations" now records this and notes the optional higher-threat client behavior (suspend on the authorizing manifest's own `next_expected` per the client clock or `T_verified`, without waiting to observe the successor). No normative MUST change; this is a documentation-only limitation entry referencing existing §07, §08, and §10 rules.
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. The change is a §10 normative clarification (abandonment step 5 plus a re-establishment paragraph), a §08 cross-reference correction, and a §00 limitation note; no wire-format, schema, signature-input, JCS, byte-cap, or diagnostic-catalog change.
+
 ### v1.0-rc.48
 
 Date: 2026-06-03
