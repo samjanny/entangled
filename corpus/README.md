@@ -84,7 +84,7 @@ Requires Python 3.10+ and the `cryptography` package (for raw Ed25519 RFC 8032 s
 | 001-099 | Positive (must be accepted): 001-007 minimal baselines, 010 a fuller manifest (state_policy + origin.not_after + navigation together), 011 a valid transaction with set and delete state updates, 012 a successfully adopted migration, and 013-016 the inclusive-limit accepts pinned at their exact boundary (state ttl 7776000, state value 4096 bytes, origin.not_after at the 5-year ceiling, canary interval at the 7-day minimum), each paired with the one-past-the-limit reject (149, 148, 177, 182) |
 | 100-109 | Stage 2 input checks (BOM, UTF-8, byte cap) |
 | 110-119 | Stage 3 JSON parsing (duplicate keys, nesting depth, string length, array length, object keys, malformed JSON; and the Stage-3-limit-vs-numeric-grammar precedence vectors 117/118, where a structural limit co-occurs with a non-integer token and the Stage 3 limit code wins) |
-| 120-129 | Stage 4 kind discrimination (spec_version, unknown kind, missing required top-level field) |
+| 120-129 | Stage 4 kind discrimination (spec_version, unknown kind, missing required top-level field), and the nested enum-discriminator type rule (vector 129: a block/inline/op `kind` or `op` discriminator that is not a string is a Stage 5 `E_SCHEMA_FIELD_TYPE`, reported before signature verification) |
 | 130-139 | Stage 5 schema (unknown field, missing required, null literal, unknown block kind, field type, field range, block not permitted in document kind, duplicate uniqueness-required entry, malformed Unicode, field-specific length cap) |
 | 140-142 | Numeric grammar (float, exponent, overflow) |
 | 143     | Stage 5 semantic - submit-budget state-policy aggregate overflow |

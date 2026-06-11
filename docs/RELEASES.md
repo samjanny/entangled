@@ -47,6 +47,28 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.57
+
+Date: 2026-06-11
+
+**Within-stage error precedence (AMB-31) and the enum-discriminator type rule**
+
+Two related clarifications surfaced by a differential comparison of the two reference implementations (the Rust `entangled-core` verifier and `entangled-api-java`): the implementations agreed on every accept/reject decision but could report different diagnostic codes for a document with more than one violation. Closes issue #32 (AMB-31).
+
+**Issue (within-stage precedence).** §11 states that error precedence follows pipeline order, the first failing stage determining the reported error. This orders the ten stages but does not order independent checks within one stage, so two implementations could report different codes when several closed-schema violations co-occur at Stage 5, or several structural parser-limit violations co-occur at Stage 3.
+
+**Resolution.** §11 gains a "Within-stage precedence" subsection stating that the within-stage code is implementation-defined: conformance requires the accept/reject decision and that the reported code applies to the document, not that two implementations pick the same code. This matches the precedent §04 already sets for the numeric-grammar diagnostic, whose stage is implementation-defined. A recommended ordering is given as guidance for diagnostic quality (a SHOULD), which a future revision MAY tighten to a normative order without breaking the accept/reject contract.
+
+**Issue (enum-discriminator type).** The block, inline, link, and form-field `kind`, and the state-operation `op`, are closed internally-tagged enum discriminators that the wire schema requires to be strings. The differential surfaced that a non-string discriminator was not handled uniformly: a document carrying the integer `0` as a block `kind` was rejected at Stage 5 by one reference but admitted past schema validation by the other (which mapped the integer to an enum variant by index), so a validly-signed document with an integer discriminator would have been accepted by one implementation and rejected by the other.
+
+**Resolution.** A non-string enum discriminator is a Stage 5 closed-schema type error (`E_SCHEMA_FIELD_TYPE`), reported before Stage 6 signature verification. New corpus vector `129-schema-block-kind-integer` pins it: a content document, otherwise valid and validly signed, whose single block carries the integer `0` as its `kind`.
+
+**Corpus.** One new vector, `129-schema-block-kind-integer` (content, reject, `E_SCHEMA_FIELD_TYPE`). No existing vector bytes or descriptions change. The count moves 139 -> 140; `corpus.json` `rc_target` moves `1.0-rc.56` -> `1.0-rc.57`.
+
+**Behavioral compatibility.** The accept/reject decision is unchanged for every document both references already agreed on; the within-stage clarification only states that the exact code among co-occurring same-stage violations need not match. The Rust reference (`entangled-core`) is corrected for the enum-discriminator case: it previously admitted a non-string discriminator by mapping an integer to an enum variant by index, and now rejects it at Stage 5 as `E_SCHEMA_FIELD_TYPE`, matching the Java reference. The Java reference is unchanged. The Rust and Java `SPEC_REVISION` constants and the CI corpus-checkout ref bump to `1.0-rc.57` when the tag is cut.
+
+**Wire format summary.** Unchanged. `spec_version` remains `"1.0"`. The change is a §11 within-stage-precedence subsection, one new corpus vector, and the `rc_target` bump.
+
 ### v1.0-rc.56
 
 Date: 2026-06-10
