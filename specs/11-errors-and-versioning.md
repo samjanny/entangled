@@ -14,6 +14,14 @@ Diagnostic codes are machine-readable identifiers. They are normative: a client 
 
 The 10-stage pipeline in §10 defines the order in which validation failures are detected. Error precedence follows pipeline order: the first stage that fails determines the reported error.
 
+### Within-stage precedence
+
+The first-failing-stage rule orders the ten stages, and so determines the reported code whenever the co-occurring violations belong to different stages. It does not order independent checks **within** a single stage. When a document carries more than one violation detected at the same stage (for example several closed-schema violations at Stage 5, or several structural parser-limit violations at Stage 3), which of the applicable codes is reported is implementation-defined.
+
+What conformance requires in that case is fixed and testable: the accept/reject decision (here, always reject), and that the reported code is one that genuinely applies to the document. It does not require two implementations to agree on which applicable code they pick. This bounds the conformance surface to the security-relevant invariant (a multiply-invalid document is rejected) without forcing every implementation to reproduce another's internal check order across the wide matrix of co-occurring Stage 5 schema checks. The §04 numeric-grammar diagnostic (`E_SCHEMA_NON_INTEGER`) already follows this model: §04 declares its stage implementation-defined, and only pins its precedence against the structural Stage 3 limits.
+
+Implementations SHOULD nonetheless report the most specific applicable code, and SHOULD prefer, among co-occurring same-stage violations, the one that a left-to-right reading of the schema would encounter first: roughly, closed-schema membership and required-field presence before per-field content checks (type, syntax, length, range, enumerated membership), and per-field checks before the cross-field semantic checks (`E_ORIGIN_INVALID`, `E_MIGRATION_INVALID`) and the aggregate `E_SUBMIT_BUDGET`. This ordering is guidance for diagnostic quality, not a conformance requirement, so a future revision MAY tighten it to a normative order (pinned by multi-violation corpus vectors) without that being a breaking change to the accept/reject contract.
+
 Warnings and informational diagnostics do not necessarily abort the operation. Their handling is governed by the severity assigned in this section and by the client behavior requirements in §10.
 
 ## Diagnostic code namespace
