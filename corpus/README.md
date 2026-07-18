@@ -71,11 +71,14 @@ Implementations SHOULD report any vector whose actual outcome diverges from the 
 
 ## Regenerating
 
-```
+```sh
+python3 -m pip install -r corpus/tools/requirements.txt
 python3 corpus/tools/generate.py
 ```
 
-Requires Python 3.10+ and the `cryptography` package (for raw Ed25519 RFC 8032 signing). The generator is fully deterministic; output bytes match across runs and across machines.
+Requires Python 3.10+ and the pinned `cryptography` package (for raw Ed25519
+RFC 8032 signing). The generator is fully deterministic; output bytes match
+across runs and across machines.
 
 ## Categories of vectors
 
