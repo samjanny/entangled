@@ -2,13 +2,13 @@
 
 This section defines how Entangled JSON values are reduced to a deterministic byte sequence for signing and verification.
 
-Entangled does not redefine canonicalization. It uses the JSON Canonicalization Scheme (JCS) defined in RFC 8785, with verified errata EID 6292 and EID 7920 incorporated.
+Entangled defines a JCS-based canonicalization profile. It adopts the property-ordering, string-serialization, whitespace, and UTF-8 output rules of RFC 8785, with verified errata EID 6292 and EID 7920 incorporated, and replaces the RFC's binary64 number profile with the exact integer rule defined under "Integer serialization" below.
 
-What §04 specifies, beyond the JCS reference, is which JSON values Entangled documents are permitted to contain before canonicalization. Entangled restricts the JCS input space, eliminating value forms whose canonicalization is defined by JCS but not admitted by the Entangled document grammar.
+This section therefore specifies both the Entangled input domain and the one serialization override that distinguishes the profile from unmodified JCS. An implementation MUST read the JCS reference together with the integer-serialization subsection; an off-the-shelf JCS implementation that converts an Entangled integer above `2^53` through binary64 is not conforming.
 
 ## JCS reference
 
-Entangled implementations MUST canonicalize JSON values according to RFC 8785, JSON Canonicalization Scheme, with the following verified errata incorporated:
+Entangled implementations MUST apply RFC 8785, JSON Canonicalization Scheme, subject to the Entangled integer-serialization override below, with the following verified errata incorporated:
 
 - EID 6292;
 - EID 7920.
@@ -17,14 +17,14 @@ The combined document is published as the inline-errata version of RFC 8785 by t
 
 The canonicalization output is a UTF-8 byte sequence. Entangled treats this byte sequence as the cryptographic input substrate for signature operations, as defined in §05.
 
-JCS guarantees, given valid input within its scope:
+The base JCS rules guarantee, given valid input within their scope:
 
 - deterministic property ordering by lexicographic comparison of UTF-16 code units of property names;
 - deterministic number serialization following the ECMAScript number-to-string rules for IEEE 754 double-precision values within the I-JSON range;
 - deterministic string serialization with minimal escaping;
 - elimination of insignificant whitespace.
 
-Entangled relies on these guarantees and adds no canonicalization rules of its own.
+The Entangled profile preserves the property-ordering, string, whitespace, and UTF-8 guarantees. Its integer rule preserves deterministic number serialization over Entangled's larger exact-integer domain without a binary64 conversion.
 
 ## Entangled input restrictions
 

@@ -47,6 +47,18 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.63
+
+Date: 2026-08-24
+
+**JCS-based profile framing (Section 04)**
+
+The opening now describes what Entangled actually defines: a JCS-based canonicalization profile that adopts RFC 8785 property ordering, string serialization, whitespace removal, and UTF-8 output while replacing the binary64 number profile with the exact integer serialization already specified for the full `[0, 2^63 - 1]` Entangled range. It links the override from both the opening and the normative JCS-reference paragraph so an implementer does not mistake an unconfigured off-the-shelf JCS library for a complete Entangled canonicalizer. This is editorial; canonical bytes, schema, signatures, and verdicts do not change.
+
+**RFC 7493 verification.** RFC 7493 section 2.1 does prohibit Unicode noncharacters with `MUST NOT`; the audit's claim is correct. Entangled's assigned-only gate does not cover every JCS input path, notably opaque state and submit values. That behavioral standards gap is tracked separately in issue #39 with the proposed global pre-canonicalization rejection and corpus cases; it is not silently folded into this editorial rc.
+
+**Corpus.** No vector changes. The count remains 143 (25 positive, 118 negative), and `corpus.json` `rc_target` moves `1.0-rc.62` -> `1.0-rc.63`.
+
 ### v1.0-rc.62
 
 Date: 2026-08-24
