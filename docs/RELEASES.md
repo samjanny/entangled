@@ -47,6 +47,18 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.60
+
+Date: 2026-08-24
+
+**Bidirectional isolation for user-visible strings (Sections 04 and 10)**
+
+Every displayed publisher-supplied string now requires a structural bidi-isolation boundary with automatic or first-strong base direction. Chrome receives the same explicit rule for all publisher-supplied or publisher-derived values, including canary text, state purposes and proposed values, titles, navigation labels, origin and migration values, and publisher-history fields. Adjacent client-controlled labels, PIP, addresses, warnings, and trust indicators remain outside that boundary.
+
+For plain-text backends that have no structural isolate primitive, rc.60 specifies a safe fallback: render every Unicode 15.0 `Bidi_Control` code point as a visible inert escape before wrapping the transformed value in FSI/PDI. Raw FSI/PDI wrapping is insufficient because an embedded PDI can close the wrapper early. The rule preserves natural RTL text and does not reject or rewrite the signed wire value.
+
+**Corpus.** No vector is added because this is a renderer-composition outcome, not a wire rejection. The corpus README records the coverage boundary and the required renderer-level sentinel test. No vector input, signature, or verdict changes; the count remains 142 and `corpus.json` `rc_target` moves `1.0-rc.59` -> `1.0-rc.60`.
+
 ### v1.0-rc.59
 
 Date: 2026-08-24

@@ -731,6 +731,8 @@ When a publisher-supplied label appears in chrome, the client MUST:
 
 Other publisher-supplied fields displayed in chrome - `state.purpose` and proposed state values (§07), `canary.statement` and `canary.freshness_proof` (§08) - are governed by the safe-display and presentation rules in their owning sections, which apply the same opacity and distinguishability principles.
 
+Every publisher-supplied or publisher-derived string value displayed in chrome MUST also use the directional-isolation boundary defined in §04. This includes navigation labels, document titles, state purposes and proposed values, canary statements and freshness proofs, origin addresses, publisher-history values, and migration addresses or timestamps. Client-generated labels, warnings, icons, trust indicators, the PIP, and all other adjacent chrome text MUST remain outside the untrusted value's isolation boundary. The PIP and protocol addresses are ASCII-constrained, but rendering them as separate isolated values keeps the chrome composition rule uniform and prevents a neighboring publisher string from reordering them.
+
 The chrome separation rule below applies in conjunction with this section: publisher-supplied labels are permitted in chrome but MUST remain visually distinguishable from client-asserted status, and they MUST NOT be allowed to impersonate it.
 
 No additional publisher-supplied field may be rendered in chrome beyond those enumerated here or in the owning sections referenced above. A future protocol version may extend this enumeration.
