@@ -47,6 +47,22 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.58
+
+Date: 2026-08-24
+
+**v1 multi-origin scope reduction and isolated successor verification (AMB-32)**
+
+This release resolves the contradiction between publisher-global Stage 8 history and the previously advertised multi-origin cadence, and closes AMB-32's unspecified history scope for migration-successor verification.
+
+**Multi-origin scope.** Section 06 now states that no cadence can make distinct per-origin manifests simultaneously current for a stateful v1 client: equal `canary.issued_at` values produce distinct signed payloads and therefore `E_CANARY_CONFLICT`, while unequal values make the older manifest an `E_CANARY_DOWNGRADE` after the newer one is observed. Stateful clients have one current origin per publisher profile. Publishers use `migration_pointer` as a directional replacement flow, not as authorization for simultaneous multi-origin publication. Section 00 records the limitation; the glossary, README, and Section 10 align publisher-profile terminology; and operator playbook Section 9 replaces the invalid atomic multi-origin procedure with staged origin-replacement guidance. Design issue #38 remains open for a post-v1 mechanism.
+
+**AMB-32.** A fetched successor still runs the full Stages 1 through 9 pipeline, but its equal-time conflict, anti-downgrade, and runtime-key-reuse checks consult migration-local provisional history isolated from global publisher history. Successor refetches update and consult that provisional state. Global history changes only on affirmative adoption; decline or withdrawal discards the provisional state. Direct navigation to a verified-pending successor remains permitted but stays provisional and cannot count as confirmation or silently commit global history. Confirmed adoption atomically promotes the provisional records, makes the successor the sole current origin, and records the announcing origin as Replacement. Closes #37.
+
+**Within-Stage 8 diagnostics.** Equal-time conflict and runtime-key reuse can both apply to the same manifest. This needs no AMB-33: both imply rejection at Stage 8, and AMB-31's within-stage rule already permits a single-code implementation to report either applicable diagnostic. Section 08 now says so explicitly.
+
+**Corpus.** No vector payload, signature, or verdict changes. Vector 012's generated description and the corpus README now pin the migration scenario's global-announcing/provisional-successor state split; it remains `accept` despite the announcing and successor manifests sharing `issued_at` and `runtime_pubkey` while carrying distinct signed payloads. `corpus.json` `rc_target` moves `1.0-rc.57` -> `1.0-rc.58`; the count remains 140.
+
 ### v1.0-rc.57
 
 Date: 2026-06-11

@@ -192,23 +192,19 @@ An origin-expired manifest does not invalidate cryptographically valid signature
 
 In Entangled v1, a manifest declares exactly one origin.
 
-A publisher who controls multiple carrier endpoints publishes a separate manifest per endpoint, each signed by the same `K_publisher`.
+A client that maintains publisher history treats at most one origin as current for a given `K_publisher.pub`. A publisher replaces that origin through the directional `migration_pointer` flow defined below and in §10.
 
-Multi-origin manifests are not part of Entangled v1 and may be considered in a future version.
+Multi-origin manifests and simultaneous multi-origin publication are not part of Entangled v1 and may be considered in a future version.
 
 ### Multi-origin publication cadence
 
-This subsection does not introduce a new enforcement mechanism. It makes explicit a publisher requirement that follows from the existing anti-downgrade rule.
+No publication cadence makes distinct origin manifests simultaneously current for a v1 client that maintains publisher history.
 
-A publisher operating multiple origins under the same `K_publisher.pub` publishes one manifest per origin. Each manifest is single-origin, as defined above.
+Publisher history, equal-`issued_at` conflict detection, and anti-downgrade are keyed by `K_publisher.pub`, not by carrier origin (see "Caching and publisher history" below and §08). Distinct origins necessarily produce distinct JCS-canonical manifest payloads because at least `origin.address` and `origin.origin_pubkey` differ. If two such manifests use the same `canary.issued_at`, the second one observed is rejected with `E_CANARY_CONFLICT`. If their `issued_at` values differ, the older one is rejected with `E_CANARY_DOWNGRADE` after the newer one has been observed. These cases are exhaustive, and atomic deployment cannot avoid them.
 
-Publisher history and anti-downgrade are keyed by `K_publisher.pub`, not by carrier origin (see "Caching and publisher history" below and §08). Once a client has observed a verified manifest with canary `issued_at = T_new` for a given `K_publisher.pub`, any later manifest from any origin for the same `K_publisher.pub` whose canary `issued_at` is strictly older than `T_new` is rejected as non-current under that rule.
+A publisher targeting stateful v1 clients therefore MUST NOT operate distinct origins as simultaneous current publications under the same `K_publisher.pub`. The publisher operates one current origin and uses `migration_pointer` for a directional replacement. During migration, the announcing origin remains current for a particular client until that client confirms adoption; the successor is verified pending, not a second current origin. After adoption, the successor replaces the announcing origin as current for that client's publisher profile (§10). Different clients MAY complete the transition at different times.
 
-If a publisher wants its multiple origins to remain acceptable as current by clients that support publisher history, the publisher MUST keep canary `issued_at` values monotonically non-decreasing across all such origins. Equivalently, when the publisher refreshes the canary, the new manifest is deployed to every origin under the same `K_publisher.pub` before clients can begin observing the newer `issued_at`.
-
-If origins drift out of sync, clients that have already seen a newer canary on one origin will reject the older manifest from another origin until that origin publishes a manifest with `issued_at` at least equal to the newest observed value. Anti-downgrade rejection is the existing client behavior; this subsection only names its consequence for multi-origin operators.
-
-Operators of multiple origins should treat manifest publication as an atomic or near-atomic multi-origin deployment step. The requirement does not change the wire format, the single-origin manifest rule, or the anti-downgrade rule.
+A stateless client that retains no publisher history across navigations may encounter distinct origins independently, but v1 provides no simultaneous multi-origin continuity or consistency guarantee for that mode (§10). Publishers MUST NOT describe that behavior as protocol-supported multi-origin publication.
 
 ### Fetch-origin binding
 
@@ -406,15 +402,15 @@ The successor origin is not validated by `K_publisher` directly; the announcemen
 
 ### Effect on the announcing manifest
 
-The presence of a `migration_pointer` does not invalidate the announcing manifest. Until the publisher stops publishing on the announcing origin, the announcing manifest remains current for that origin. The migration announcement is a hint plus a signed binding; it is not a self-decommissioning instruction.
+The presence of a `migration_pointer` does not by itself invalidate the announcing manifest. For a client that has not confirmed adoption, the announcing manifest remains current for the publisher profile at that origin. The migration announcement is a hint plus a signed binding; it is not a self-decommissioning instruction.
 
-A publisher who wants the announcing origin to stop being current eventually stops refreshing the canary on it. The canary then expires (see §08), and clients' standard expiration behavior applies.
+When a client confirms adoption under §10, the successor replaces the announcing origin as current for that client's publisher profile, and the announcing origin is recorded as Replacement even if the publisher continues serving it for clients that have not yet adopted. A publisher eventually stops refreshing the announcing origin after allowing an appropriate transition window. Its canary then expires (see §08), and clients that did not adopt apply the standard expiration behavior.
 
 ### Multi-origin caveat
 
-`migration_pointer` does not authorize a publisher to operate multiple origins simultaneously. The single-origin rule in this section continues to apply to each manifest: the announcing manifest declares one origin, and the successor manifest declares one origin. The announcement is a directional pointer between two single-origin manifests, not a multi-origin declaration.
+`migration_pointer` does not authorize a publisher to operate multiple current origins simultaneously for one stateful client. The single-origin rule in this section continues to apply to each manifest: the announcing manifest declares one origin, and the successor manifest declares one origin. The announcement is a directional replacement pointer between two single-origin manifests, not a multi-origin declaration.
 
-Multi-origin operation under the same `K_publisher` is governed by the publisher-profile rules in §10 and the publication cadence rules above; `migration_pointer` is one mechanism for the publisher to bring clients of the old origin into a publisher-profile relationship with the new origin without out-of-band PIP exchange.
+The verified-pending and confirmed-adoption states in §10 let the publisher bring clients of the old origin to the replacement origin without out-of-band PIP exchange while preserving the one-current-origin v1 scope.
 
 ## `content_root`
 

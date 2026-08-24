@@ -572,46 +572,31 @@ The overlap window is a SHOULD because deployments that have no continuity expec
 
 ## 9. Multi-origin operation
 
-Entangled v1 manifests are single-origin.
+Entangled v1 manifests are single-origin, and a stateful client has one current origin per `K_publisher.pub`.
 
-A publisher operating multiple origins under the same `K_publisher.pub` publishes one manifest per origin.
+### v1 scope
 
-### Requirement
+Simultaneous multi-origin publication under one publisher identity is not supported in v1. Two origin-specific manifests necessarily have different signed payloads. Giving them the same `canary.issued_at` causes the second one observed to conflict; giving them different timestamps causes the older one to be rejected after the newer one is observed. Reusing the same runtime key may add a runtime-reuse failure. Atomic or near-atomic rollout does not change those outcomes.
 
-Canary `issued_at` values must remain monotonically non-decreasing across all origins for the same publisher identity.
+Do not deploy one publication cycle as a set of current per-origin manifests under the same `K_publisher.pub`. That topology is outside the v1 capability boundary even if a stateless client happens to encounter its endpoints independently.
 
-If one origin publishes a newer canary and another origin still serves an older manifest, clients that have seen the newer canary may reject the older origin as a downgrade.
+### Replacing an origin
 
-### Recommended practice
+Use the signed migration flow in §06 and §10:
 
-Treat multi-origin manifest deployment as atomic or near-atomic:
+1. publish an announcing manifest on the current origin with a `migration_pointer` naming the successor;
+2. publish the successor manifest at the named origin under the same `K_publisher.pub`;
+3. keep the successor in verified-pending state while clients verify it and request user confirmation; successor Stage 8 history is provisional and isolated during this period;
+4. after confirmation, treat the successor as the client's sole current origin and the announcing origin as replaced;
+5. retain service on the announcing origin for an appropriate transition window so clients that have not yet adopted can still see the announcement, then stop refreshing it.
 
-1. prepare all per-origin manifests in one ceremony;
-2. use the same `canary.issued_at` only if the signed payloads are otherwise identical where the protocol permits;
-3. avoid same-`issued_at` divergent manifests unless the specification explicitly permits the exact form;
-4. deploy all origins before announcing the refresh;
-5. verify each origin from a clean client.
+Different clients may confirm at different times. During that interval, one client may still regard the announcing origin as current while another has adopted the successor. This is staged replacement across client profiles, not simultaneous multi-origin operation within one profile.
 
-If exact atomicity is impossible, deploy in a maintenance window and expect some clients to warn or reject stale origins until all origins are updated.
+### Failure and withdrawal
 
-### Rollback procedure for partial deployment failure
+If the successor cannot be verified or made ready, publish a newer announcing manifest that omits `migration_pointer`. Clients treat the pending migration as withdrawn, discard its provisional history, and leave the announcing origin current. A successor already confirmed and adopted is not undone by withdrawing a later announcement; the operator must initiate a new forward migration from the current origin.
 
-Multi-origin deployments are not protocol-atomic: each origin's manifest is served independently and clients fetch from one origin at a time. If a deployment to N origins succeeds on k origins and fails on N-k, the publisher is in a divergent state where some clients see the new manifest with `issued_at = t_new` and others continue to see the prior manifest with `issued_at = t_old`. Because anti-downgrade (§08:71) is cumulative per `K_publisher.pub`, any client that has observed the new `t_new` will reject subsequent fetches from origins still serving the old `t_old` as a downgrade attempt.
-
-This means the publisher cannot simply "undeploy" the partial rollout by reverting the k successful origins to `t_old`: the clients that have observed `t_new` will reject the reverted manifest as a downgrade. The only protocol-conformant resolution paths are forward.
-
-Rollback procedure:
-
-1. **Pause further rollout.** Stop attempting to deploy to the failing origins until the failure is diagnosed. Continuing to retry while diverged extends the window in which clients see inconsistent state.
-2. **Diagnose the per-origin failure.** Common causes: stale `K_runtime_priv` on the failing origin's publishing infrastructure; the failing origin's onion service is down; CDN/proxy in front of the failing origin is serving a stale cached manifest; the failing origin's clock is skewed beyond the §10 300-second tolerance. Fix the root cause before proceeding.
-3. **Complete the rollout forward.** Once the failing origins are reachable, deploy the same `t_new` manifest to them. The clients that fetched the old origins continue to see the manifest they have already accepted; once they refresh, they observe `t_new` consistent with what other clients have already accepted. No anti-downgrade conflict arises because all origins now serve the same `t_new` manifest.
-4. **If forward completion is impossible** (the failing origins are permanently unreachable, or the new manifest is itself defective and cannot be served), the publisher MUST perform a new canary rotation ceremony (§7) producing a `t_newer > t_new` manifest that the publisher can deploy to all remaining reachable origins. The old `t_new` manifest at the k successful origins remains accepted by the clients that have already seen it; on next refresh those clients observe `t_newer` consistent with what the other origins serve. The "failed" k origins are not rolled back; they are superseded forward.
-
-A genuine downgrade rollback (revert all origins to `t_old`) is not possible under the protocol's anti-downgrade rule for the same `K_publisher.pub`. The only way to recover from a deployment whose outcome the publisher needs to repudiate is forward rotation with a new manifest that the publisher chooses to deploy.
-
-The asymmetry between "deploy forward" (cheap, reversible only by another forward deploy) and "rollback" (impossible at the protocol level) is the operational consequence of the §08:71 anti-downgrade guarantee. Publishers SHOULD treat each multi-origin manifest deploy as a one-way commitment: the deploy succeeds across all origins or the publisher is committed to forward-resolving the divergence.
-
-Pre-deploy mitigations: deploy the new manifest to a *staging origin* first (a separate origin under the same `K_publisher.pub` that is not advertised to readers; deploys to staging exercise the deploy pipeline without committing the publisher's reader-facing origins). Staging deploys SHOULD use a `migration_pointer`-only path so they are visible to test clients but do not commit reader-facing publisher history.
+Do not test a production publisher identity by fetching an unannounced staging origin under the same key from a client that retains publisher history. Use a separate test `K_publisher` or exercise the real verified-pending migration path; otherwise the staging fetch can trigger the same publisher-global conflict or downgrade rules that exclude multi-origin publication.
 
 ## 10. State policy operation
 

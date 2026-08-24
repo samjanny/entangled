@@ -1,6 +1,6 @@
 # Entangled
 
-[![Spec](https://img.shields.io/badge/spec-v1.0--rc.57-blue)](#versioning)
+[![Spec](https://img.shields.io/badge/spec-v1.0--rc.58-blue)](#versioning)
 [![Code license: MIT OR Apache-2.0](https://img.shields.io/badge/code-MIT%20OR%20Apache--2.0-blue.svg)](#license)
 [![Spec license: CC-BY-4.0](https://img.shields.io/badge/spec-CC--BY--4.0-blue.svg)](#license)
 
@@ -213,7 +213,7 @@ For state `Changed / mismatch`:
 - the client may refuse to render content until the user explicitly resolves the mismatch;
 - resolution must require explicit user action, such as confirming that the new `K_publisher.pub` is legitimate and replacing the retained identity, or abandoning the site.
 
-A client may support publisher profiles that allow a user-confirmed `K_publisher.pub` to be recognized across multiple authorized origins. In that case, migration to a new origin signed by the same externally verified publisher key must not be treated as a mismatch solely because the address changed.
+A client may support publisher profiles that allow a user-confirmed `K_publisher.pub` to be recognized across verified origin replacements. A stateful v1 profile has one current origin; migration to a successor signed by the same externally verified publisher key must not be treated as a mismatch solely because the address changed.
 
 ## Pillar C - Client architecture
 
