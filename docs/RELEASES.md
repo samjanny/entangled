@@ -47,6 +47,18 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.62
+
+Date: 2026-08-24
+
+**Sound verified-time lower bound (Sections 00, 01, 08, and 10)**
+
+`T_verified`, the greatest verified `canary.issued_at`, remains the unconditional anti-downgrade floor but is no longer described as an exact lower bound on real time. A time-checked manifest may be accepted up to 300 seconds ahead, so the sound candidate is `issued_at - 300 seconds`. The new `T_lower` is the greatest such candidate from manifests verified while a reliable current-time reference was available, and an expiry is definitely past only when it is strictly earlier than `T_lower`.
+
+The surrounding clock-less path required a second precision fix beyond the reported 300-second case: §10 permits a client without a reliable clock to accept a manifest without enforcing future skew. Such an observation still advances `T_verified` for anti-downgrade but must not advance `T_lower`; otherwise even subtracting 300 seconds would retain an unsound no-false-positive claim. No wire field, schema, signature input, or diagnostic changes.
+
+**Corpus.** No vector is added because the outcome depends on retained client history and the provenance of the clock used at verification, neither of which a wire-only document can induce. The corpus README records the required client-level tests. The count remains 143 (25 positive, 118 negative), and `corpus.json` `rc_target` moves `1.0-rc.61` -> `1.0-rc.62`.
+
 ### v1.0-rc.61
 
 Date: 2026-08-24
