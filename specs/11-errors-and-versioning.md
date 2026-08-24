@@ -290,7 +290,7 @@ The structured diagnostic format for `E_ORIGIN_EXPIRED` SHOULD include in `detai
 
 ## State diagnostics
 
-State diagnostics arise during state operation processing. They are related to transaction documents but are not part of the main document validation pipeline stages unless the transaction document itself is being validated.
+State diagnostics arise during state operation processing. They are related to transaction documents but are not generally part of the main document validation pipeline stages unless the transaction document itself is being validated. `E_STATE_DUPLICATE` specifically spans two contexts: it is a Stage 5 document rejection for duplicate pairs in `transaction.state_updates`, and an off-pipeline publisher-side submit-body rejection for duplicate pairs in `request_state`.
 
 | Code                         | Severity | Document kind | Meaning                                                                                                   |
 | ---------------------------- | -------- | ------------- | --------------------------------------------------------------------------------------------------------- |
@@ -300,7 +300,7 @@ State diagnostics arise during state operation processing. They are related to t
 | `E_STATE_OP`                 | error    | transaction   | Raised during state-operation processing, when an already-schema-valid `set` or `delete` is applied against the client's state store and the operation's form cannot be processed. This is not a Stage 5 schema code: a Stage 5 rejection of a `state_updates` entry with an unknown `op` value is reported as `E_SCHEMA_ENUM_VIOLATION` (closed-enum violation) and a missing operation-form field as `E_SCHEMA_REQUIRED_FIELD`, per the §07 state-update failure taxonomy |
 | `E_STATE_STORAGE_CAP`        | error    | transaction   | The client's per-publisher storage cap would be exceeded by the operation                                 |
 | `E_STATE_TRANSMIT_BUDGET`    | error    | transaction   | Committing the request-mode state operation would make the retained request state exceed the 64 KiB minimal-submit transmit budget; the state operation is rejected locally |
-| `E_STATE_DUPLICATE`          | error    | transaction   | The `request_state` array of a submit body contains duplicate `(namespace, key)` pairs                    |
+| `E_STATE_DUPLICATE`          | error    | transaction   | A single `state_updates` array or submit-body `request_state` array contains duplicate `(namespace, key)` pairs. In `state_updates` this rejects the transaction at Stage 5; in `request_state` it rejects the submit body during publisher-side parsing. |
 | `I_STATE_CONSENT_REJECTED`   | info     | transaction   | The user rejected a state set operation                                                                   |
 | `I_STATE_CONSENT_REMEMBERED` | info     | transaction   | The user remembered consent for a state item                                                              |
 
@@ -316,7 +316,7 @@ The structured diagnostic format for `E_STATE_TRANSMIT_BUDGET` SHOULD include in
 * `projected_bytes`: the byte length of the minimal submit body that would result if the item were committed;
 * `cap_bytes`: the protocol limit, 65536.
 
-`E_STATE_DUPLICATE` is a publisher-side diagnostic in practice: the publisher detects it when parsing the submit body. A conformant client never generates it.
+For `transaction.state_updates`, the client detects `E_STATE_DUPLICATE` at Stage 5 and rejects the transaction document before signature verification. For submit-body `request_state`, the publisher detects it outside the signed-document pipeline; a conformant client never generates that submit-body condition. The shared code is intentional: both cases enforce the same per-array uniqueness invariant over the same composite key, and the structured detail fields are identical.
 
 `E_STATE_TRANSMIT_BUDGET` is a client-side diagnostic: it arises when the client evaluates whether a request-mode `set` operation may be retained without making future submits impossible under the §07/§09 transmit-budget rule.
 

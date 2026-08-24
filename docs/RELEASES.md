@@ -47,6 +47,16 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.61
+
+Date: 2026-08-24
+
+**Duplicate transaction state updates (Sections 07 and 11)**
+
+Every `(namespace, key)` pair may now occur at most once within a transaction's `state_updates` array, independent of operation form. A duplicate rejects the transaction at Stage 5 as `E_STATE_DUPLICATE`; clients must not coalesce, reorder, or apply the ambiguous sequence. The existing diagnostic is extended rather than adding a new code because submit-body `request_state` and transaction `state_updates` enforce the same per-array composite-key uniqueness invariant. The code is Stage 5 in the transaction context and off-pipeline in the publisher-side submit-body context.
+
+**Corpus.** Vector 125 carries a correctly signed transaction with a valid `set` followed by a valid `delete` for the same `(session, data)` pair and expects `E_STATE_DUPLICATE`, including the duplicate pair in structured details. The corpus now contains 143 vectors (25 positive, 118 negative), and `corpus.json` `rc_target` moves `1.0-rc.60` -> `1.0-rc.61`.
+
 ### v1.0-rc.60
 
 Date: 2026-08-24

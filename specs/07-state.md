@@ -200,6 +200,8 @@ A transaction document carries zero or more state update operations in its `stat
 
 `state_updates` is a JSON array. The array MUST be present in every transaction document and MUST contain between 0 and 32 entries.
 
+Within one `state_updates` array, each `(namespace, key)` combination MUST appear at most once, regardless of whether the operations are `set`, `delete`, or one of each. A transaction containing a duplicate pair is rejected in full at Stage 5 as `E_STATE_DUPLICATE` (§11). A client MUST NOT coalesce, reorder, or sequentially apply duplicate operations.
+
 If the transaction document does not request state changes, `state_updates` is an empty array:
 
 ```json
@@ -346,7 +348,7 @@ Rejecting a state update on consent, storage, or transmit-budget grounds does no
 
 This rule is distinct from rejection of the transaction document itself on schema or policy grounds. The failure taxonomy for state updates is:
 
-* **Schema failure.** A `state_updates` entry that violates the operation schema defined in this section - wrong field set, malformed value, unknown `op` - rejects the entire transaction document during Stage 5 of the validation pipeline (§10). These are closed-schema rejections reported under the generic Stage 5 schema codes: an unknown `op` value (a value outside the closed set `{"set", "delete"}`) is a closed-enum violation and is reported as `E_SCHEMA_ENUM_VIOLATION`; a missing operation-form field (a `set` lacking `value` or `ttl`, a `delete` lacking `key`) is an absent required field and is reported as `E_SCHEMA_REQUIRED_FIELD`. The dedicated `E_STATE_OP` code (§11) is not a Stage 5 schema code; it is reserved for the later state-operation processing phase, when an already-schema-valid `set` or `delete` is applied against the client's state store.
+* **Schema failure.** A `state_updates` entry that violates the operation schema defined in this section - wrong field set, malformed value, unknown `op` - or an array that repeats a `(namespace, key)` pair rejects the entire transaction document during Stage 5 of the validation pipeline (§10). An unknown `op` value (a value outside the closed set `{"set", "delete"}`) is a closed-enum violation and is reported as `E_SCHEMA_ENUM_VIOLATION`; a missing operation-form field (a `set` lacking `value` or `ttl`, a `delete` lacking `key`) is an absent required field and is reported as `E_SCHEMA_REQUIRED_FIELD`; and a repeated pair is reported as `E_STATE_DUPLICATE`. The dedicated `E_STATE_OP` code (§11) is not a Stage 5 schema code; it is reserved for the later state-operation processing phase, when an already-schema-valid `set` or `delete` is applied against the client's state store.
 * **Policy failure.** A set operation referencing a `(namespace, key)` combination not declared in the current manifest's `state_policy` (see "namespace and key" above) rejects the entire transaction document. The same applies to a set operation whose `value` exceeds the policy's `max_size` or whose `ttl` exceeds the policy's `max_lifetime`.
 * **Consent failure.** The user declines the consent prompt for a set operation, or remembered-consent state does not authorize the operation. The state operation is rejected; the transaction document remains valid and renderable.
 * **Storage failure.** The client cannot commit the state operation because the per-publisher storage cap (see "Storage limits" above) would be exceeded, or a local write fails. The state operation is rejected; the transaction document remains valid and renderable.
