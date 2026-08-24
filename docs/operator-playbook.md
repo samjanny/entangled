@@ -702,9 +702,9 @@ HTTPS is not required by the v1 Tor profile.
 
 The server should:
 
-* serve `/manifest.json` with `Content-Type: application/entangled+json`;
-* serve content and transaction documents with `Content-Type: application/entangled+json`;
-* require submit requests to use `Content-Type: application/entangled-submit+json`;
+* serve `/manifest.json` with `Content-Type: application/vnd.entangled+json`;
+* serve content and transaction documents with `Content-Type: application/vnd.entangled+json`;
+* require submit requests to use `Content-Type: application/vnd.entangled-submit+json`;
 * include accurate `Content-Length`;
 * avoid redirects;
 * avoid cookies;

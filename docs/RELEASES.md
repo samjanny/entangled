@@ -47,6 +47,18 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.64
+
+Date: 2026-08-24
+
+**Vendor-tree media types and parsed comparison (Sections 01, 09, and 11)**
+
+The two unregistered standards-tree names are replaced before v1 final by `application/vnd.entangled+json` and `application/vnd.entangled-submit+json`. The vendor tree is appropriate under RFC 6838 section 3.2 for a publicly available protocol produced by a non-commercial entity that is not a recognized standards organization. IANA Expert Review registration of both names is pending and tracked in issue #40; section 09 records that status and makes clear that no former or alternative name is a v1 alias.
+
+Publishers and clients still emit the lowercase, parameter-free spelling. Recipients now parse `Content-Type` according to RFC 9110, compare the parsed type and subtype case-insensitively, and then require the parsed parameter list to be empty. Parameter rejection is therefore independent of optional whitespace around the delimiter and is not a byte-exact comparison. The same rule applies to signed-document responses and submit requests.
+
+**Corpus.** The 18 existing primary-document transport contexts now carry the vendor-tree document media type; signed document bytes and signatures do not change. Vector 017 adds a mixed-case `Application/Vnd.Entangled+JSON` response and expects accept. Vector 255 remains the parameter rejection and now states the parse-then-reject rule explicitly. The corpus now contains 144 vectors (26 positive, 118 negative), and `corpus.json` `rc_target` moves `1.0-rc.63` -> `1.0-rc.64`.
+
 ### v1.0-rc.63
 
 Date: 2026-08-24

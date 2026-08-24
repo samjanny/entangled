@@ -104,7 +104,7 @@ The following catalog defines all diagnostic codes for Entangled v1.0. Codes are
 | -------------------------------- | -------- | ------------- | ---------------------------------------------------------------------------------- |
 | `E_TRANSPORT_STATUS`             | error    | any           | HTTP status code outside the §09 whitelist, or a whitelisted code received outside its defined use (§09 "Status codes") |
 | `E_TRANSPORT_REDIRECT`           | error    | any           | HTTP 3xx response received; redirects are not supported                            |
-| `E_TRANSPORT_CONTENT_TYPE`       | error    | any           | `Content-Type` header missing or does not match the required value                 |
+| `E_TRANSPORT_CONTENT_TYPE`       | error    | any           | `Content-Type` header missing or malformed, parsed type/subtype does not match case-insensitively, or parsed parameter list is non-empty |
 | `E_TRANSPORT_CONTENT_LENGTH`     | error    | any           | `Content-Length` header missing, malformed, or inconsistent with the response body |
 | `E_TRANSPORT_BODY_FAILURE`       | error    | any           | Response body could not be retrieved or was truncated by the transport             |
 | `E_TRANSPORT_RATE_LIMITED`       | error    | any           | HTTP 429 received; the client backs off before retry                               |

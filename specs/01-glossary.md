@@ -235,7 +235,7 @@ Per-user information that a publisher may persist on the client's device, declar
 The manifest's declaration of every state item the site is authorized to use, with mode, maximum size, maximum lifetime, and purpose for each. Required field of the manifest, even when empty. Defined in §06 and §07. Related: state, manifest.
 
 **Submit**  
-A user-initiated request from the client to a transaction endpoint, carrying user input (`fields`) and consented request-state items. Always uses HTTP POST with Content-Type `application/entangled-submit+json`. Defined in §07 and §09. Related: transaction document, request state, fields, submit body.
+A user-initiated request from the client to a transaction endpoint, carrying user input (`fields`) and consented request-state items. Always uses HTTP POST with Content-Type `application/vnd.entangled-submit+json`. Defined in §07 and §09. Related: transaction document, request state, fields, submit body.
 
 **Submit body**  
 The unsigned JSON object transmitted as the body of a POST submit request, containing `fields`, `request_state`, and `request_id`. Defined in §09. Related: submit, transaction document, request state, fields.

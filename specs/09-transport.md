@@ -4,6 +4,12 @@ This section defines the HTTP subset over which Entangled documents are fetched 
 
 Entangled v1 fully specifies the Tor v3 transport profile. Other carrier profiles (I2P, Yggdrasil) define their own transport rules; until specified, they are draft profiles and not part of v1 conformance.
 
+## Media types and registration status
+
+Entangled v1 uses the RFC 6838 vendor-tree media types `application/vnd.entangled+json` for signed Entangled documents and `application/vnd.entangled-submit+json` for submit bodies. These are the only normative v1 wire names; implementations MUST NOT treat the former unregistered standards-tree names `application/entangled+json` and `application/entangled-submit+json`, or any `prs.` or `x-` alias, as equivalent.
+
+As of v1.0-rc.64, IANA registration of both vendor-tree media types is pending Expert Review and is tracked in [issue #40](https://github.com/samjanny/entangled/issues/40). This registration status is informative and does not change the normative wire names. Once assigned, the permanent IANA registry entries will be linked here.
+
 ## Transport assumptions
 
 Entangled assumes the carrier provides:
@@ -102,7 +108,7 @@ The publisher responds with `200 OK` and the content index as the response body.
 
 The response MUST include:
 
-* `Content-Type: application/json`. The content index is not an Entangled signed document; it MUST NOT use `Content-Type: application/entangled+json`.
+* `Content-Type: application/json`. The content index is not an Entangled signed document; it MUST NOT use `Content-Type: application/vnd.entangled+json`.
 * `Content-Length` with the exact byte count of the response body. Responses without `Content-Length` are rejected as `E_CONTENT_INDEX_FETCH_FAILED`.
 
 The response MUST NOT use `Content-Encoding` or `Transfer-Encoding`. The hash binding in `content_root` is over the exact response body bytes; any transfer-layer transformation invalidates the hash. A response carrying `Content-Encoding` or `Transfer-Encoding` is rejected as `E_CONTENT_INDEX_FETCH_FAILED`.
@@ -126,7 +132,7 @@ A submit is a `POST` request to a transaction endpoint declared by the publisher
 ```http
 POST /<submit-path> HTTP/1.1
 Host: <56-character-onion-address>.onion
-Content-Type: application/entangled-submit+json
+Content-Type: application/vnd.entangled-submit+json
 Content-Length: <bytes>
 
 <submit body>
@@ -303,14 +309,14 @@ Cross-origin image fetches are forbidden, as defined in §03.
 
 ### Image response headers
 
-Image resource responses are not Entangled documents. They are not required to use `Content-Type: application/entangled+json`.
+Image resource responses are not Entangled documents. They are not required to use `Content-Type: application/vnd.entangled+json`.
 
 For an image resource response with status `200 OK`, the publisher SHOULD return:
 
 * `Content-Length`: the byte length of the response body;
 * `Content-Type`: a media type matching the `media_type` declared in the `image` block (`image/png`, `image/jpeg`, or `image/webp`).
 
-The client MUST reject an image resource response whose `Content-Type` is `application/entangled+json` or `application/entangled-submit+json`. These Content-Types are reserved for Entangled documents and submit bodies only. An image resource is not an Entangled document and MUST NOT use those Content-Types. The image resource is rejected with the appropriate image diagnostic defined in §11.
+The client MUST reject an image resource response whose parsed media type has a type and subtype that compare case-insensitively equal to `application/vnd.entangled+json` or `application/vnd.entangled-submit+json`. These Content-Types are reserved for Entangled documents and submit bodies only. An image resource is not an Entangled document and MUST NOT use those Content-Types. The image resource is rejected with the appropriate image diagnostic defined in §11.
 
 Rejection of an image resource because of a reserved Content-Type, a `Content-Type` that does not match the declared `media_type`, or any other image-fetch failure does not invalidate the containing signed `content` or `transaction` document. The image is rendered as missing or unavailable; other blocks of the document continue to render normally.
 
@@ -347,7 +353,7 @@ The client MUST NOT include any other request headers in `GET` requests.
 For `POST` requests, the client MUST include:
 
 * `Host`: the carrier address;
-* `Content-Type`: exactly `application/entangled-submit+json`;
+* `Content-Type`: exactly `application/vnd.entangled-submit+json`;
 * `Content-Length`: the byte length of the submit body.
 
 The client MUST NOT include any other request headers in `POST` requests.
@@ -371,7 +377,7 @@ The `Range` and `If-Range` prohibition is normative: an Entangled document is si
 
 For `200 OK` responses carrying an Entangled document, the publisher MUST include:
 
-* `Content-Type`: exactly `application/entangled+json`;
+* `Content-Type`: exactly `application/vnd.entangled+json`;
 * `Content-Length`: the byte length of the response body.
 
 The publisher MAY include additional response headers, but the client MUST ignore all headers not in the required list above.
@@ -390,36 +396,37 @@ The client MUST NOT generate behavior based on ignored headers. A publisher who 
 
 ### Content-Type strictness
 
-The `Content-Type` header on `200 OK` responses carrying Entangled documents MUST be exactly:
+Publishers MUST emit the `Content-Type` header on `200 OK` responses carrying Entangled documents in this lowercase, parameter-free form:
 
 ```http
-Content-Type: application/entangled+json
+Content-Type: application/vnd.entangled+json
 ```
 
-with no parameters.
+Recipients MUST parse the header field value as a media type according to RFC 9110 before applying the Entangled profile. A malformed field value is rejected as `E_TRANSPORT_CONTENT_TYPE`. After successful parsing, the recipient MUST compare the parsed type and subtype to `application` and `vnd.entangled+json` case-insensitively, as RFC 9110 requires. Thus, for example, `Content-Type: Application/Vnd.Entangled+JSON` is accepted even though a conforming publisher does not emit that spelling.
+
+The parsed parameter list MUST be empty. The recipient rejects a successfully parsed media type carrying any parameter, including `charset`, as `E_TRANSPORT_CONTENT_TYPE`. This decision is made from the parsed parameter list, not by byte-exact comparison of the header field value: optional whitespace accepted by the RFC 9110 parser, including whether a space follows the semicolon, MUST NOT affect the verdict. Parameters remain forbidden even when their values would be redundant or semantically compatible.
 
 The following are rejected:
 
-* `Content-Type: application/entangled+json; charset=utf-8`, because a parameter is present;
+* `Content-Type: application/vnd.entangled+json; charset=utf-8`, because the parsed parameter list is non-empty;
+* `Content-Type: application/vnd.entangled+json;charset=utf-8`, for the same reason; optional whitespace does not change the parsed media type;
 * `Content-Type: application/json`, because the type is wrong;
 * `Content-Type: text/plain`, because the type is wrong;
 * an absent `Content-Type` header.
 
-The encoding is implicit in the protocol: Entangled JSON is always UTF-8, with no BOM. Charset parameters are redundant and rejected as malformed.
+The encoding is implicit in the protocol: Entangled JSON is always UTF-8, with no BOM. Charset parameters are redundant and rejected by Entangled's parameter-free media-type profile even when the header field value is syntactically valid.
 
 A response with a malformed `Content-Type` is treated as a transport-level failure. The body is not parsed as an Entangled document.
 
 ### Submit Content-Type strictness
 
-The `Content-Type` header on `POST` submit requests MUST be exactly:
+Clients MUST emit the `Content-Type` header on `POST` submit requests in this lowercase, parameter-free form:
 
 ```http
-Content-Type: application/entangled-submit+json
+Content-Type: application/vnd.entangled-submit+json
 ```
 
-with no parameters.
-
-The publisher SHOULD reject submit requests with any other `Content-Type` as `400 Bad Request`.
+Publishers MUST parse this field value according to RFC 9110 before applying the Entangled profile, compare the parsed type and subtype to `application` and `vnd.entangled-submit+json` case-insensitively, and require an empty parsed parameter list. As for document responses, parameter rejection occurs after parsing and is independent of optional whitespace. The publisher SHOULD reject a malformed field value, a type/subtype mismatch, or any parsed parameter as `400 Bad Request`.
 
 ## Content-Encoding and Transfer-Encoding
 
