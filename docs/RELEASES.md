@@ -47,6 +47,18 @@ Tag deletion is reserved for accidental or malformed tags only and requires expl
 
 Release notes for each tag are added below as releases are made. Newest entries first.
 
+### v1.0-rc.59
+
+Date: 2026-08-24
+
+**External-link URL profile and userinfo prohibition (Section 03)**
+
+Carrier and citation targets now share an explicit RFC 3986 profile. Both require an absolute URI with a non-empty authority host and prohibit the userinfo component. Query and fragment components remain permitted. Default and non-default ports remain permitted, with an explicit decimal `1..65535` syntax. Well-formed `%HH` encoding remains permitted without case normalization or decoding; validators, chrome, copying, and handoff preserve the publisher-signed spelling byte-for-byte.
+
+The userinfo prohibition closes the standard `https://trusted.example@evil.example/` phishing construction for citations. It also removes a carrier-validation hazard: both references previously stripped an optional prefix through the last `@` before checking the post-`@` onion host, so a carrier target could pass host validation while presenting a misleading apparent identity in the userinfo substring. The rc.59 rule rejects the authority before host extraction.
+
+**Corpus.** Two correctly signed Stage 5 negative vectors are added: `123-link-citation-url-userinfo` and `124-link-carrier-url-userinfo`, both expecting `E_SCHEMA_FIELD_SYNTAX`. The latter uses a valid onion v3 host after `@`, keeping userinfo as the only live violation. The count moves 140 -> 142 and `corpus.json` `rc_target` moves `1.0-rc.58` -> `1.0-rc.59`.
+
 ### v1.0-rc.58
 
 Date: 2026-08-24

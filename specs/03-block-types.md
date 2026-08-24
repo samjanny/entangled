@@ -570,6 +570,19 @@ The confirmation UI MUST present:
 
 If `expected_publisher_pubkey` is declared and the destination manifest presents a different `publisher_pubkey`, the client MUST treat the destination as Changed/mismatch and apply §10.
 
+### URL profile for external targets
+
+The following URL profile applies to both `carrier` and `citation` targets, in addition to the kind-specific scheme and host rules below:
+
+* the value MUST be an absolute RFC 3986 URI with an authority and a non-empty host;
+* the authority MUST NOT contain a userinfo component, including an empty userinfo followed by `@`; clients MUST reject userinfo rather than strip it before validating or displaying the host;
+* a port is optional. Default and non-default ports are permitted; when present, the port MUST be a non-empty decimal integer in the range 1 through 65535;
+* the path may be empty. A query component and a fragment component are each permitted, including an empty query or fragment;
+* every unencoded byte MUST be in the RFC 3986 unreserved or reserved ASCII sets. A percent sign MUST begin a complete `%HH` triplet, where each `H` is a hexadecimal digit; uppercase and lowercase hexadecimal digits are both permitted;
+* percent-encoded octets are permitted wherever RFC 3986 permits them, including encodings of unreserved or reserved octets. Validation, signing, display, copying, and external handoff MUST preserve the encoded spelling byte-for-byte: clients MUST NOT decode or normalize percent-encoded octets. A percent-encoded delimiter therefore does not acquire delimiter semantics during validation.
+
+These rules intentionally permit queries, fragments, non-default ports, and well-formed percent-encoding. The userinfo prohibition prevents a publisher from presenting an apparent trusted destination before `@` while handing off to a different host, and prevents the validator, chrome, and external URL consumer from disagreeing about which substring is the authority's host.
+
 ### `target.kind = "carrier"`
 
 A `carrier` target points to a service reachable through an Entangled-supported carrier but **not** governed by the Entangled protocol. Typical uses are linking to non-Entangled wikis, repositories, or mirrors that exist only as carrier-native services (for example, a non-Entangled Tor onion service).
@@ -589,7 +602,7 @@ A `carrier` target points to a service reachable through an Entangled-supported 
 * begin with `http://`;
 * have a host that is a valid carrier address for the declared `carrier` - for `tor-v3`, a 56-character onion address followed by `.onion`;
 * not exceed 1 KiB when encoded as UTF-8;
-* contain only valid URL characters per RFC 3986;
+* conform to the external-target URL profile above;
 * not contain control characters.
 
 `https://` URLs are not permitted as `carrier` targets in v1. The carrier already provides confidentiality and integrity at the rendezvous layer, and the destination identity is anchored at the carrier address itself rather than at a Web PKI certificate, for the same reasons Entangled transport runs over plain HTTP on Tor v3 (§09).
@@ -619,7 +632,7 @@ A `citation` target points to a clearnet URL intended as an external reference.
 
 * begin with `https://`;
 * not exceed 1 KiB when encoded as UTF-8;
-* contain only valid URL characters per RFC 3986;
+* conform to the external-target URL profile above;
 * not contain control characters.
 
 `http://` URLs are not permitted as citation targets in v1. Citation targets are by definition clearnet references; over the clearnet, plaintext HTTP is exposed to in-path tampering, injection, and tracking, and the destination must present a Web PKI certificate to be safely opened in a system browser. To link to a non-Entangled service reachable through an Entangled carrier (for example, a non-Entangled onion service), use `target.kind = "carrier"` instead of `citation`.
